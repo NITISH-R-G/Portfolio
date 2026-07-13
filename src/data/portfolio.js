@@ -22,7 +22,7 @@ export const portfolioData = {
     name: "Nitish R.G.",
     role: "Student Developer & Data Science Enthusiast",
     location: "Uttar Pradesh, India",
-    image: "/Portfolio/assets/profile.svg",
+    image: `${import.meta.env.BASE_URL}assets/profile.svg`,
     availability: "Open to learning and collaboration"
   },
 
