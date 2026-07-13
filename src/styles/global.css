@@ -70,8 +70,39 @@ body {
   overflow-x: hidden;
 }
 
-body.has-custom-cursor * {
-  cursor: none !important;
+/* Default: preserve native cursor everywhere */
+html,
+body,
+#root,
+.portfolio-surface,
+.portfolio-surface * {
+  cursor: auto;
+}
+
+/* Hide native cursor only when custom cursor is actively visible */
+@media (hover: hover) and (pointer: fine) {
+  body.custom-cursor-active .portfolio-surface,
+  body.custom-cursor-active .portfolio-surface a,
+  body.custom-cursor-active .portfolio-surface button,
+  body.custom-cursor-active .portfolio-surface [role="button"],
+  body.custom-cursor-active .portfolio-surface .nav-icon,
+  body.custom-cursor-active .portfolio-surface .social-icon {
+    cursor: none;
+  }
+
+  /* Preserve text selection affordance */
+  body.custom-cursor-active .portfolio-surface p,
+  body.custom-cursor-active .portfolio-surface h1,
+  body.custom-cursor-active .portfolio-surface h2,
+  body.custom-cursor-active .portfolio-surface h3,
+  body.custom-cursor-active .portfolio-surface h4,
+  body.custom-cursor-active .portfolio-surface li,
+  body.custom-cursor-active .portfolio-surface span,
+  body.custom-cursor-active .portfolio-surface input,
+  body.custom-cursor-active .portfolio-surface textarea,
+  body.custom-cursor-active .portfolio-surface [contenteditable="true"] {
+    cursor: text;
+  }
 }
 
 a {

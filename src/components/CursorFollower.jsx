@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
-export default function CursorFollower() {
+export default function CursorFollower({ surfaceRef }) {
   const reducedMotion = useReducedMotion()
   const dotRef = useRef(null)
   const ringRef = useRef(null)
@@ -14,9 +15,37 @@ export default function CursorFollower() {
   const isOverProjectCardRef = useRef(false)
   const projectCardLabelRef = useRef(null)
   const isEnabledRef = useRef(false)
+  const isInsideSurfaceRef = useRef(false)
+  const hasValidMoveRef = useRef(false)
 
-  const cursorStyles = {
-    dot: {
+  const checkEnabled = useCallback(() => {
+    const pointerFine = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    const wideEnough = window.innerWidth >= 1024
+    return pointerFine && !reducedMotion && wideEnough
+  }, [reducedMotion])
+
+  const addActiveClass = () => {
+    if (!document.body.classList.contains('custom-cursor-active')) {
+      document.body.classList.add('custom-cursor-active')
+    }
+  }
+
+  const removeActiveClass = () => {
+    document.body.classList.remove('custom-cursor-active')
+  }
+
+  const createElements = () => {
+    if (dotRef.current || ringRef.current) return
+
+    const dot = document.createElement('div')
+    const ring = document.createElement('div')
+    const label = document.createElement('div')
+
+    dot.setAttribute('aria-hidden', 'true')
+    ring.setAttribute('aria-hidden', 'true')
+    label.setAttribute('aria-hidden', 'true')
+
+    Object.assign(dot.style, {
       width: '6px',
       height: '6px',
       borderRadius: '50%',
@@ -26,10 +55,11 @@ export default function CursorFollower() {
       zIndex: 9999,
       transform: 'translate3d(-50%, -50%, 0)',
       willChange: 'transform, opacity',
-      opacity: 1,
-      transition: 'opacity 0.15s ease, transform 0.05s linear',
-    },
-    ring: {
+      opacity: 0,
+      transition: 'opacity 0.15s ease',
+    })
+
+    Object.assign(ring.style, {
       width: '28px',
       height: '28px',
       borderRadius: '50%',
@@ -38,11 +68,13 @@ export default function CursorFollower() {
       position: 'fixed',
       zIndex: 9998,
       transform: 'translate3d(-50%, -50%, 0)',
-      willChange: 'transform, border-color, transform',
+      willChange: 'transform',
+      opacity: 0,
       transition: 'border-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
       boxSizing: 'border-box',
-    },
-    label: {
+    })
+
+    Object.assign(label.style, {
       position: 'fixed',
       zIndex: 10000,
       pointerEvents: 'none',
@@ -57,29 +89,9 @@ export default function CursorFollower() {
       opacity: 0,
       transform: 'translate3d(-50%, -100%, 0) translateY(-8px)',
       transition: 'opacity 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
-      pointerEvents: 'none',
-      zIndex: 10000,
-    }
-  }
-
-  const checkEnabled = () => {
-    const pointerFine = window.matchMedia('(hover: hover) and (pointer: fine)').matches
-    const wideEnough = window.innerWidth >= 1024
-    return pointerFine && !reducedMotion && wideEnough
-  }
-
-  const createElements = () => {
-    if (dotRef.current || ringRef.current) return
-
-    const dot = document.createElement('div')
-    const ring = document.createElement('div')
-    const label = document.createElement('div')
-
-    Object.assign(dot.style, cursorStyles.dot)
-    Object.assign(ring.style, cursorStyles.ring)
-    Object.assign(label.style, cursorStyles.label)
+      display: 'none',
+    })
     label.textContent = 'View project'
-    label.style.display = 'none'
 
     document.body.appendChild(dot)
     document.body.appendChild(ring)
@@ -88,7 +100,6 @@ export default function CursorFollower() {
     dotRef.current = dot
     ringRef.current = ring
     projectCardLabelRef.current = label
-    document.body.classList.add('has-custom-cursor')
   }
 
   const removeElements = () => {
@@ -104,7 +115,9 @@ export default function CursorFollower() {
       projectCardLabelRef.current.remove()
       projectCardLabelRef.current = null
     }
-    document.body.classList.remove('has-custom-cursor')
+    removeActiveClass()
+    hasValidMoveRef.current = false
+    isVisibleRef.current = false
   }
 
   const updatePositions = () => {
@@ -129,16 +142,14 @@ export default function CursorFollower() {
     if (projectCardLabelRef.current && isOverProjectCardRef.current) {
       const label = projectCardLabelRef.current
       const labelWidth = label.offsetWidth
-      const labelHeight = label.offsetHeight
       const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
 
       let labelX = mx
       let labelY = my - 40
 
       if (labelX - labelWidth / 2 < 8) labelX = labelWidth / 2 + 8
       if (labelX + labelWidth / 2 > viewportWidth - 8) labelX = viewportWidth - labelWidth / 2 - 8
-      if (labelY - labelHeight < 8) labelY = my + 28
+      if (labelY < 8) labelY = my + 28
 
       label.style.transform = `translate3d(${labelX}px, ${labelY}px, 0) translateX(-50%)`
     }
@@ -146,15 +157,33 @@ export default function CursorFollower() {
     rafRef.current = requestAnimationFrame(updatePositions)
   }
 
-  const handleMouseMove = (e) => {
+  const showCursor = () => {
+    if (!hasValidMoveRef.current) {
+      hasValidMoveRef.current = true
+      if (dotRef.current) dotRef.current.style.opacity = '1'
+      if (ringRef.current) ringRef.current.style.opacity = '1'
+      addActiveClass()
+    }
+  }
+
+  const hideCursor = () => {
+    if (hasValidMoveRef.current) {
+      hasValidMoveRef.current = false
+      if (dotRef.current) dotRef.current.style.opacity = '0'
+      if (ringRef.current) ringRef.current.style.opacity = '0'
+      removeActiveClass()
+    }
+  }
+
+  const handlePointerMove = (e) => {
+    if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return
+
     mouseRef.current.x = e.clientX
     mouseRef.current.y = e.clientY
 
-    if (!isVisibleRef.current) {
-      isVisibleRef.current = true
-      if (dotRef.current) dotRef.current.style.opacity = '1'
-      if (ringRef.current) ringRef.current.style.opacity = '1'
-    }
+    if (!isInsideSurfaceRef.current) return
+
+    showCursor()
 
     const target = e.target
     const isInteractive = target.matches('a, button, [data-cursor="interactive"], [data-cursor="interactive"] *')
@@ -165,10 +194,8 @@ export default function CursorFollower() {
       if (ringRef.current) {
         if (isInteractive) {
           ringRef.current.style.transform = `translate3d(${ringPosRef.current.x}px, ${ringPosRef.current.y}px, 0) scale(1.45)`
-          ringRef.current.style.borderColor = 'var(--accent)'
         } else {
           ringRef.current.style.transform = `translate3d(${ringPosRef.current.x}px, ${ringPosRef.current.y}px, 0) scale(1)`
-          ringRef.current.style.borderColor = 'var(--accent)'
         }
       }
       if (dotRef.current) {
@@ -201,19 +228,13 @@ export default function CursorFollower() {
     }
   }
 
-  const handleMouseLeave = () => {
-    isVisibleRef.current = false
-    if (dotRef.current) dotRef.current.style.opacity = '0'
-    if (ringRef.current) ringRef.current.style.opacity = '0'
-    if (projectCardLabelRef.current) {
-      projectCardLabelRef.current.style.opacity = '0'
-      projectCardLabelRef.current.style.transform = 'translate3d(-50%, -100%, 0) translateY(-8px)'
-      setTimeout(() => {
-        if (projectCardLabelRef.current && !isOverProjectCardRef.current) {
-          projectCardLabelRef.current.style.display = 'none'
-        }
-      }, 150)
-    }
+  const handlePointerEnter = () => {
+    isInsideSurfaceRef.current = true
+  }
+
+  const handlePointerLeave = () => {
+    isInsideSurfaceRef.current = false
+    hideCursor()
   }
 
   const handleResize = () => {
@@ -225,8 +246,6 @@ export default function CursorFollower() {
         dotPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
         ringPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
         mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-        if (dotRef.current) dotRef.current.style.opacity = '0'
-        if (ringRef.current) ringRef.current.style.opacity = '0'
         rafRef.current = requestAnimationFrame(updatePositions)
       } else {
         isEnabledRef.current = false
@@ -246,19 +265,28 @@ export default function CursorFollower() {
       ringPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       rafRef.current = requestAnimationFrame(updatePositions)
-      window.addEventListener('mousemove', handleMouseMove, { passive: true })
-      window.addEventListener('mouseleave', handleMouseLeave)
+
+      const surface = surfaceRef?.current
+      if (surface) {
+        surface.addEventListener('pointerenter', handlePointerEnter)
+        surface.addEventListener('pointerleave', handlePointerLeave)
+      }
+      window.addEventListener('pointermove', handlePointerMove, { passive: true })
       window.addEventListener('resize', handleResize)
     }
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseleave', handleMouseLeave)
+      const surface = surfaceRef?.current
+      if (surface) {
+        surface.removeEventListener('pointerenter', handlePointerEnter)
+        surface.removeEventListener('pointerleave', handlePointerLeave)
+      }
+      window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('resize', handleResize)
       removeElements()
     }
-  }, [reducedMotion])
+  }, [reducedMotion, checkEnabled])
 
   return null
 }

@@ -1,5 +1,5 @@
 import { portfolioData, initializeTheme } from './data/portfolio'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Sidebar from './components/Sidebar'
 import MainContent from './components/MainContent'
 import FloatingNav from './components/FloatingNav'
@@ -9,6 +9,7 @@ import { useScrollAnimation } from './hooks/useScrollAnimation'
 
 function App() {
   const [activeSection, setActiveSection] = useState('intro')
+  const portfolioSurfaceRef = useRef(null)
   useLenis()
   useScrollAnimation()
   
@@ -20,13 +21,13 @@ function App() {
     const statusEl = document.getElementById('navigation-status')
     if (statusEl) {
       const labels = {
-        about: 'About',
-        skills: 'Skills',
         intro: 'Intro',
         projects: 'Projects',
         experience: 'Experience',
         education: 'Education',
-        contact: 'Contact'
+        contact: 'Contact',
+        about: 'About',
+        skills: 'Skills'
       }
       statusEl.textContent = `Navigated to ${labels[sectionId] || sectionId} section`
     }
@@ -52,12 +53,14 @@ function App() {
   
   return (
     <>
-      <CursorFollower />
+      <CursorFollower surfaceRef={portfolioSurfaceRef} />
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <div className="page-wrapper">
-        <Sidebar />
-        <MainContent />
-        <FloatingNav activeSection={activeSection} onNavigate={announceSection} />
+      <div ref={portfolioSurfaceRef} className="portfolio-surface">
+        <div className="page-wrapper">
+          <Sidebar />
+          <MainContent />
+          <FloatingNav activeSection={activeSection} onNavigate={announceSection} />
+        </div>
       </div>
       <div id="navigation-status" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
     </>
