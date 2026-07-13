@@ -8,7 +8,8 @@ const INJECT_CSS = `
   body.custom-cursor-active.custom-cursor-visible .portfolio-surface,
   body.custom-cursor-active.custom-cursor-visible .portfolio-surface *,
   body.custom-cursor-active.custom-cursor-visible .portfolio-surface *::before,
-  body.custom-cursor-active.custom-cursor-visible .portfolio-surface *::after {
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface *::after,
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface :where(*) {
     cursor: none !important;
   }
 
@@ -38,6 +39,7 @@ export default function UserCursor({ surfaceRef }) {
   const currentLabelRef = useRef('Nitish R.G.')
   const labelTiltRef = useRef(0)
   const enabledRef = useRef(false)
+  const verifiedRef = useRef(false)
 
   const checkEnabled = useCallback(() => {
     const pointerFine = window.matchMedia('(hover: hover) and (pointer: fine)').matches
@@ -76,6 +78,11 @@ export default function UserCursor({ surfaceRef }) {
   const removeAllClasses = () => {
     document.body.classList.remove('custom-cursor-active')
     document.body.classList.remove('custom-cursor-visible')
+  }
+
+  const activateBothClasses = () => {
+    addActiveClass()
+    addVisibleClass()
   }
 
   const createElements = () => {
@@ -144,6 +151,7 @@ export default function UserCursor({ surfaceRef }) {
     removeAllClasses()
     isActiveRef.current = false
     isPressedRef.current = false
+    verifiedRef.current = false
     currentLabelRef.current = 'Nitish R.G.'
   }
 
@@ -200,14 +208,35 @@ export default function UserCursor({ surfaceRef }) {
   const activateCursor = () => {
     if (isActiveRef.current) return
     isActiveRef.current = true
+
     if (arrowRef.current) arrowRef.current.style.opacity = '1'
     if (labelRef.current) labelRef.current.style.opacity = '1'
-    addVisibleClass()
+
+    activateBothClasses()
+
+    if (!verifiedRef.current) {
+      verifiedRef.current = true
+      requestAnimationFrame(() => {
+        if (!isActiveRef.current) return
+        const hovered = document.elementFromPoint(mouseRef.current.x, mouseRef.current.y)
+        if (hovered) {
+          const computed = getComputedStyle(hovered).cursor
+          if (computed !== 'none' && styleRef.current) {
+            styleRef.current.textContent = INJECT_CSS + `
+body.custom-cursor-active.custom-cursor-visible .portfolio-surface :where(*) {
+  cursor: none !important;
+}
+`
+          }
+        }
+      })
+    }
   }
 
   const deactivateCursor = () => {
     if (!isActiveRef.current && !isInsideSurfaceRef.current) return
     isActiveRef.current = false
+    verifiedRef.current = false
     if (arrowRef.current) arrowRef.current.style.opacity = '0'
     if (labelRef.current) labelRef.current.style.opacity = '0'
     removeAllClasses()
