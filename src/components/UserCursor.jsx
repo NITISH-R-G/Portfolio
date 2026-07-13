@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
 export default function UserCursor({ surfaceRef }) {
@@ -7,16 +6,18 @@ export default function UserCursor({ surfaceRef }) {
   const arrowRef = useRef(null)
   const labelRef = useRef(null)
   const rafRef = useRef(null)
-  const mouseRef = useRef({ x: 0, y: 0 })
-  const arrowPosRef = useRef({ x: 0, y: 0 })
-  const labelPosRef = useRef({ x: 0, y: 0 })
+  const mouseRef = useRef({ x: -100, y: -100 })
+  const arrowPosRef = useRef({ x: -100, y: -100 })
+  const labelPosRef = useRef({ x: -100, y: -100 })
   const velocityRef = useRef({ x: 0, y: 0 })
+  const prevMouseRef = useRef({ x: -100, y: -100 })
   const lastMoveTimeRef = useRef(0)
   const isPressedRef = useRef(false)
   const isInsideSurfaceRef = useRef(false)
-  const hasValidMoveRef = useRef(false)
+  const isActiveRef = useRef(false)
   const currentLabelRef = useRef('Nitish R.G.')
   const labelTiltRef = useRef(0)
+  const enabledRef = useRef(false)
 
   const checkEnabled = useCallback(() => {
     const pointerFine = window.matchMedia('(hover: hover) and (pointer: fine)').matches
@@ -24,18 +25,33 @@ export default function UserCursor({ surfaceRef }) {
     return pointerFine && !reducedMotion && wideEnough
   }, [reducedMotion])
 
-  const addActiveClass = () => {
-    if (!document.body.classList.contains('custom-cursor-active')) {
-      document.body.classList.add('custom-cursor-active')
+  const hideNativeCursor = () => {
+    const surface = surfaceRef?.current
+    if (surface) {
+      surface.style.cursor = 'none'
+      surface.querySelectorAll('a, button, [role="button"], .nav-icon, .social-icon, .project-card, .nav-item, .btn').forEach(el => {
+        el.style.cursor = 'none'
+      })
+      surface.querySelectorAll('p, h1, h2, h3, h4, li, span, input, textarea, [contenteditable="true"]').forEach(el => {
+        el.style.cursor = 'text'
+      })
     }
+    document.body.classList.add('custom-cursor-active')
   }
 
-  const removeActiveClass = () => {
+  const showNativeCursor = () => {
+    const surface = surfaceRef?.current
+    if (surface) {
+      surface.style.cursor = ''
+      surface.querySelectorAll('[style]').forEach(el => {
+        if (el.style.cursor) el.style.cursor = ''
+      })
+    }
     document.body.classList.remove('custom-cursor-active')
   }
 
   const createElements = () => {
-    if (arrowRef.current || labelRef.current) return
+    if (arrowRef.current) return
 
     const arrow = document.createElement('div')
     const label = document.createElement('div')
@@ -50,10 +66,10 @@ export default function UserCursor({ surfaceRef }) {
       width: '20px',
       height: '20px',
       pointerEvents: 'none',
-      zIndex: 10001,
-      opacity: 0,
+      zIndex: '10001',
+      opacity: '0',
       willChange: 'transform',
-      transform: 'translate3d(0, 0, 0)',
+      transition: 'opacity 0.15s ease',
     })
     arrow.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M5 3L19 12L12 13L9 20L5 3Z" fill="white" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
@@ -64,15 +80,15 @@ export default function UserCursor({ surfaceRef }) {
       top: '0',
       left: '0',
       pointerEvents: 'none',
-      zIndex: 10000,
-      opacity: 0,
+      zIndex: '10000',
+      opacity: '0',
       willChange: 'transform',
-      transform: 'translate3d(0, 0, 0)',
-      background: 'var(--accent, #8B5CF6)',
+      transition: 'opacity 0.15s ease',
+      background: '#8B5CF6',
       color: 'white',
       fontSize: '12px',
-      fontWeight: 500,
-      fontFamily: 'var(--font-sans, system-ui, sans-serif)',
+      fontWeight: '500',
+      fontFamily: 'Inter, system-ui, sans-serif',
       padding: '6px 12px',
       borderRadius: '20px',
       whiteSpace: 'nowrap',
@@ -97,8 +113,8 @@ export default function UserCursor({ surfaceRef }) {
       labelRef.current.remove()
       labelRef.current = null
     }
-    removeActiveClass()
-    hasValidMoveRef.current = false
+    showNativeCursor()
+    isActiveRef.current = false
     isPressedRef.current = false
     currentLabelRef.current = 'Nitish R.G.'
   }
@@ -109,6 +125,8 @@ export default function UserCursor({ surfaceRef }) {
   }
 
   const updatePositions = () => {
+    if (!enabledRef.current) return
+
     const mx = mouseRef.current.x
     const my = mouseRef.current.y
 
@@ -126,15 +144,15 @@ export default function UserCursor({ surfaceRef }) {
     labelPosRef.current.y = spring(labelPosRef.current.y, labelTargetY, labelStiffness, labelDamping)
 
     const now = performance.now()
-    const dt = Math.min(now - (lastMoveTimeRef.current || now), 50)
+    const dt = Math.min(now - lastMoveTimeRef.current, 50)
     lastMoveTimeRef.current = now
 
     if (dt > 0) {
-      velocityRef.current.x = (mx - (mouseRef.current.prevX || mx)) / dt
-      velocityRef.current.y = (my - (mouseRef.current.prevY || my)) / dt
+      velocityRef.current.x = (mx - prevMouseRef.current.x) / dt
+      velocityRef.current.y = (my - prevMouseRef.current.y) / dt
     }
-    mouseRef.current.prevX = mx
-    mouseRef.current.prevY = my
+    prevMouseRef.current.x = mx
+    prevMouseRef.current.y = my
 
     const tiltAngle = Math.max(-15, Math.min(15, velocityRef.current.x * 3))
     labelTiltRef.current = spring(labelTiltRef.current, tiltAngle, 0.1, 0.8)
@@ -151,22 +169,20 @@ export default function UserCursor({ surfaceRef }) {
     rafRef.current = requestAnimationFrame(updatePositions)
   }
 
-  const showCursor = () => {
-    if (!hasValidMoveRef.current) {
-      hasValidMoveRef.current = true
-      if (arrowRef.current) arrowRef.current.style.opacity = '1'
-      if (labelRef.current) labelRef.current.style.opacity = '1'
-      addActiveClass()
-    }
+  const activateCursor = () => {
+    if (isActiveRef.current) return
+    isActiveRef.current = true
+    if (arrowRef.current) arrowRef.current.style.opacity = '1'
+    if (labelRef.current) labelRef.current.style.opacity = '1'
+    hideNativeCursor()
   }
 
-  const hideCursor = () => {
-    if (hasValidMoveRef.current) {
-      hasValidMoveRef.current = false
-      if (arrowRef.current) arrowRef.current.style.opacity = '0'
-      if (labelRef.current) labelRef.current.style.opacity = '0'
-      removeActiveClass()
-    }
+  const deactivateCursor = () => {
+    if (!isActiveRef.current) return
+    isActiveRef.current = false
+    if (arrowRef.current) arrowRef.current.style.opacity = '0'
+    if (labelRef.current) labelRef.current.style.opacity = '0'
+    showNativeCursor()
   }
 
   const getLabelForTarget = (target) => {
@@ -178,6 +194,7 @@ export default function UserCursor({ surfaceRef }) {
   }
 
   const handlePointerMove = (e) => {
+    if (!enabledRef.current) return
     if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return
 
     mouseRef.current.x = e.clientX
@@ -185,7 +202,7 @@ export default function UserCursor({ surfaceRef }) {
 
     if (!isInsideSurfaceRef.current) return
 
-    showCursor()
+    activateCursor()
 
     const newLabel = getLabelForTarget(e.target)
     if (newLabel !== currentLabelRef.current && labelRef.current) {
@@ -194,8 +211,8 @@ export default function UserCursor({ surfaceRef }) {
     }
   }
 
-  const handlePointerDown = (e) => {
-    if (!isInsideSurfaceRef.current || !hasValidMoveRef.current) return
+  const handlePointerDown = () => {
+    if (!isInsideSurfaceRef.current || !isActiveRef.current) return
     isPressedRef.current = true
   }
 
@@ -209,34 +226,37 @@ export default function UserCursor({ surfaceRef }) {
 
   const handlePointerLeave = () => {
     isInsideSurfaceRef.current = false
-    hideCursor()
+    deactivateCursor()
     isPressedRef.current = false
   }
 
   const handleResize = () => {
     const shouldEnable = checkEnabled()
-    if (shouldEnable !== arrowRef.current) {
-      if (shouldEnable) {
-        createElements()
-        arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-        labelPosRef.current = { x: window.innerWidth / 2 + 20, y: window.innerHeight / 2 + 20 }
-        mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-        rafRef.current = requestAnimationFrame(updatePositions)
-      } else {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current)
-        removeElements()
-      }
+    if (shouldEnable && !enabledRef.current) {
+      enabledRef.current = true
+      createElements()
+      arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      labelPosRef.current = { x: window.innerWidth / 2 + 20, y: window.innerHeight / 2 + 20 }
+      mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      prevMouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      rafRef.current = requestAnimationFrame(updatePositions)
+    } else if (!shouldEnable && enabledRef.current) {
+      enabledRef.current = false
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      removeElements()
     }
   }
 
   useEffect(() => {
     const shouldEnable = checkEnabled()
+    enabledRef.current = shouldEnable
 
     if (shouldEnable) {
       createElements()
       arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       labelPosRef.current = { x: window.innerWidth / 2 + 20, y: window.innerHeight / 2 + 20 }
       mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      prevMouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       rafRef.current = requestAnimationFrame(updatePositions)
 
       const surface = surfaceRef?.current
@@ -251,6 +271,7 @@ export default function UserCursor({ surfaceRef }) {
     }
 
     return () => {
+      enabledRef.current = false
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       const surface = surfaceRef?.current
       if (surface) {
