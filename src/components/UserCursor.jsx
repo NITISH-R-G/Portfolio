@@ -1,0 +1,269 @@
+import { useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+
+export default function UserCursor({ surfaceRef }) {
+  const reducedMotion = useReducedMotion()
+  const arrowRef = useRef(null)
+  const labelRef = useRef(null)
+  const rafRef = useRef(null)
+  const mouseRef = useRef({ x: 0, y: 0 })
+  const arrowPosRef = useRef({ x: 0, y: 0 })
+  const labelPosRef = useRef({ x: 0, y: 0 })
+  const velocityRef = useRef({ x: 0, y: 0 })
+  const lastMoveTimeRef = useRef(0)
+  const isPressedRef = useRef(false)
+  const isInsideSurfaceRef = useRef(false)
+  const hasValidMoveRef = useRef(false)
+  const currentLabelRef = useRef('Nitish R.G.')
+  const labelTiltRef = useRef(0)
+
+  const checkEnabled = useCallback(() => {
+    const pointerFine = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    const wideEnough = window.innerWidth >= 1024
+    return pointerFine && !reducedMotion && wideEnough
+  }, [reducedMotion])
+
+  const addActiveClass = () => {
+    if (!document.body.classList.contains('custom-cursor-active')) {
+      document.body.classList.add('custom-cursor-active')
+    }
+  }
+
+  const removeActiveClass = () => {
+    document.body.classList.remove('custom-cursor-active')
+  }
+
+  const createElements = () => {
+    if (arrowRef.current || labelRef.current) return
+
+    const arrow = document.createElement('div')
+    const label = document.createElement('div')
+
+    arrow.setAttribute('aria-hidden', 'true')
+    label.setAttribute('aria-hidden', 'true')
+
+    Object.assign(arrow.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: '20px',
+      height: '20px',
+      pointerEvents: 'none',
+      zIndex: 10001,
+      opacity: 0,
+      willChange: 'transform',
+      transform: 'translate3d(0, 0, 0)',
+    })
+    arrow.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 3L19 12L12 13L9 20L5 3Z" fill="white" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+    </svg>`
+
+    Object.assign(label.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      pointerEvents: 'none',
+      zIndex: 10000,
+      opacity: 0,
+      willChange: 'transform',
+      transform: 'translate3d(0, 0, 0)',
+      background: 'var(--accent, #8B5CF6)',
+      color: 'white',
+      fontSize: '12px',
+      fontWeight: 500,
+      fontFamily: 'var(--font-sans, system-ui, sans-serif)',
+      padding: '6px 12px',
+      borderRadius: '20px',
+      whiteSpace: 'nowrap',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+      transformOrigin: 'center center',
+    })
+    label.textContent = 'Nitish R.G.'
+
+    document.body.appendChild(arrow)
+    document.body.appendChild(label)
+
+    arrowRef.current = arrow
+    labelRef.current = label
+  }
+
+  const removeElements = () => {
+    if (arrowRef.current) {
+      arrowRef.current.remove()
+      arrowRef.current = null
+    }
+    if (labelRef.current) {
+      labelRef.current.remove()
+      labelRef.current = null
+    }
+    removeActiveClass()
+    hasValidMoveRef.current = false
+    isPressedRef.current = false
+    currentLabelRef.current = 'Nitish R.G.'
+  }
+
+  const spring = (current, target, stiffness = 0.15, damping = 0.7) => {
+    const diff = target - current
+    return current + diff * stiffness * damping
+  }
+
+  const updatePositions = () => {
+    const mx = mouseRef.current.x
+    const my = mouseRef.current.y
+
+    const arrowStiffness = 0.25
+    const arrowDamping = 0.7
+    const labelStiffness = 0.12
+    const labelDamping = 0.65
+
+    arrowPosRef.current.x = spring(arrowPosRef.current.x, mx, arrowStiffness, arrowDamping)
+    arrowPosRef.current.y = spring(arrowPosRef.current.y, my, arrowStiffness, arrowDamping)
+
+    const labelTargetX = mx + 20
+    const labelTargetY = my + 20
+    labelPosRef.current.x = spring(labelPosRef.current.x, labelTargetX, labelStiffness, labelDamping)
+    labelPosRef.current.y = spring(labelPosRef.current.y, labelTargetY, labelStiffness, labelDamping)
+
+    const now = performance.now()
+    const dt = Math.min(now - (lastMoveTimeRef.current || now), 50)
+    lastMoveTimeRef.current = now
+
+    if (dt > 0) {
+      velocityRef.current.x = (mx - (mouseRef.current.prevX || mx)) / dt
+      velocityRef.current.y = (my - (mouseRef.current.prevY || my)) / dt
+    }
+    mouseRef.current.prevX = mx
+    mouseRef.current.prevY = my
+
+    const tiltAngle = Math.max(-15, Math.min(15, velocityRef.current.x * 3))
+    labelTiltRef.current = spring(labelTiltRef.current, tiltAngle, 0.1, 0.8)
+
+    const scale = isPressedRef.current ? 0.9 : 1
+
+    if (arrowRef.current) {
+      arrowRef.current.style.transform = `translate3d(${arrowPosRef.current.x}px, ${arrowPosRef.current.y}px, 0) scale(${scale})`
+    }
+    if (labelRef.current) {
+      labelRef.current.style.transform = `translate3d(${labelPosRef.current.x}px, ${labelPosRef.current.y}px, 0) rotate(${labelTiltRef.current}deg) scale(${scale})`
+    }
+
+    rafRef.current = requestAnimationFrame(updatePositions)
+  }
+
+  const showCursor = () => {
+    if (!hasValidMoveRef.current) {
+      hasValidMoveRef.current = true
+      if (arrowRef.current) arrowRef.current.style.opacity = '1'
+      if (labelRef.current) labelRef.current.style.opacity = '1'
+      addActiveClass()
+    }
+  }
+
+  const hideCursor = () => {
+    if (hasValidMoveRef.current) {
+      hasValidMoveRef.current = false
+      if (arrowRef.current) arrowRef.current.style.opacity = '0'
+      if (labelRef.current) labelRef.current.style.opacity = '0'
+      removeActiveClass()
+    }
+  }
+
+  const getLabelForTarget = (target) => {
+    if (!target) return 'Nitish R.G.'
+    if (target.closest('.project-card') || target.closest('[data-cursor="project"]')) return 'View project'
+    if (target.closest('.social-icon') || target.closest('[data-cursor="external"]')) return 'Open link'
+    if (target.closest('.nav-icon') || target.closest('[data-cursor="nav"]')) return 'Navigate'
+    return 'Nitish R.G.'
+  }
+
+  const handlePointerMove = (e) => {
+    if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return
+
+    mouseRef.current.x = e.clientX
+    mouseRef.current.y = e.clientY
+
+    if (!isInsideSurfaceRef.current) return
+
+    showCursor()
+
+    const newLabel = getLabelForTarget(e.target)
+    if (newLabel !== currentLabelRef.current && labelRef.current) {
+      currentLabelRef.current = newLabel
+      labelRef.current.textContent = newLabel
+    }
+  }
+
+  const handlePointerDown = (e) => {
+    if (!isInsideSurfaceRef.current || !hasValidMoveRef.current) return
+    isPressedRef.current = true
+  }
+
+  const handlePointerUp = () => {
+    isPressedRef.current = false
+  }
+
+  const handlePointerEnter = () => {
+    isInsideSurfaceRef.current = true
+  }
+
+  const handlePointerLeave = () => {
+    isInsideSurfaceRef.current = false
+    hideCursor()
+    isPressedRef.current = false
+  }
+
+  const handleResize = () => {
+    const shouldEnable = checkEnabled()
+    if (shouldEnable !== arrowRef.current) {
+      if (shouldEnable) {
+        createElements()
+        arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+        labelPosRef.current = { x: window.innerWidth / 2 + 20, y: window.innerHeight / 2 + 20 }
+        mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+        rafRef.current = requestAnimationFrame(updatePositions)
+      } else {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        removeElements()
+      }
+    }
+  }
+
+  useEffect(() => {
+    const shouldEnable = checkEnabled()
+
+    if (shouldEnable) {
+      createElements()
+      arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      labelPosRef.current = { x: window.innerWidth / 2 + 20, y: window.innerHeight / 2 + 20 }
+      mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      rafRef.current = requestAnimationFrame(updatePositions)
+
+      const surface = surfaceRef?.current
+      if (surface) {
+        surface.addEventListener('pointerenter', handlePointerEnter)
+        surface.addEventListener('pointerleave', handlePointerLeave)
+      }
+      window.addEventListener('pointermove', handlePointerMove, { passive: true })
+      window.addEventListener('pointerdown', handlePointerDown, { passive: true })
+      window.addEventListener('pointerup', handlePointerUp, { passive: true })
+      window.addEventListener('resize', handleResize)
+    }
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      const surface = surfaceRef?.current
+      if (surface) {
+        surface.removeEventListener('pointerenter', handlePointerEnter)
+        surface.removeEventListener('pointerleave', handlePointerLeave)
+      }
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('resize', handleResize)
+      removeElements()
+    }
+  }, [reducedMotion, checkEnabled])
+
+  return null
+}

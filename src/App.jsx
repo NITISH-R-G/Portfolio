@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import Sidebar from './components/Sidebar'
 import MainContent from './components/MainContent'
 import FloatingNav from './components/FloatingNav'
-import CursorFollower from './components/CursorFollower'
+import UserCursor from './components/UserCursor'
 import { useLenis } from './hooks/useLenis'
 import { useScrollAnimation } from './hooks/useScrollAnimation'
 
@@ -53,7 +53,7 @@ function App() {
   
   return (
     <>
-      <CursorFollower surfaceRef={portfolioSurfaceRef} />
+      <UserCursor surfaceRef={portfolioSurfaceRef} />
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <div ref={portfolioSurfaceRef} className="portfolio-surface">
         <div className="page-wrapper">
