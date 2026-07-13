@@ -119,7 +119,7 @@ export default function UserCursor({ surfaceRef }) {
       opacity: '0',
       willChange: 'transform',
       transition: 'opacity 0.15s ease',
-      background: '#8B5CF6',
+      background: 'rgba(255, 255, 255, 0.12)',
       color: 'white',
       fontSize: '12px',
       fontWeight: '500',
@@ -127,7 +127,7 @@ export default function UserCursor({ surfaceRef }) {
       padding: '6px 12px',
       borderRadius: '20px',
       whiteSpace: 'nowrap',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       transformOrigin: 'center center',
     })
     label.textContent = 'Nitish R.G.'
