@@ -5,16 +5,16 @@ const STYLE_ID = 'usercursor-native-hide'
 
 const INJECT_CSS = `
 @media (hover: hover) and (pointer: fine) {
-  body.custom-cursor-active .portfolio-surface,
-  body.custom-cursor-active .portfolio-surface *,
-  body.custom-cursor-active .portfolio-surface *::before,
-  body.custom-cursor-active .portfolio-surface *::after {
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface,
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface *,
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface *::before,
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface *::after {
     cursor: none !important;
   }
 
-  body.custom-cursor-active .portfolio-surface input,
-  body.custom-cursor-active .portfolio-surface textarea,
-  body.custom-cursor-active .portfolio-surface [contenteditable="true"] {
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface input,
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface textarea,
+  body.custom-cursor-active.custom-cursor-visible .portfolio-surface [contenteditable="true"] {
     cursor: text !important;
   }
 }
@@ -67,8 +67,15 @@ export default function UserCursor({ surfaceRef }) {
     }
   }
 
-  const removeActiveClass = () => {
+  const addVisibleClass = () => {
+    if (!document.body.classList.contains('custom-cursor-visible')) {
+      document.body.classList.add('custom-cursor-visible')
+    }
+  }
+
+  const removeAllClasses = () => {
     document.body.classList.remove('custom-cursor-active')
+    document.body.classList.remove('custom-cursor-visible')
   }
 
   const createElements = () => {
@@ -134,7 +141,7 @@ export default function UserCursor({ surfaceRef }) {
       labelRef.current.remove()
       labelRef.current = null
     }
-    removeActiveClass()
+    removeAllClasses()
     isActiveRef.current = false
     isPressedRef.current = false
     currentLabelRef.current = 'Nitish R.G.'
@@ -195,15 +202,15 @@ export default function UserCursor({ surfaceRef }) {
     isActiveRef.current = true
     if (arrowRef.current) arrowRef.current.style.opacity = '1'
     if (labelRef.current) labelRef.current.style.opacity = '1'
-    addActiveClass()
+    addVisibleClass()
   }
 
   const deactivateCursor = () => {
-    if (!isActiveRef.current) return
+    if (!isActiveRef.current && !isInsideSurfaceRef.current) return
     isActiveRef.current = false
     if (arrowRef.current) arrowRef.current.style.opacity = '0'
     if (labelRef.current) labelRef.current.style.opacity = '0'
-    removeActiveClass()
+    removeAllClasses()
   }
 
   const getLabelForTarget = (target) => {
@@ -243,6 +250,7 @@ export default function UserCursor({ surfaceRef }) {
 
   const handlePointerEnter = () => {
     isInsideSurfaceRef.current = true
+    addActiveClass()
   }
 
   const handlePointerLeave = () => {
