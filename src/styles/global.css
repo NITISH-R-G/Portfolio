@@ -1385,6 +1385,8 @@ a {
   font: inherit;
   color: inherit;
   -webkit-tap-highlight-color: transparent;
+  min-width: 40px;
+  min-height: 40px;
 }
 
 .dock-item:focus-visible {
@@ -1654,7 +1656,11 @@ a:focus-visible,
 
   .main-content {
     padding: var(--space-5) var(--space-4);
-    padding-bottom: 80px;
+    padding-bottom: 120px;
+  }
+
+  .content-section {
+    margin-bottom: 48px;
   }
 
   .skills-grid {
@@ -1685,6 +1691,87 @@ a:focus-visible,
   .language-item {
     flex-shrink: 0;
     min-width: fit-content;
+  }
+
+  /* Dock mobile: compact, no magnification */
+  .dock-container {
+    bottom: var(--space-4);
+  }
+
+  .dock-panel {
+    gap: 6px;
+    padding: 0 12px;
+    height: 48px;
+    border-radius: var(--radius-xl);
+  }
+
+  .dock-item {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  /* Touch targets: minimum 44px */
+  .case-expand-btn {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .skill-tag {
+    padding: var(--space-2) var(--space-3);
+    min-height: 32px;
+  }
+
+  .proof-chip {
+    padding: var(--space-2) var(--space-3);
+    min-height: 32px;
+  }
+
+  /* Cards: tighter spacing */
+  .case-summary {
+    padding: var(--space-4);
+  }
+
+  .case-details-inner {
+    padding: 0 var(--space-4) var(--space-4);
+  }
+
+  .generic-list-card {
+    padding: var(--space-4);
+  }
+
+  /* Project carousel: smaller cards */
+  .project-scroll-card {
+    flex: 0 0 260px;
+    height: 340px;
+  }
+
+  .project-scroll-content {
+    padding: var(--space-4);
+  }
+
+  /* Contact: bigger tap targets */
+  .contact-row {
+    padding: var(--space-4);
+  }
+
+  /* Section label: tighter */
+  .section-label {
+    margin-bottom: var(--space-4);
+  }
+
+  /* Hero: mobile sizing */
+  .profile-photo {
+    width: 56px;
+    height: 56px;
+    margin-bottom: var(--space-3);
+  }
+
+  .profile-name {
+    font-size: clamp(1.25rem, 5vw, 1.5rem);
+  }
+
+  .profile-role {
+    font-size: var(--text-meta);
   }
 }
 
@@ -2416,7 +2503,7 @@ a:focus-visible,
   }
 }
 
-/* Carousel touch-friendly arrows */
+/* Touch-friendly interactions */
 @media (hover: none) and (pointer: coarse) {
   .project-carousel-arrow {
     opacity: 0.7;
@@ -2430,6 +2517,42 @@ a:focus-visible,
 
   .project-carousel-arrow:hover:not(:disabled) {
     opacity: 1;
+  }
+
+  /* Touch: show active states instead of hover */
+  .dock-icon:active {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--color-text);
+  }
+
+  .dock-item:active .dock-icon {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--color-text);
+  }
+
+  .case-expand-btn:active {
+    background: var(--color-border);
+    color: var(--color-text);
+  }
+
+  .generic-list-card:active {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-2);
+  }
+
+  .project-scroll-card:active {
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .skill-tag:active {
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
+
+  .proof-chip:active {
+    background: var(--color-border);
+    color: var(--color-text);
   }
 }
 
