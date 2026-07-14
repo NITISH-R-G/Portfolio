@@ -2,7 +2,7 @@ import { portfolioData, initializeTheme } from './data/portfolio'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Sidebar from './components/Sidebar'
 import MainContent from './components/MainContent'
-import FloatingNav from './components/FloatingNav'
+import Dock from './components/Dock'
 import UserCursor from './components/UserCursor'
 import { useLenis } from './hooks/useLenis'
 import { useScrollAnimation } from './hooks/useScrollAnimation'
@@ -59,7 +59,7 @@ function App() {
         <div className="page-wrapper">
           <Sidebar />
           <MainContent />
-          <FloatingNav activeSection={activeSection} onNavigate={announceSection} />
+          <Dock activeSection={activeSection} onNavigate={announceSection} />
         </div>
       </div>
       <div id="navigation-status" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />

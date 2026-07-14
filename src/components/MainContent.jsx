@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useReducedMotion } from '../hooks/useReducedMotion'
-import ProjectsCoverflow from './ProjectsCoverflow'
+import ProjectCarousel from './ProjectCarousel'
 import Button from './Button'
 import Icon from './Icon'
 
@@ -39,7 +39,7 @@ export default function MainContent() {
       {sections.projects.enabled && (
         <motion.section id="projects" className="content-section" variants={sectionItem}>
           <h2 className="section-label">PROJECTS</h2>
-          <ProjectsCoverflow projects={sections.projects.items} />
+          <ProjectCarousel projects={sections.projects.items} />
         </motion.section>
       )}
       

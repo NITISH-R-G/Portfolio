@@ -188,6 +188,8 @@ function ProjectsEditor({ projects, update }) {
       color: '#6366f1',
       icon: 'Code',
       link: 'https://github.com/NITISH-R-G',
+      coverImage: '',
+      imageAlt: '',
     }
     update('sections.projects.items', [...projects, newItem])
   }
@@ -221,6 +223,8 @@ function ProjectsEditor({ projects, update }) {
           <Field label="Title" value={p.title} onChange={v => updateItem(i, 'title', v)} />
           <Field label="Description" value={p.description} onChange={v => updateItem(i, 'description', v)} multiline />
           <Field label="Tags (comma-separated)" value={p.tags?.join(', ')} onChange={v => updateItem(i, 'tags', v.split(',').map(t => t.trim()).filter(Boolean))} />
+          <Field label="Cover Image URL" value={p.coverImage} onChange={v => updateItem(i, 'coverImage', v)} />
+          <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} />
           <Field label="Color" value={p.color} onChange={v => updateItem(i, 'color', v)} />
           <Field label="Icon (Lucide name)" value={p.icon} onChange={v => updateItem(i, 'icon', v)} />
           <Field label="Link" value={p.link} onChange={v => updateItem(i, 'link', v)} />

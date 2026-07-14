@@ -74,56 +74,68 @@ export const portfolioData = {
         {
           id: "raven",
           title: "RAVEN — Relational Verification Engine",
-          description: "Multi-layer financial fraud detection system combining document ingestion, cross-document coherence verification, and graph-based fraud ring detection using NetworkX. Architected a hierarchical multi-agent system for document parsing, relationship extraction, and anomaly scoring.",
+          description: "Multi-layer financial fraud detection system combining document ingestion, cross-document coherence verification, and graph-based fraud ring detection using NetworkX.",
           tags: ["TypeScript", "Graph Algorithms", "Multi-Agent Systems", "NetworkX"],
           color: "#6366f1",
           icon: "Search",
-          link: "https://github.com/NITISH-R-G"
+          link: "https://github.com/NITISH-R-G",
+          coverImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
+          imageAlt: "Data visualization dashboard showing fraud detection metrics"
         },
         {
           id: "clicky",
           title: "clicky (YC-backed fork)",
-          description: "Ported a YC-backed startup's macOS-only Swift application to Windows by rewriting the core in C# and .NET. Expanded integration to support every major AI provider SDK with tool calling, streaming APIs, and structured outputs.",
+          description: "Ported a YC-backed startup's macOS-only Swift application to Windows by rewriting the core in C# and .NET with multi-provider AI SDK support.",
           tags: ["C#", ".NET", "Swift", "Multi-provider AI SDKs"],
           color: "#22c55e",
           icon: "Zap",
-          link: "https://github.com/NITISH-R-G"
+          link: "https://github.com/NITISH-R-G",
+          coverImage: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=400&fit=crop",
+          imageAlt: "Code editor with cross-platform application development"
         },
         {
           id: "intelli-credit",
           title: "Intelli-Credit",
-          description: "Three-generation AI credit decision engine: rule-driven frontend (V1) → TypeScript REST API backend (V2) → Python ML risk model with logistic regression and tree-based classifiers.",
+          description: "Three-generation AI credit decision engine: rule-driven frontend → TypeScript REST API → Python ML risk model with logistic regression and tree-based classifiers.",
           tags: ["Python", "TypeScript", "ML", "REST APIs"],
           color: "#f59e0b",
           icon: "BarChart3",
-          link: "https://github.com/NITISH-R-G"
+          link: "https://github.com/NITISH-R-G",
+          coverImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
+          imageAlt: "Machine learning model training visualization"
         },
         {
           id: "roadsos",
           title: "RoadSOS",
-          description: "Cross-platform emergency roadside app (4★, most-starred repo): real-time GPS, SOS dispatch, nearest-responder matching algorithm, and offline-first architecture for low-connectivity environments.",
+          description: "Cross-platform emergency roadside app: real-time GPS, SOS dispatch, nearest-responder matching algorithm, and offline-first architecture.",
           tags: ["Dart", "Flutter", "GPS", "Real-time Systems"],
           color: "#ef4444",
           icon: "MapPin",
-          link: "https://github.com/NITISH-R-G"
+          link: "https://github.com/NITISH-R-G",
+          coverImage: "https://images.unsplash.com/photo-1449965408869-ebd3fee26574?w=600&h=400&fit=crop",
+          imageAlt: "Emergency response mobile application interface"
         },
         {
           id: "discourse-rag",
           title: "discourse-rag-assistant",
-          description: "Document-grounded RAG system with FAISS vector indexing, semantic chunking, and structured prompt pipelines. Benchmarked retrieval quality using MRR and Recall@K metrics.",
+          description: "Document-grounded RAG system with FAISS vector indexing, semantic chunking, and structured prompt pipelines. Benchmarked using MRR and Recall@K.",
           tags: ["Python", "LangChain", "OpenAI API", "FAISS"],
           color: "#8b5cf6",
           icon: "Bot",
-          link: "https://github.com/NITISH-R-G"
+          link: "https://github.com/NITISH-R-G",
+          coverImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop",
+          imageAlt: "AI-powered document retrieval system"
         },
         {
           id: "railatc",
           title: "RailATC",
-          description: "Automatic Train Control simulation implementing block signaling algorithms and collision-avoidance logic under concurrent train scenarios using graph traversal and state-machine design.",
+          description: "Automatic Train Control simulation implementing block signaling algorithms and collision-avoidance logic using graph traversal and state-machine design.",
           tags: ["TypeScript", "Simulation", "Algorithms"],
           color: "#06b6d4",
           icon: "Train",
-          link: "https://github.com/NITISH-R-G"
+          link: "https://github.com/NITISH-R-G",
+          coverImage: "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&h=400&fit=crop",
+          imageAlt: "Railway signaling simulation system"
         }
       ]
     },
