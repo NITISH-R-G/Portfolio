@@ -605,7 +605,6 @@ a {
   color: var(--color-text-muted);
   font-size: var(--text-body);
   margin-bottom: var(--space-4);
-  font-style: italic;
 }
 
 .contact-table {
@@ -634,8 +633,11 @@ a {
 }
 
 .contact-label {
-  font-size: var(--text-body);
+  font-size: var(--text-meta);
+  font-weight: 500;
   color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .contact-value {
@@ -645,15 +647,20 @@ a {
 
 /* Footer */
 .footer {
-  margin-top: 56px;
+  margin-top: 72px;
   padding-top: var(--space-5);
+  padding-bottom: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
 .footer p {
   font-size: var(--text-meta);
   color: var(--color-text-faint);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.footer p:last-child {
+  margin-bottom: 0;
 }
 
 /* Floating Nav — Simplified */
@@ -665,19 +672,25 @@ a {
   display: flex;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
-  background: rgba(10, 10, 10, 0.92);
-  backdrop-filter: blur(8px);
-  border-radius: 24px;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(6px);
+  border-radius: 20px;
   border: 1px solid var(--color-border);
   z-index: 1000;
   max-width: calc(100vw - var(--space-6));
   box-sizing: border-box;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.floating-nav:hover {
+  opacity: 1;
 }
 
 .nav-icon {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;

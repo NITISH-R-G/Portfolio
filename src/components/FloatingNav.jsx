@@ -65,9 +65,8 @@ export default function FloatingNav({ activeSection, onNavigate }) {
             top: '8px',
             bottom: '8px',
             borderRadius: '24px',
-            background: 'rgba(139, 92, 246, 0.18)',
-            border: '1px solid var(--accent)',
-            boxShadow: '0 0 16px rgba(139, 92, 246, 0.25)',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid var(--color-border)',
             transition: indicatorSpring,
           }}
           initial={false}
@@ -83,7 +82,7 @@ export default function FloatingNav({ activeSection, onNavigate }) {
           style={{
             position: 'relative',
             zIndex: 1,
-            color: activeSection === item.id ? 'var(--accent)' : 'var(--muted)',
+            color: activeSection === item.id ? 'var(--color-text)' : 'var(--color-text-faint)',
           }}
           whileHover={!reducedMotion && isDesktopRef.current ? { scale: 1.06 } : {}}
           whileTap={!reducedMotion ? { scale: 0.96 } : {}}
