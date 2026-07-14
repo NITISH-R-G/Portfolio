@@ -114,31 +114,54 @@ function normalizeSkills(skills) {
   return skills
 }
 
-const TABS = [
-  { id: 'projects', label: 'Projects' },
-  { id: 'experience', label: 'Experience' },
-  { id: 'education', label: 'Education' },
-  { id: 'skills', label: 'Skills' },
-  { id: 'certifications', label: 'Certifications' },
-  { id: 'hackathons', label: 'Hackathons' },
-  { id: 'conferences', label: 'Conferences' },
-  { id: 'research', label: 'Research' },
-  { id: 'publications', label: 'Publications' },
-  { id: 'awards', label: 'Awards' },
-  { id: 'openSource', label: 'Open Source' },
-  { id: 'founder', label: 'Founder' },
-  { id: 'teaching', label: 'Teaching' },
-  { id: 'talks', label: 'Talks' },
-  { id: 'designWork', label: 'Design' },
-  { id: 'media', label: 'Media' },
-  { id: 'testimonials', label: 'Testimonials' },
-  { id: 'resume', label: 'Resume' },
-  { id: 'contact', label: 'Contact' },
-  { id: 'json', label: 'Raw JSON' },
+const SECTION_GROUPS = [
+  {
+    id: 'core',
+    label: 'Core',
+    sections: [
+      { id: 'projects', label: 'Projects' },
+      { id: 'experience', label: 'Experience' },
+      { id: 'education', label: 'Education' },
+      { id: 'skills', label: 'Skills' },
+      { id: 'certifications', label: 'Certifications' },
+      { id: 'contact', label: 'Contact' },
+      { id: 'resume', label: 'Resume' },
+    ]
+  },
+  {
+    id: 'research',
+    label: 'Research & Community',
+    sections: [
+      { id: 'research', label: 'Research' },
+      { id: 'publications', label: 'Publications' },
+      { id: 'conferences', label: 'Conferences' },
+      { id: 'talks', label: 'Talks' },
+      { id: 'teaching', label: 'Teaching' },
+      { id: 'openSource', label: 'Open Source' },
+      { id: 'hackathons', label: 'Hackathons' },
+    ]
+  },
+  {
+    id: 'creative',
+    label: 'Founder & Creative',
+    sections: [
+      { id: 'founder', label: 'Founder' },
+      { id: 'designWork', label: 'Design' },
+      { id: 'media', label: 'Media' },
+      { id: 'testimonials', label: 'Testimonials' },
+      { id: 'awards', label: 'Awards' },
+    ]
+  },
+  {
+    id: 'advanced',
+    label: 'Advanced',
+    sections: [
+      { id: 'json', label: 'Raw JSON' },
+    ]
+  },
 ]
 
-const TAB_IDS = TABS.map(t => `tab-${t.id}`)
-const PANEL_IDS = TABS.map(t => `panel-${t.id}`)
+const ALL_SECTIONS = SECTION_GROUPS.flatMap(g => g.sections)
 
 export default function AdminEditor() {
   const [data, setData] = useState(() => {
@@ -148,7 +171,8 @@ export default function AdminEditor() {
   })
   const [activeTab, setActiveTab] = useState('projects')
   const [saved, setSaved] = useState(false)
-  const tabRefs = useRef([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const navRefs = useRef([])
   const fileStore = useRef({})
 
   const update = useCallback((path, value) => {
@@ -200,38 +224,57 @@ export default function AdminEditor() {
     }
   }
 
-  const activeIndex = TABS.findIndex(t => t.id === activeTab)
+  const activeIndex = ALL_SECTIONS.findIndex(t => t.id === activeTab)
 
-  const handleTabKeyDown = (e) => {
-    const isHorizontal = true
+  const handleNavKeyDown = (e) => {
     let newIndex = activeIndex
-
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault()
-      newIndex = (activeIndex + 1) % TABS.length
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      newIndex = (activeIndex + 1) % ALL_SECTIONS.length
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      newIndex = (activeIndex - 1 + TABS.length) % TABS.length
+      newIndex = (activeIndex - 1 + ALL_SECTIONS.length) % ALL_SECTIONS.length
     } else if (e.key === 'Home') {
       e.preventDefault()
       newIndex = 0
     } else if (e.key === 'End') {
       e.preventDefault()
-      newIndex = TABS.length - 1
+      newIndex = ALL_SECTIONS.length - 1
     } else {
       return
     }
+    setActiveTab(ALL_SECTIONS[newIndex].id)
+    navRefs.current[newIndex]?.focus()
+    setSidebarOpen(false)
+  }
 
-    setActiveTab(TABS[newIndex].id)
-    tabRefs.current[newIndex]?.focus()
+  const handleNavClick = (sectionId) => {
+    setActiveTab(sectionId)
+    setSidebarOpen(false)
   }
 
   return (
-    <div className="admin-wrap">
+    <div className={`admin-wrap ${sidebarOpen ? 'admin-sidebar-open' : ''}`}>
       <header className="admin-header">
-        <div>
-          <h1 className="admin-title">Portfolio Editor</h1>
-          <p className="admin-subtitle">Edit content, then download the updated file.</p>
+        <div className="admin-header-left">
+          <button
+            className="admin-menu-toggle"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={sidebarOpen}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              {sidebarOpen ? (
+                <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              ) : (
+                <path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              )}
+            </svg>
+          </button>
+          <div>
+            <h1 className="admin-title">Portfolio Editor</h1>
+            <p className="admin-subtitle">Edit content, then download the updated file.</p>
+          </div>
         </div>
         <div className="admin-actions">
           <button onClick={handleSave} className={`btn-admin ${saved ? 'btn-admin-saved' : 'btn-admin-primary'}`}>
@@ -246,52 +289,59 @@ export default function AdminEditor() {
         </div>
       </header>
 
-      <nav className="admin-tabs" role="tablist" aria-label="Editor sections" aria-orientation="horizontal" onKeyDown={handleTabKeyDown}>
-        {TABS.map((t, i) => (
-          <button
-            key={t.id}
-            ref={el => { tabRefs.current[i] = el }}
-            id={TAB_IDS[i]}
-            role="tab"
-            aria-selected={activeTab === t.id}
-            aria-controls={PANEL_IDS[i]}
-            tabIndex={activeTab === t.id ? 0 : -1}
-            onClick={() => setActiveTab(t.id)}
-            className={`admin-tab ${activeTab === t.id ? 'admin-tab-active' : ''}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <div className="admin-layout">
+        <nav className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-visible' : ''}`} aria-label="Editor sections">
+          {SECTION_GROUPS.map((group) => (
+            <div key={group.id} className="admin-nav-group">
+              <div className="admin-nav-group-label">{group.label}</div>
+              {group.sections.map((section, i) => {
+                const flatIndex = ALL_SECTIONS.findIndex(s => s.id === section.id)
+                return (
+                  <button
+                    key={section.id}
+                    ref={el => { navRefs.current[flatIndex] = el }}
+                    className={`admin-nav-item ${activeTab === section.id ? 'admin-nav-active' : ''}`}
+                    onClick={() => handleNavClick(section.id)}
+                    aria-current={activeTab === section.id ? 'page' : undefined}
+                  >
+                    {section.label}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </nav>
 
-      <main
-        className="admin-main"
-        id={`panel-${activeTab}`}
-        role="tabpanel"
-        aria-labelledby={`tab-${activeTab}`}
-        tabIndex={0}
-      >
-        {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} fileStore={fileStore.current} />}
-        {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
-        {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
-        {activeTab === 'skills' && <SkillsEditor skills={data.skills} update={update} />}
-        {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} fileStore={fileStore.current} />}
-        {activeTab === 'hackathons' && <GenericListEditor sectionKey="hackathons" section={data.sections.hackathons} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. MIT Hacks' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'result', label: 'Result', placeholder: 'e.g. 1st Place' }, { key: 'description', label: 'Description', multiline: true }]} />}
-        {activeTab === 'conferences' && <GenericListEditor sectionKey="conferences" section={data.sections.conferences} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. NeurIPS 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Dec 2026' }, { key: 'role', label: 'Role', placeholder: 'e.g. Attendee, Presenter' }, { key: 'description', label: 'Description', multiline: true }]} />}
-        {activeTab === 'research' && <GenericListEditor sectionKey="research" section={data.sections.research} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. RAG Pipeline Optimization' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-        {activeTab === 'publications' && <GenericListEditor sectionKey="publications" section={data.sections.publications} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Paper Title' }, { key: 'venue', label: 'Venue', placeholder: 'e.g. arXiv, IEEE' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }, { key: 'description', label: 'Description', multiline: true }]} />}
-        {activeTab === 'awards' && <GenericListEditor sectionKey="awards" section={data.sections.awards} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Best AI Hack' }, { key: 'issuer', label: 'Issuer', placeholder: 'e.g. Google, MIT' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]} />}
-        {activeTab === 'openSource' && <GenericListEditor sectionKey="openSource" section={data.sections.openSource} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. langchain' }, { key: 'role', label: 'Role', placeholder: 'e.g. Contributor, Maintainer' }, { key: 'link', label: 'Link', placeholder: 'https://...' }, { key: 'description', label: 'Description', multiline: true }]} />}
-        {activeTab === 'founder' && <GenericListEditor sectionKey="founder" section={data.sections.founder} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. CODESTREAK' }, { key: 'role', label: 'Role', placeholder: 'e.g. Founder & CEO' }, { key: 'date', label: 'Date', placeholder: 'e.g. Nov 2025 – Present' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-        {activeTab === 'teaching' && <GenericListEditor sectionKey="teaching" section={data.sections.teaching} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. ML Workshop' }, { key: 'audience', label: 'Audience', placeholder: 'e.g. IIT Students' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]} />}
-        {activeTab === 'talks' && <GenericListEditor sectionKey="talks" section={data.sections.talks} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. AI Agents in Production' }, { key: 'event', label: 'Event', placeholder: 'e.g. TechConf 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-        {activeTab === 'designWork' && <GenericListEditor sectionKey="designWork" section={data.sections.designWork} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Portfolio Redesign' }, { key: 'type', label: 'Type', placeholder: 'e.g. UI/UX, Branding' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-        {activeTab === 'media' && <GenericListEditor sectionKey="media" section={data.sections.media} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Featured in TechCrunch' }, { key: 'outlet', label: 'Outlet', placeholder: 'e.g. TechCrunch, Dev.to' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-        {activeTab === 'testimonials' && <GenericListEditor sectionKey="testimonials" section={data.sections.testimonials} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. Jane Smith' }, { key: 'role', label: 'Role', placeholder: 'e.g. PM at Google' }, { key: 'text', label: 'Testimonial', multiline: true }]} />}
-        {activeTab === 'resume' && <ResumeEditor resume={data.sections.resume} update={update} />}
-        {activeTab === 'contact' && <ContactEditor contact={data.contact} update={update} />}
-        {activeTab === 'json' && <JsonEditor data={data} setData={setData} />}
-      </main>
+        {sidebarOpen && <div className="admin-sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
+
+        <main
+          className="admin-main"
+          role="tabpanel"
+          tabIndex={0}
+          onKeyDown={handleNavKeyDown}
+        >
+          {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} fileStore={fileStore.current} />}
+          {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
+          {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
+          {activeTab === 'skills' && <SkillsEditor skills={data.skills} update={update} />}
+          {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} fileStore={fileStore.current} />}
+          {activeTab === 'hackathons' && <GenericListEditor sectionKey="hackathons" section={data.sections.hackathons} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. MIT Hacks' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'result', label: 'Result', placeholder: 'e.g. 1st Place' }, { key: 'description', label: 'Description', multiline: true }]} />}
+          {activeTab === 'conferences' && <GenericListEditor sectionKey="conferences" section={data.sections.conferences} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. NeurIPS 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Dec 2026' }, { key: 'role', label: 'Role', placeholder: 'e.g. Attendee, Presenter' }, { key: 'description', label: 'Description', multiline: true }]} />}
+          {activeTab === 'research' && <GenericListEditor sectionKey="research" section={data.sections.research} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. RAG Pipeline Optimization' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
+          {activeTab === 'publications' && <GenericListEditor sectionKey="publications" section={data.sections.publications} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Paper Title' }, { key: 'venue', label: 'Venue', placeholder: 'e.g. arXiv, IEEE' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }, { key: 'description', label: 'Description', multiline: true }]} />}
+          {activeTab === 'awards' && <GenericListEditor sectionKey="awards" section={data.sections.awards} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Best AI Hack' }, { key: 'issuer', label: 'Issuer', placeholder: 'e.g. Google, MIT' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]} />}
+          {activeTab === 'openSource' && <GenericListEditor sectionKey="openSource" section={data.sections.openSource} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. langchain' }, { key: 'role', label: 'Role', placeholder: 'e.g. Contributor, Maintainer' }, { key: 'link', label: 'Link', placeholder: 'https://...' }, { key: 'description', label: 'Description', multiline: true }]} />}
+          {activeTab === 'founder' && <GenericListEditor sectionKey="founder" section={data.sections.founder} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. CODESTREAK' }, { key: 'role', label: 'Role', placeholder: 'e.g. Founder & CEO' }, { key: 'date', label: 'Date', placeholder: 'e.g. Nov 2025 – Present' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
+          {activeTab === 'teaching' && <GenericListEditor sectionKey="teaching" section={data.sections.teaching} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. ML Workshop' }, { key: 'audience', label: 'Audience', placeholder: 'e.g. IIT Students' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]} />}
+          {activeTab === 'talks' && <GenericListEditor sectionKey="talks" section={data.sections.talks} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. AI Agents in Production' }, { key: 'event', label: 'Event', placeholder: 'e.g. TechConf 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
+          {activeTab === 'designWork' && <GenericListEditor sectionKey="designWork" section={data.sections.designWork} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Portfolio Redesign' }, { key: 'type', label: 'Type', placeholder: 'e.g. UI/UX, Branding' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
+          {activeTab === 'media' && <GenericListEditor sectionKey="media" section={data.sections.media} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Featured in TechCrunch' }, { key: 'outlet', label: 'Outlet', placeholder: 'e.g. TechCrunch, Dev.to' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
+          {activeTab === 'testimonials' && <GenericListEditor sectionKey="testimonials" section={data.sections.testimonials} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. Jane Smith' }, { key: 'role', label: 'Role', placeholder: 'e.g. PM at Google' }, { key: 'text', label: 'Testimonial', multiline: true }]} />}
+          {activeTab === 'resume' && <ResumeEditor resume={data.sections.resume} update={update} />}
+          {activeTab === 'contact' && <ContactEditor contact={data.contact} update={update} />}
+          {activeTab === 'json' && <JsonEditor data={data} setData={setData} />}
+        </main>
+      </div>
     </div>
   )
 }
