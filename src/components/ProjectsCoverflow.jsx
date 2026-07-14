@@ -4,9 +4,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
 function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMotion }) {
-  const isActive = index === activeIndex
-  const offset = index - activeIndex
-
   const x = useTransform(
     activeIndex,
     (latest) => {
@@ -14,7 +11,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
       if (diff === 0) return '0%'
       const side = diff < 0 ? -1 : 1
       const absDiff = Math.abs(diff)
-      const slatShift = side * (65 + (absDiff - 1) * 12)
+      const slatShift = side * (72 + (absDiff - 1) * 8)
       return `${slatShift}%`
     }
   )
@@ -24,8 +21,8 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
     (latest) => {
       const diff = Math.abs(index - latest)
       if (diff === 0) return 1
-      if (diff === 1) return 0.78
-      return 0.65
+      if (diff === 1) return 0.72
+      return 0.58
     }
   )
 
@@ -35,7 +32,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
       const diff = index - latest
       if (diff === 0) return 0
       const side = diff < 0 ? -1 : 1
-      return side * 25
+      return side * 18
     }
   )
 
@@ -44,8 +41,8 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
     (latest) => {
       const diff = Math.abs(index - latest)
       if (diff === 0) return 1
-      if (diff === 1) return 0.7
-      if (diff === 2) return 0.4
+      if (diff === 1) return 0.55
+      if (diff === 2) return 0.25
       return 0
     }
   )
@@ -58,9 +55,14 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
     }
   )
 
+  const isActive = useTransform(
+    activeIndex,
+    (latest) => Math.abs(index - latest) < 0.5
+  )
+
   const springTransition = reducedMotion
     ? { duration: 0 }
-    : { type: 'spring', stiffness: 260, damping: 28, mass: 0.8 }
+    : { type: 'spring', stiffness: 280, damping: 30, mass: 0.9 }
 
   return (
     <motion.div
@@ -74,8 +76,8 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
         }
       }}
       role="button"
-      tabIndex={isActive ? 0 : -1}
-      aria-label={`Project: ${project.title}${isActive ? ' (active)' : ''}`}
+      tabIndex={0}
+      aria-label={`Project: ${project.title}`}
       style={{
         x,
         scale,
@@ -85,32 +87,31 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
         position: 'absolute',
         left: '50%',
         top: 0,
-        width: 'clamp(280px, 55%, 440px)',
-        marginLeft: 'clamp(-140px, -27.5%, -220px)',
+        width: 'clamp(320px, 65%, 520px)',
+        marginLeft: 'clamp(-160px, -32.5%, -260px)',
         transformOrigin: 'center center',
-        perspective: 1200,
       }}
       transition={springTransition}
     >
       <div className="coverflow-card-inner">
-        <div className="project-image-wrapper coverflow-image">
+        <div className="coverflow-image-area">
           <div
-            className="project-image"
+            className="coverflow-image-bg"
             style={{
-              background: `linear-gradient(135deg, ${project.color}22 0%, ${project.color}08 100%)`,
+              background: `linear-gradient(135deg, ${project.color}18 0%, ${project.color}06 100%)`,
             }}
           />
           <div className="coverflow-card-icon">{project.icon}</div>
         </div>
-        <div className="project-info coverflow-info">
-          <h3 className="project-title">{project.title}</h3>
-          <p className="project-description">{project.description}</p>
-          <div className="project-meta">
+        <div className="coverflow-info">
+          <h3 className="coverflow-title">{project.title}</h3>
+          <p className="coverflow-desc">{project.description}</p>
+          <div className="coverflow-tags">
             {project.tags.map((tag) => (
               <span key={tag}>{tag}</span>
             ))}
           </div>
-          <a href={project.link} className="project-link" onClick={(e) => e.stopPropagation()}>
+          <a href={project.link} className="coverflow-link" onClick={(e) => e.stopPropagation()}>
             View details →
           </a>
         </div>
@@ -131,9 +132,9 @@ export default function ProjectsCoverflow({ projects }) {
     } else {
       animate(motionIndex, activeIndex, {
         type: 'spring',
-        stiffness: 260,
-        damping: 28,
-        mass: 0.8,
+        stiffness: 280,
+        damping: 30,
+        mass: 0.9,
       })
     }
   }, [activeIndex, reducedMotion, motionIndex])
@@ -167,8 +168,6 @@ export default function ProjectsCoverflow({ projects }) {
   const canGoPrev = activeIndex > 0
   const canGoNext = activeIndex < total - 1
 
-  const dots = Array.from({ length: total }, (_, i) => i)
-
   return (
     <div className="coverflow-container" role="region" aria-label="Projects carousel" aria-roledescription="carousel">
       <div className="coverflow-viewport">
@@ -194,11 +193,11 @@ export default function ProjectsCoverflow({ projects }) {
           disabled={!canGoPrev}
           aria-label="Previous project"
         >
-          <ChevronLeft size={18} strokeWidth={2} />
+          <ChevronLeft size={16} strokeWidth={1.5} />
         </button>
 
         <div className="coverflow-dots" role="tablist" aria-label="Project navigation">
-          {dots.map((i) => (
+          {Array.from({ length: total }, (_, i) => (
             <button
               key={i}
               className={`coverflow-dot ${i === activeIndex ? 'active' : ''}`}
@@ -216,7 +215,7 @@ export default function ProjectsCoverflow({ projects }) {
           disabled={!canGoNext}
           aria-label="Next project"
         >
-          <ChevronRight size={18} strokeWidth={2} />
+          <ChevronRight size={16} strokeWidth={1.5} />
         </button>
       </div>
     </div>
