@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useReducedMotion } from '../hooks/useReducedMotion'
-import ProjectCard from './ProjectCard'
+import ProjectsCoverflow from './ProjectsCoverflow'
 import Button from './Button'
 
 const container = {
@@ -38,11 +38,7 @@ export default function MainContent() {
       {sections.projects.enabled && (
         <motion.section id="projects" className="content-section" variants={sectionItem}>
           <h2 className="section-label">PROJECTS</h2>
-          <div className="projects-scroll">
-            {sections.projects.items.map(project => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          <ProjectsCoverflow projects={sections.projects.items} />
         </motion.section>
       )}
       
