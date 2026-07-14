@@ -1,29 +1,59 @@
-import { portfolioData } from '../data/portfolio'
+import { useState, useMemo } from 'react'
+import { portfolioData as defaults } from '../data/portfolio'
+
+const STORAGE_KEY = 'portfolio-draft'
+
+function loadDraft() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return null
+    return JSON.parse(saved)
+  } catch {
+    return null
+  }
+}
+
+function deepMerge(target, source) {
+  const result = { ...target }
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(result[key] || {}, source[key])
+    } else {
+      result[key] = source[key]
+    }
+  }
+  return result
+}
 
 export function usePortfolio() {
-  return portfolioData
+  const data = useMemo(() => {
+    const draft = loadDraft()
+    if (!draft) return defaults
+    return deepMerge(defaults, draft)
+  }, [])
+  return data
 }
 
 export function useTheme() {
-  return portfolioData.site.theme
+  return usePortfolio().site.theme
 }
 
 export function useMotion() {
-  return portfolioData.site.motion
+  return usePortfolio().site.motion
 }
 
 export function useProfile() {
-  return portfolioData.profile
+  return usePortfolio().profile
 }
 
 export function useNavigation() {
-  return portfolioData.navigation.filter(item => item.enabled !== false)
+  return usePortfolio().navigation.filter(item => item.enabled !== false)
 }
 
 export function useSections() {
-  return portfolioData.sections
+  return usePortfolio().sections
 }
 
 export function useContact() {
-  return portfolioData.contact
+  return usePortfolio().contact
 }

@@ -6,7 +6,6 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 import Icon from './Icon'
 
 const Z_BASE = 10
-const ROTATION_DEG = 18
 const WIDTH_PERCENT = 72
 const DEPTH_STEP = 8
 
@@ -16,7 +15,6 @@ function computeTransform(index, current, reducedMotion) {
     return {
       tx: '0%',
       sc: 1,
-      ry: 0,
       op: isActive ? 1 : 0,
       z: isActive ? Z_BASE : 0,
       iop: isActive ? 1 : 0,
@@ -30,7 +28,6 @@ function computeTransform(index, current, reducedMotion) {
   return {
     tx,
     sc: absD < 0.5 ? 1 : absD < 1.5 ? 0.72 : 0.58,
-    ry: absD < 0.01 ? 0 : (d < 0 ? 1 : -1) * ROTATION_DEG,
     op: absD < 0.5 ? 1 : absD < 1.5 ? 0.55 : absD < 2.5 ? 0.25 : 0,
     z: Z_BASE - Math.round(absD),
     iop: absD < 0.5 ? 1 : 0,
@@ -38,7 +35,7 @@ function computeTransform(index, current, reducedMotion) {
 }
 
 function applyStyles(el, t) {
-  el.style.transform = `translateX(${t.tx}) scale(${t.sc}) rotateY(${t.ry}deg)`
+  el.style.transform = `translateX(${t.tx}) scale(${t.sc})`
   el.style.opacity = t.op
   el.style.zIndex = t.z
   const info = el.querySelector('.coverflow-info')
@@ -61,7 +58,6 @@ const CoverflowCard = forwardRef(function CoverflowCard({ project, index, onSele
     el.style.top = '0'
     el.style.width = 'clamp(300px, 55%, 460px)'
     el.style.marginLeft = 'clamp(-150px, -27.5%, -230px)'
-    el.style.transformOrigin = 'center center'
   }, [])
 
   return (
@@ -138,10 +134,9 @@ export default function ProjectsCoverflow({ projects }) {
     })
 
     animate(motionIndex, activeIndex, {
-      type: 'spring',
-      stiffness: 200,
-      damping: 28,
-      mass: 1,
+      type: 'tween',
+      duration: 0.35,
+      ease: [0.25, 0.1, 0.25, 1],
     })
 
     return unsub
