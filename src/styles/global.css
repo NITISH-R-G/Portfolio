@@ -144,25 +144,16 @@ a {
   font-weight: 600;
   margin-bottom: var(--space-1);
   line-height: var(--leading-hero);
+  letter-spacing: -0.02em;
 }
 
 .profile-role {
   color: var(--color-text-muted);
   font-size: var(--text-body);
+  line-height: 1.4;
 }
 
 /* Section Labels */
-.section-label {
-  font-size: var(--text-section);
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  color: var(--color-text-faint);
-  text-transform: uppercase;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
 /* Sidebar Sections */
 .sidebar-section {
   margin-bottom: var(--space-6);
@@ -192,6 +183,12 @@ a {
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 100%;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.skill-tag:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 /* Languages */
@@ -258,9 +255,26 @@ a {
 }
 
 .content-section {
-  margin-bottom: 64px;
+  margin-bottom: 80px;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.content-section + .content-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Section label — Miller: clear group boundary */
+.section-label {
+  font-size: var(--text-section);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-faint);
+  text-transform: uppercase;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Intro */
@@ -314,12 +328,18 @@ a {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .project-scroll-card:hover {
   border-color: var(--color-border-strong);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Von Restorff: first card gets subtle emphasis */
+.project-scroll-card:first-child {
+  border-color: var(--color-border-strong);
 }
 
 .project-scroll-card:focus-visible {
@@ -506,22 +526,23 @@ a {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .generic-list-card:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-2);
 }
 
 .generic-list-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .generic-list-name,
@@ -782,11 +803,12 @@ a {
 }
 
 .case-card[data-expanded="true"] {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .case-summary {
-  padding: var(--space-4);
+  padding: var(--space-5);
 }
 
 .case-header {
@@ -794,7 +816,7 @@ a {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .case-title-row {
@@ -920,17 +942,20 @@ a {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  background: none;
-  border: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: var(--text-meta);
   cursor: pointer;
-  padding: var(--space-1) 0;
-  transition: color 0.15s;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
 .case-expand-btn:hover {
   color: var(--color-text);
+  border-color: var(--color-border-strong);
+  background: var(--color-border);
 }
 
 .case-details {
@@ -938,7 +963,7 @@ a {
 }
 
 .case-details-inner {
-  padding: 0 var(--space-4) var(--space-4);
+  padding: 0 var(--space-5) var(--space-5);
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-4);
   display: flex;
@@ -1163,7 +1188,8 @@ a {
 .contact-cta {
   color: var(--color-text-muted);
   font-size: var(--text-body);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  line-height: 1.6;
 }
 
 .contact-table {
@@ -1173,6 +1199,7 @@ a {
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--color-surface);
+  margin-bottom: var(--space-5);
 }
 
 .contact-row {
@@ -2743,6 +2770,7 @@ a:focus-visible,
 
 /* ── Visual Hierarchy Tokens ── */
 .featured-card {
+  position: relative;
   border: 1px solid var(--color-border-strong);
   background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-2) 100%);
 }
@@ -2786,11 +2814,26 @@ a:focus-visible,
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   transition: border-color 0.2s, background 0.2s;
+  text-decoration: none;
+  color: inherit;
 }
 
 .cta-block:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-2);
+}
+
+.cta-primary {
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-color: var(--color-text);
+  font-weight: 500;
+}
+
+.cta-primary:hover {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  opacity: 0.9;
 }
 
 /* ── Section Header Emphasis ── */
