@@ -240,6 +240,10 @@ export default function AdminEditor() {
     } else if (e.key === 'End') {
       e.preventDefault()
       newIndex = ALL_SECTIONS.length - 1
+    } else if (e.key === 'Escape' && sidebarOpen) {
+      e.preventDefault()
+      setSidebarOpen(false)
+      return
     } else {
       return
     }

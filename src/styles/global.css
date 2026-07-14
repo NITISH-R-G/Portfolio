@@ -577,10 +577,20 @@ a {
   transition: color 0.15s;
   flex-shrink: 0;
   margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1);
+  margin: -2px 0 0 auto;
 }
 
 .generic-list-link:hover {
   color: var(--color-text);
+}
+
+.generic-list-link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* ── Field Groups (Admin) ─────────────────────────────────── */
@@ -622,6 +632,12 @@ a {
 
 .field-group-summary:hover {
   color: var(--color-text);
+}
+
+.field-group-summary:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .field-group-chevron {
@@ -950,6 +966,11 @@ a {
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.case-expand-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .case-expand-btn:hover {

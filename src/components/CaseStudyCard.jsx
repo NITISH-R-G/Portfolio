@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import Icon from './Icon'
 import { track, AnalyticsEvents } from '../lib/analytics'
@@ -67,6 +67,7 @@ function TagList({ tags, label }) {
 export default function CaseStudyCard({ item, type = 'project', icon }) {
   const [expanded, setExpanded] = useState(false)
   const detailsRef = useRef(null)
+  const detailsId = useId()
 
   useEffect(() => {
     if (expanded && detailsRef.current) {
@@ -130,6 +131,7 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
               track(next ? AnalyticsEvents.CASE_STUDY_EXPAND : AnalyticsEvents.CASE_STUDY_COLLAPSE, { title })
             }}
             aria-expanded={expanded}
+            aria-controls={detailsId}
           >
             {expanded ? 'Show less' : 'View details'}
             <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
@@ -142,6 +144,7 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
         {expanded && (
           <motion.div
             ref={detailsRef}
+            id={detailsId}
             className="case-details"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}

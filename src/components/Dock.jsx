@@ -123,7 +123,7 @@ function DockItem({ item }) {
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       aria-label={item.label}
-      aria-current={isActive ? 'true' : undefined}
+      aria-current={isActive ? 'page' : undefined}
     >
       <AnimatePresence>
         {showLabel && !reducedMotion && (
