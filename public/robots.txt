@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: https://nitish-r-g.github.io/Portfolio/sitemap.xml
