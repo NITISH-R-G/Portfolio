@@ -433,7 +433,7 @@ function JsonEditor({ data, update }) {
 const styles = {
   container: {
     fontFamily: "'Inter', system-ui, sans-serif",
-    background: '#0A0A0A',
+    background: '#000000',
     color: '#fff',
     minHeight: '100vh',
     padding: '24px',
@@ -459,7 +459,7 @@ const styles = {
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
-  btnPrimary: { background: '#fff', color: '#0A0A0A', border: 'none' },
+  btnPrimary: { background: '#f0f0f0', color: '#000000', border: 'none' },
   btnGhost: { background: 'transparent' },
   btnDanger: { background: 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' },
   tabs: {

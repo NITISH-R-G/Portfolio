@@ -1,16 +1,16 @@
 :root {
-  --color-bg: #0A0A0A;
-  --color-surface: color-mix(in srgb, #0A0A0A 92%, #FFFFFF);
-  --color-surface-2: color-mix(in srgb, #0A0A0A 85%, #FFFFFF);
-  --color-border: color-mix(in srgb, #0A0A0A 78%, #FFFFFF);
-  --color-border-strong: color-mix(in srgb, #0A0A0A 60%, #FFFFFF);
-  --color-text: #FFFFFF;
-  --color-text-muted: color-mix(in srgb, #FFFFFF 50%, #0A0A0A);
-  --color-text-faint: color-mix(in srgb, #FFFFFF 28%, #0A0A0A);
-  --color-focus-ring: color-mix(in srgb, #FFFFFF 70%, #0A0A0A);
+  --color-bg: #000000;
+  --color-surface: #080808;
+  --color-surface-2: #111111;
+  --color-border: #1a1a1a;
+  --color-border-strong: #2a2a2a;
+  --color-text: #f0f0f0;
+  --color-text-muted: #999999;
+  --color-text-faint: #555555;
+  --color-focus-ring: rgba(255, 255, 255, 0.5);
 
   --color-page: var(--color-bg);
-  --color-sidebar: #0C0C0C;
+  --color-sidebar: #030303;
   --color-surface-hover: var(--color-surface-2);
   --color-accent: var(--color-text);
   --color-accent-secondary: var(--color-text-muted);
@@ -317,7 +317,7 @@ a {
 
 .project-scroll-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .project-scroll-card:focus-visible {
@@ -506,7 +506,7 @@ a {
 
 .experience-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .experience-content {
@@ -562,7 +562,7 @@ a {
 
 .education-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .education-icon {
@@ -707,7 +707,7 @@ a {
   gap: 10px;
   padding: 0 16px;
   height: 52px;
-  background: rgba(10, 10, 10, 0.88);
+  background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
@@ -745,7 +745,7 @@ a {
 
 .dock-icon:hover,
 .dock-icon.active {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--color-text);
 }
 
@@ -819,7 +819,7 @@ a {
 }
 
 .btn-primary:hover {
-  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .btn-ghost {
