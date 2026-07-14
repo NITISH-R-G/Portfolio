@@ -6,7 +6,7 @@
   --color-border-strong: #2a2a2a;
   --color-text: #f0f0f0;
   --color-text-muted: #999999;
-  --color-text-faint: #555555;
+  --color-text-faint: #666666;
   --color-focus-ring: rgba(255, 255, 255, 0.5);
 
   --color-page: var(--color-bg);
@@ -996,6 +996,12 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.case-detail-field:last-child {
+  border-bottom: none;
 }
 
 .case-detail-label {
@@ -1003,13 +1009,13 @@ a {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   margin: 0;
 }
 
 .case-detail-value {
   font-size: var(--text-body);
-  color: var(--color-text);
+  color: var(--color-text-muted);
   line-height: 1.6;
 }
 
@@ -1046,7 +1052,7 @@ a {
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .case-links {
@@ -1060,7 +1066,7 @@ a {
   align-items: center;
   gap: 4px;
   font-size: var(--text-meta);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   text-decoration: none;
   padding: 4px 8px;
   border: 1px solid var(--color-border);
@@ -1069,8 +1075,12 @@ a {
 }
 
 .case-link:hover {
-  color: var(--color-text);
   border-color: var(--color-text-muted);
+}
+
+.case-link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 /* ── Experience Card ──────────────────────────────────────── */
@@ -2078,7 +2088,7 @@ a:focus-visible,
   display: block;
   font-size: var(--text-meta);
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2099,11 +2109,16 @@ a:focus-visible,
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+.field-input::placeholder,
+.field-textarea::placeholder {
+  color: var(--color-text-faint);
+}
+
 .field-input:focus-visible,
 .field-textarea:focus-visible,
 .field-select:focus-visible {
   border-color: var(--color-border-strong);
-  box-shadow: 0 0 0 1px var(--color-border-strong);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .field-textarea {
@@ -2119,8 +2134,9 @@ a:focus-visible,
 
 .field-help {
   font-size: var(--text-meta);
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
   margin-top: var(--space-1);
+  line-height: 1.4;
 }
 
 /* toggle */
