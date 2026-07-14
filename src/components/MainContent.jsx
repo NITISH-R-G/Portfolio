@@ -42,15 +42,24 @@ export default function MainContent() {
         </motion.section>
       )}
       
-      {sections.experience.enabled && (
+      {sections.experience.enabled && sections.experience.items && (
         <motion.section id="experience" className="content-section" variants={sectionItem}>
           <h2 className="section-label">EXPERIENCE</h2>
           <div className="experience-list">
-            <div className="experience-card">
-              <div className="experience-content">
-                <p className="experience-description">{sections.experience.placeholder}</p>
+            {sections.experience.items.map((exp, i) => (
+              <div key={i} className="experience-card">
+                <div className="experience-content">
+                  <div className="experience-header">
+                    <h3 className="experience-role">{exp.role}</h3>
+                    <span className="experience-period">{exp.period}</span>
+                  </div>
+                  <div className="experience-company">
+                    {exp.company} · {exp.location}
+                  </div>
+                  <p className="experience-description">{exp.description}</p>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </motion.section>
       )}
@@ -65,10 +74,25 @@ export default function MainContent() {
                 <div className="education-content">
                   <h3 className="education-title">{edu.institution}</h3>
                   <div className="education-meta">
-                    <span>📍 {edu.location}</span>
+                    <span>{edu.degree}</span>
+                    <span>{edu.location}</span>
+                    <span>{edu.period}</span>
                   </div>
                   <p className="education-description">{edu.description}</p>
                 </div>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+      )}
+
+      {sections.certifications.enabled && sections.certifications.items && (
+        <motion.section id="certifications" className="content-section" variants={sectionItem}>
+          <h2 className="section-label">CERTIFICATIONS</h2>
+          <div className="certifications-list">
+            {sections.certifications.items.map((cert, i) => (
+              <div key={i} className="certification-item">
+                {cert}
               </div>
             ))}
           </div>
