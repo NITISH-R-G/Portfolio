@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import { track, AnalyticsEvents } from '../lib/analytics'
 
 function getFocusable(container) {
   if (!container) return []
@@ -19,7 +20,8 @@ export default function CertGallery({ certs, reducedMotion }) {
   const openLightbox = useCallback((i, triggerEl) => {
     prevFocus.current = triggerEl || null
     setLightboxIndex(i)
-  }, [])
+    track(AnalyticsEvents.CERT_OPEN, { title: certs[i]?.title || '' })
+  }, [certs])
 
   const closeLightbox = useCallback(() => {
     setLightboxIndex(null)

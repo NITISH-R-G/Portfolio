@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { track, AnalyticsEvents } from '../lib/analytics'
 
 export default function ProjectCard({ project }) {
   const reducedMotion = useReducedMotion()
@@ -41,7 +42,13 @@ export default function ProjectCard({ project }) {
         <div className="project-meta">
           {project.tags.map(tag => <span key={tag}>{tag}</span>)}
         </div>
-        <a href={project.link} className="project-link">View details →</a>
+        <a
+          href={project.link}
+          className="project-link"
+          onClick={() => track(AnalyticsEvents.PROJECT_CLICK, { title: project.title })}
+        >
+          View details →
+        </a>
       </div>
     </motion.div>
   )

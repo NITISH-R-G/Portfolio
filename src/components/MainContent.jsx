@@ -5,6 +5,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 import ProjectCarousel from './ProjectCarousel'
 import Button from './Button'
 import Icon from './Icon'
+import { track, AnalyticsEvents } from '../lib/analytics'
 
 const CertGallery = lazy(() => import('./CertGallery'))
 const CaseStudyCard = lazy(() => import('./CaseStudyCard'))
@@ -176,7 +177,12 @@ export default function MainContent() {
             {sections.resume.items.map((item, i) => (
               item.url ? (
                 <div key={item.id || i} className="resume-variant">
-                  <Button variant="primary" href={item.url} externalIcon>
+                  <Button
+                    variant="primary"
+                    href={item.url}
+                    externalIcon
+                    onClick={() => track(AnalyticsEvents.RESUME_DOWNLOAD, { label: item.label, variant: item.variant })}
+                  >
                     {item.label || 'Download Resume'}
                   </Button>
                   {item.note && <p className="resume-note">{item.note}</p>}
@@ -226,6 +232,7 @@ export default function MainContent() {
                 href={link.href}
                 externalIcon={link.href.startsWith('http') || link.href.startsWith('mailto:')}
                 className="contact-row"
+                onClick={() => track(AnalyticsEvents.CONTACT_CLICK, { label: link.label })}
               >
                 <span className="contact-label">{link.label}</span>
                 <span className="contact-value">{link.value}</span>

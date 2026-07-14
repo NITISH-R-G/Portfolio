@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import Icon from './Icon'
+import { track, AnalyticsEvents } from '../lib/analytics'
 
 function hasValue(val) {
   if (val === undefined || val === null) return false
@@ -123,7 +124,11 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
         {hasCaseStudy && (
           <button
             className="case-expand-btn"
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => {
+              const next = !expanded
+              setExpanded(next)
+              track(next ? AnalyticsEvents.CASE_STUDY_EXPAND : AnalyticsEvents.CASE_STUDY_COLLAPSE, { title })
+            }}
             aria-expanded={expanded}
           >
             {expanded ? 'Show less' : 'View details'}
