@@ -97,12 +97,20 @@ export default function AdminEditor() {
 
   const handleExport = async () => {
     const exportData = deepClone(data)
-    const certs = exportData?.sections?.certifications?.items
-    if (certs && Object.keys(fileStore.current).length > 0) {
-      for (const cert of certs) {
-        const file = fileStore.current[cert.id]
-        if (file) {
-          cert.image = await fileToDataUrl(file)
+    const store = fileStore.current
+    if (Object.keys(store).length > 0) {
+      const projects = exportData?.sections?.projects?.items
+      if (projects) {
+        for (const p of projects) {
+          const file = store[p.id]
+          if (file) p.coverImage = await fileToDataUrl(file)
+        }
+      }
+      const certs = exportData?.sections?.certifications?.items
+      if (certs) {
+        for (const c of certs) {
+          const file = store[c.id]
+          if (file) c.image = await fileToDataUrl(file)
         }
       }
     }
@@ -187,7 +195,7 @@ export default function AdminEditor() {
         aria-labelledby={`tab-${activeTab}`}
         tabIndex={0}
       >
-        {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} />}
+        {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} fileStore={fileStore.current} />}
         {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
         {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
         {activeTab === 'skills' && <SkillsEditor skills={data.skills} update={update} />}
@@ -282,9 +290,88 @@ function MoveButtons({ onUp, onDown, canUp, canDown }) {
   )
 }
 
+function Toggle({ label, checked, onChange, help, id }) {
+  const toggleId = id || `toggle-${label?.toLowerCase().replace(/\s+/g, '-')}`
+  return (
+    <div className="field field-toggle">
+      <label className="toggle-label" htmlFor={toggleId}>
+        <span className="toggle-track" data-checked={checked}>
+          <span className="toggle-thumb" />
+        </span>
+        <span className="toggle-text">{label}</span>
+      </label>
+      <input
+        id={toggleId}
+        type="checkbox"
+        className="toggle-input"
+        checked={!!checked}
+        onChange={e => onChange(e.target.checked)}
+      />
+      {help && <p className="field-help">{help}</p>}
+    </div>
+  )
+}
+
+function UrlField({ label, value, onChange, placeholder, help, id }) {
+  return <Field id={id} label={label} type="url" value={value} onChange={onChange} placeholder={placeholder} help={help} />
+}
+
+function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove, placeholder, id }) {
+  const inputId = id || `field-${label?.toLowerCase().replace(/\s+/g, '-')}`
+  return (
+    <div className="field">
+      <label className="field-label" htmlFor={inputId}>{label}</label>
+      {previewUrl && (
+        <div className="image-preview">
+          <img src={previewUrl} alt="Preview" className="image-preview-img" />
+          <button
+            type="button"
+            className="image-preview-remove"
+            onClick={onRemove}
+            aria-label="Remove image"
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
+      <div className="image-controls">
+        <label className="image-file-label">
+          <input
+            type="file"
+            accept="image/*"
+            className="image-file-input"
+            onChange={e => {
+              const file = e.target.files?.[0]
+              if (file) onFileSelect(file)
+              e.target.value = ''
+            }}
+          />
+          <span className="image-file-btn">Choose Image</span>
+        </label>
+        <input
+          id={inputId}
+          type="url"
+          className="field-input"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder || 'https://...'}
+        />
+      </div>
+    </div>
+  )
+}
+
 /* ── Projects ──────────────────────────────────────────────── */
 
-function ProjectsEditor({ projects, update }) {
+function ProjectsEditor({ projects, update, fileStore }) {
+  const [previews, setPreviews] = useState(() => {
+    const map = {}
+    projects.forEach(p => { if (p.id) map[p.id] = null })
+    return map
+  })
+
   const addItem = () => {
     update('sections.projects.items', [...projects, {
       id: `project-${Date.now()}`,
@@ -305,7 +392,15 @@ function ProjectsEditor({ projects, update }) {
     update('sections.projects.items', next)
   }
 
-  const removeItem = (i) => update('sections.projects.items', projects.filter((_, idx) => idx !== i))
+  const removeItem = (i) => {
+    const p = projects[i]
+    if (p?.id && previews[p.id]) {
+      URL.revokeObjectURL(previews[p.id])
+      delete fileStore[p.id]
+      setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n })
+    }
+    update('sections.projects.items', projects.filter((_, idx) => idx !== i))
+  }
 
   const moveItem = (i, dir) => {
     const next = [...projects]
@@ -313,6 +408,33 @@ function ProjectsEditor({ projects, update }) {
     if (j < 0 || j >= next.length) return
     ;[next[i], next[j]] = [next[j], next[i]]
     update('sections.projects.items', next)
+  }
+
+  const handleFileSelect = (i, file) => {
+    if (!file || !file.type.startsWith('image/')) return
+    const p = projects[i]
+    const prevUrl = previews[p.id]
+    if (prevUrl) URL.revokeObjectURL(prevUrl)
+    const url = URL.createObjectURL(file)
+    fileStore[p.id] = file
+    setPreviews(prev => ({ ...prev, [p.id]: url }))
+    updateItem(i, 'coverImage', '')
+  }
+
+  const handleRemoveImage = (i) => {
+    const p = projects[i]
+    if (p?.id && previews[p.id]) {
+      URL.revokeObjectURL(previews[p.id])
+      delete fileStore[p.id]
+      setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n })
+    }
+    updateItem(i, 'coverImage', '')
+  }
+
+  const getPreviewUrl = (p) => {
+    if (p.id && previews[p.id]) return previews[p.id]
+    if (p.coverImage) return p.coverImage
+    return null
   }
 
   return (
@@ -328,11 +450,19 @@ function ProjectsEditor({ projects, update }) {
           </div>
           <Field label="Description" value={p.description} onChange={v => updateItem(i, 'description', v)} multiline />
           <Field label="Tags (comma-separated)" value={p.tags?.join(', ')} onChange={v => updateItem(i, 'tags', v.split(',').map(t => t.trim()).filter(Boolean))} />
-          <Field label="Cover Image URL" value={p.coverImage} onChange={v => updateItem(i, 'coverImage', v)} placeholder="https://images.unsplash.com/..." />
+          <ImageField
+            label="Cover Image"
+            value={p.coverImage}
+            onChange={v => { updateItem(i, 'coverImage', v); if (previews[p.id]) { URL.revokeObjectURL(previews[p.id]); delete fileStore[p.id]; setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n }) } }}
+            previewUrl={getPreviewUrl(p)}
+            onFileSelect={(file) => handleFileSelect(i, file)}
+            onRemove={() => handleRemoveImage(i)}
+            placeholder="https://images.unsplash.com/..."
+          />
           <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text for the image" />
           <div className="field-grid">
             <Field label="Color" value={p.color} onChange={v => updateItem(i, 'color', v)} type="color" />
-            <Field label="Link" value={p.link} onChange={v => updateItem(i, 'link', v)} placeholder="https://github.com/..." />
+            <UrlField label="Link" value={p.link} onChange={v => updateItem(i, 'link', v)} placeholder="https://github.com/..." />
           </div>
         </ItemCard>
       ))}
@@ -584,69 +714,32 @@ function CertificationsEditor({ items, update, fileStore }) {
 
   return (
     <div>
-      <p className="field-help" style={{ marginBottom: 12 }}>
-        Upload an image or paste a URL. Uploaded files preview locally and are embedded as data URLs when you download JS.
-      </p>
-      {items.map((cert, i) => {
-        const previewUrl = getPreviewUrl(cert)
-        return (
-          <ItemCard key={cert.id} title={cert.title} index={i} onRemove={() => removeItem(i)}>
-            <div className="field-row">
-              <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
-            </div>
-            <div className="field-grid">
-              <Field label="Title" value={cert.title} onChange={v => updateItem(i, 'title', v)} />
-              <Field label="Issuer" value={cert.issuer} onChange={v => updateItem(i, 'issuer', v)} placeholder="e.g. HackerRank, AWS, Google" />
-            </div>
-            <div className="field-grid">
-              <Field label="Date" value={cert.date} onChange={v => updateItem(i, 'date', v)} placeholder="e.g. 2025, Nov 2025 – Nov 2028" />
-              <Field label="Credential" value={cert.credential} onChange={v => updateItem(i, 'credential', v)} placeholder="e.g. #73 Globally, Completion" />
-            </div>
-            <Field label="Description" value={cert.description} onChange={v => updateItem(i, 'description', v)} multiline />
-
-            {/* Image section */}
-            <div className="cert-image-section">
-              {previewUrl && (
-                <div className="cert-image-preview">
-                  <img src={previewUrl} alt={cert.imageAlt || cert.title || 'Certificate preview'} className="cert-image-preview-img" />
-                  <button
-                    type="button"
-                    className="btn-remove cert-image-remove"
-                    onClick={() => handleRemoveImage(i)}
-                    aria-label="Remove image"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                </div>
-              )}
-              <div className="cert-image-controls">
-                <label className="cert-file-label">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="cert-file-input"
-                    onChange={e => {
-                      const file = e.target.files?.[0]
-                      if (file) handleFileSelect(i, file)
-                      e.target.value = ''
-                    }}
-                  />
-                  <span className="cert-file-btn">Choose Image</span>
-                </label>
-                <Field
-                  label="Image URL"
-                  value={cert.image}
-                  onChange={v => { updateItem(i, 'image', v); if (previews[cert.id]) { URL.revokeObjectURL(previews[cert.id]); delete fileStore[cert.id]; setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n }) } }}
-                  placeholder="https://..."
-                />
-                <Field label="Image Alt Text" value={cert.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text" />
-              </div>
-            </div>
-          </ItemCard>
-        )
-      })}
+      {items.map((cert, i) => (
+        <ItemCard key={cert.id} title={cert.title} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-row">
+            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
+          </div>
+          <div className="field-grid">
+            <Field label="Title" value={cert.title} onChange={v => updateItem(i, 'title', v)} />
+            <Field label="Issuer" value={cert.issuer} onChange={v => updateItem(i, 'issuer', v)} placeholder="e.g. HackerRank, AWS, Google" />
+          </div>
+          <div className="field-grid">
+            <Field label="Date" value={cert.date} onChange={v => updateItem(i, 'date', v)} placeholder="e.g. 2025, Nov 2025 – Nov 2028" />
+            <Field label="Credential" value={cert.credential} onChange={v => updateItem(i, 'credential', v)} placeholder="e.g. #73 Globally, Completion" />
+          </div>
+          <Field label="Description" value={cert.description} onChange={v => updateItem(i, 'description', v)} multiline />
+          <ImageField
+            label="Certificate Image"
+            value={cert.image}
+            onChange={v => { updateItem(i, 'image', v); if (previews[cert.id]) { URL.revokeObjectURL(previews[cert.id]); delete fileStore[cert.id]; setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n }) } }}
+            previewUrl={getPreviewUrl(cert)}
+            onFileSelect={(file) => handleFileSelect(i, file)}
+            onRemove={() => handleRemoveImage(i)}
+            placeholder="https://..."
+          />
+          <Field label="Image Alt Text" value={cert.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text" />
+        </ItemCard>
+      ))}
       <AddButton onClick={addItem} label="Add Certification" />
     </div>
   )
@@ -678,7 +771,7 @@ function ContactEditor({ contact, update }) {
             <Field label="Label" value={link.label} onChange={v => updateLink(i, 'label', v)} />
             <Field label="Value" value={link.value} onChange={v => updateLink(i, 'value', v)} />
           </div>
-          <Field label="Href" value={link.href} onChange={v => updateLink(i, 'href', v)} />
+          <UrlField label="Href" value={link.href} onChange={v => updateLink(i, 'href', v)} placeholder="https://..." />
         </ItemCard>
       ))}
       <AddButton onClick={addLink} label="Add Contact Link" />
