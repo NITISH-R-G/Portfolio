@@ -1157,7 +1157,7 @@ a:focus-visible,
   background: var(--color-bg);
   color: var(--color-text);
   min-height: 100vh;
-  padding: var(--space-6);
+  padding: clamp(var(--space-4), 3vw, var(--space-6));
 }
 
 .admin-header {
@@ -1184,6 +1184,7 @@ a:focus-visible,
 .admin-actions {
   display: flex;
   gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 /* Buttons */
@@ -1197,7 +1198,12 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btn-admin:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .btn-admin:hover {
@@ -1239,16 +1245,20 @@ a:focus-visible,
 /* Tabs */
 .admin-tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-bottom: var(--space-6);
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--space-2);
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .admin-tab {
-  padding: 6px var(--space-4);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -1258,16 +1268,40 @@ a:focus-visible,
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+
+.admin-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-3);
+  right: var(--space-3);
+  height: 2px;
+  background: transparent;
+  border-radius: 1px;
+  transition: background 0.15s;
 }
 
 .admin-tab:hover {
-  background: var(--color-surface);
   color: var(--color-text);
 }
 
+.admin-tab:hover::after {
+  background: var(--color-border-strong);
+}
+
+.admin-tab:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
 .admin-tab-active {
-  background: var(--color-surface-2);
   color: var(--color-text);
+}
+
+.admin-tab-active::after {
+  background: var(--color-text);
 }
 
 .admin-main {
@@ -1276,7 +1310,7 @@ a:focus-visible,
 
 /* Field */
 .field {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .field-label {
@@ -1293,7 +1327,7 @@ a:focus-visible,
 .field-textarea,
 .field-select {
   width: 100%;
-  padding: 8px var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -1301,18 +1335,20 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.field-input:focus,
-.field-textarea:focus,
-.field-select:focus {
+.field-input:focus-visible,
+.field-textarea:focus-visible,
+.field-select:focus-visible {
   border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 1px var(--color-border-strong);
 }
 
 .field-textarea {
   resize: vertical;
   min-height: 80px;
+  line-height: var(--leading-body);
 }
 
 .field-select {
@@ -1348,8 +1384,9 @@ a:focus-visible,
   tab-size: 2;
 }
 
-.field-json:focus {
+.field-json:focus-visible {
   border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 1px var(--color-border-strong);
 }
 
 .field-row {
@@ -1412,6 +1449,11 @@ a:focus-visible,
   background: rgba(239, 68, 68, 0.1);
 }
 
+.btn-remove:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .move-buttons {
   display: flex;
   gap: var(--space-1);
@@ -1439,6 +1481,11 @@ a:focus-visible,
   cursor: default;
 }
 
+.btn-move:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .btn-add {
   display: flex;
   align-items: center;
@@ -1462,6 +1509,11 @@ a:focus-visible,
   color: var(--color-text);
 }
 
+.btn-add:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .btn-add-icon {
   font-size: 1.1em;
   line-height: 1;
@@ -1473,8 +1525,8 @@ a:focus-visible,
 
 .cert-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
 }
 
 .cert-thumb {
@@ -1489,23 +1541,29 @@ a:focus-visible,
   text-align: left;
   font-family: var(--font-sans);
   color: var(--color-text);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .cert-thumb:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.cert-thumb:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .cert-thumb-img {
   width: 100%;
-  height: 120px;
+  height: 140px;
   object-fit: cover;
 }
 
 .cert-thumb-placeholder {
   width: 100%;
-  height: 120px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1513,35 +1571,37 @@ a:focus-visible,
   border-bottom: 1px solid var(--color-border);
 }
 
-.cert-thumb-placeholder .cert-thumb-issuer {
-  font-size: 1.5rem;
+.cert-thumb-initial {
+  font-size: 2rem;
   font-weight: 700;
   color: var(--color-text-faint);
+  opacity: 0.6;
 }
 
 .cert-thumb-info {
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-4);
 }
 
 .cert-thumb-title {
-  font-size: var(--text-meta);
+  font-size: 0.8125rem;
   font-weight: 600;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   line-height: 1.3;
+  color: var(--color-text);
 }
 
 .cert-thumb-issuer-text {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--color-text-muted);
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 
 .cert-thumb-date {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--color-text-faint);
 }
 
-/* ── Certificate Lightbox ───────────────────────────────────── */
+/* ── Certificate Lightbox / Dialog ──────────────────────────── */
 
 .cert-lightbox {
   position: fixed;
@@ -1550,21 +1610,27 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
-.cert-lightbox-content {
+.cert-lightbox-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.cert-lightbox-dialog {
   position: relative;
-  width: min(90vw, 800px);
+  width: min(92vw, 720px);
   max-height: 90vh;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   background: var(--color-bg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
 }
 
 .cert-lightbox-close {
@@ -1578,7 +1644,6 @@ a:focus-visible,
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1591,43 +1656,15 @@ a:focus-visible,
   color: var(--color-text);
 }
 
-.cert-lightbox-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  line-height: 1;
+.cert-lightbox-close:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
-.cert-lightbox-nav:hover {
-  background: var(--color-surface-2);
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
-}
-
-.cert-lightbox-prev {
-  left: var(--space-3);
-}
-
-.cert-lightbox-next {
-  right: var(--space-3);
-}
-
+/* Image area */
 .cert-lightbox-image-area {
   width: 100%;
-  height: clamp(200px, 40vh, 400px);
+  height: clamp(180px, 40vh, 360px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1643,26 +1680,49 @@ a:focus-visible,
 
 .cert-lightbox-placeholder {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  gap: var(--space-2);
 }
 
-.cert-lightbox-placeholder-text {
-  font-size: 2rem;
+.cert-lightbox-placeholder-initial {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--color-text-faint);
 }
 
+.cert-lightbox-placeholder-name {
+  font-size: var(--text-body);
+  color: var(--color-text-faint);
+}
+
+/* Info panel */
 .cert-lightbox-info {
-  padding: var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+.cert-lightbox-info-top {
+  margin-bottom: var(--space-4);
+}
+
+.cert-lightbox-info-text {
+  min-width: 0;
 }
 
 .cert-lightbox-title {
   font-size: 1.125rem;
   font-weight: 600;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  line-height: 1.3;
 }
 
 .cert-lightbox-meta {
@@ -1672,28 +1732,34 @@ a:focus-visible,
   margin-bottom: var(--space-3);
 }
 
-.cert-lightbox-meta span {
+.cert-meta-tag {
   font-size: var(--text-meta);
+  font-weight: 500;
   color: var(--color-text-muted);
-  padding: 2px var(--space-2);
+  padding: 3px var(--space-3);
   background: var(--color-surface);
-  border-radius: var(--radius-sm);
+  border-radius: 20px;
   border: 1px solid var(--color-border);
+}
+
+.cert-meta-accent {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 .cert-lightbox-desc {
   font-size: var(--text-body);
   color: var(--color-text-muted);
   line-height: var(--leading-body);
-  margin-bottom: var(--space-4);
 }
 
+/* Thumbnail strip */
 .cert-lightbox-strip {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
   scrollbar-width: none;
-  padding-bottom: var(--space-2);
+  padding: var(--space-2) 0;
 }
 
 .cert-lightbox-strip::-webkit-scrollbar {
@@ -1701,20 +1767,25 @@ a:focus-visible,
 }
 
 .cert-strip-thumb {
-  flex: 0 0 48px;
-  width: 48px;
-  height: 48px;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-md);
   border: 2px solid var(--color-border);
   overflow: hidden;
   cursor: pointer;
   padding: 0;
   background: var(--color-surface);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.15s;
 }
 
 .cert-strip-thumb:hover {
   border-color: var(--color-border-strong);
+}
+
+.cert-strip-thumb:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .cert-strip-active {
@@ -1738,9 +1809,47 @@ a:focus-visible,
   color: var(--color-text-faint);
 }
 
+/* Footer: nav + counter */
+.cert-lightbox-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-2);
+}
+
+.cert-lightbox-nav-group {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.cert-lightbox-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cert-lightbox-nav-btn:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.cert-lightbox-nav-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .cert-lightbox-counter {
   font-size: var(--text-meta);
   color: var(--color-text-faint);
-  text-align: center;
-  margin-top: var(--space-2);
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { portfolioData } from '../data/portfolio'
 
 const STORAGE_KEY = 'portfolio-draft'
@@ -43,10 +43,14 @@ const TABS = [
   { id: 'json', label: 'Raw JSON' },
 ]
 
+const TAB_IDS = TABS.map(t => `tab-${t.id}`)
+const PANEL_IDS = TABS.map(t => `panel-${t.id}`)
+
 export default function AdminEditor() {
   const [data, setData] = useState(() => loadDraft() || deepClone(portfolioData))
   const [activeTab, setActiveTab] = useState('projects')
   const [saved, setSaved] = useState(false)
+  const tabRefs = useRef([])
 
   const update = useCallback((path, value) => {
     setData(prev => {
@@ -77,6 +81,32 @@ export default function AdminEditor() {
     }
   }
 
+  const activeIndex = TABS.findIndex(t => t.id === activeTab)
+
+  const handleTabKeyDown = (e) => {
+    const isHorizontal = true
+    let newIndex = activeIndex
+
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      newIndex = (activeIndex + 1) % TABS.length
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      newIndex = (activeIndex - 1 + TABS.length) % TABS.length
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      newIndex = 0
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      newIndex = TABS.length - 1
+    } else {
+      return
+    }
+
+    setActiveTab(TABS[newIndex].id)
+    tabRefs.current[newIndex]?.focus()
+  }
+
   return (
     <div className="admin-wrap">
       <header className="admin-header">
@@ -97,12 +127,16 @@ export default function AdminEditor() {
         </div>
       </header>
 
-      <nav className="admin-tabs" role="tablist">
-        {TABS.map(t => (
+      <nav className="admin-tabs" role="tablist" aria-label="Editor sections" aria-orientation="horizontal" onKeyDown={handleTabKeyDown}>
+        {TABS.map((t, i) => (
           <button
             key={t.id}
+            ref={el => { tabRefs.current[i] = el }}
+            id={TAB_IDS[i]}
             role="tab"
             aria-selected={activeTab === t.id}
+            aria-controls={PANEL_IDS[i]}
+            tabIndex={activeTab === t.id ? 0 : -1}
             onClick={() => setActiveTab(t.id)}
             className={`admin-tab ${activeTab === t.id ? 'admin-tab-active' : ''}`}
           >
@@ -111,7 +145,13 @@ export default function AdminEditor() {
         ))}
       </nav>
 
-      <main className="admin-main" role="tabpanel">
+      <main
+        className="admin-main"
+        id={`panel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${activeTab}`}
+        tabIndex={0}
+      >
         {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} />}
         {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
         {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
@@ -126,12 +166,14 @@ export default function AdminEditor() {
 
 /* ── Form Primitives ────────────────────────────────────────── */
 
-function Field({ label, value, onChange, multiline, type = 'text', placeholder, help }) {
+function Field({ label, value, onChange, multiline, type = 'text', placeholder, help, id }) {
+  const inputId = id || `field-${label?.toLowerCase().replace(/\s+/g, '-')}`
   return (
     <div className="field">
-      <label className="field-label">{label}</label>
+      <label className="field-label" htmlFor={inputId}>{label}</label>
       {multiline ? (
         <textarea
+          id={inputId}
           className="field-textarea"
           value={value || ''}
           onChange={e => onChange(e.target.value)}
@@ -140,6 +182,7 @@ function Field({ label, value, onChange, multiline, type = 'text', placeholder, 
         />
       ) : (
         <input
+          id={inputId}
           type={type}
           className="field-input"
           value={value || ''}
@@ -152,11 +195,13 @@ function Field({ label, value, onChange, multiline, type = 'text', placeholder, 
   )
 }
 
-function Select({ label, value, onChange, options }) {
+function Select({ label, value, onChange, options, id }) {
+  const selectId = id || `field-${label?.toLowerCase().replace(/\s+/g, '-')}`
   return (
     <div className="field">
-      <label className="field-label">{label}</label>
+      <label className="field-label" htmlFor={selectId}>{label}</label>
       <select
+        id={selectId}
         className="field-select"
         value={value || ''}
         onChange={e => onChange(e.target.value)}
@@ -188,7 +233,7 @@ function ItemCard({ children, onRemove, title, index }) {
 function AddButton({ onClick, label }) {
   return (
     <button onClick={onClick} className="btn-add">
-      <span className="btn-add-icon">+</span> {label}
+      <span className="btn-add-icon" aria-hidden="true">+</span> {label}
     </button>
   )
 }
@@ -196,8 +241,8 @@ function AddButton({ onClick, label }) {
 function MoveButtons({ onUp, onDown, canUp, canDown }) {
   return (
     <div className="move-buttons">
-      <button onClick={onUp} disabled={canUp} className="btn-move" title="Move up">↑</button>
-      <button onClick={onDown} disabled={canDown} className="btn-move" title="Move down">↓</button>
+      <button onClick={onUp} disabled={canUp} className="btn-move" aria-label="Move item up" title="Move up">↑</button>
+      <button onClick={onDown} disabled={canDown} className="btn-move" aria-label="Move item down" title="Move down">↓</button>
     </div>
   )
 }
@@ -493,7 +538,7 @@ function JsonEditor({ data, setData }) {
         onChange={e => setJson(e.target.value)}
         spellCheck={false}
       />
-      {error && <p className="field-error">JSON Error: {error}</p>}
+      {error && <p className="field-error" role="alert">JSON Error: {error}</p>}
       <div className="field-row" style={{ marginTop: 8 }}>
         <button onClick={handleApply} className="btn-admin btn-admin-primary">
           Apply JSON
