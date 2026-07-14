@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import Icon from './Icon'
 
 function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMotion }) {
   const diff = useTransform(activeIndex, (latest) => latest - index)
@@ -89,7 +90,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
               background: `linear-gradient(135deg, ${project.color}18 0%, ${project.color}06 100%)`,
             }}
           />
-          <div className="coverflow-card-icon">{project.icon}</div>
+          <div className="coverflow-card-icon"><Icon name={project.icon} size={20} /></div>
         </div>
         <motion.div
           className="coverflow-info"

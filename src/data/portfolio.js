@@ -77,7 +77,7 @@ export const portfolioData = {
           description: "Multi-layer financial fraud detection system combining document ingestion, cross-document coherence verification, and graph-based fraud ring detection using NetworkX. Architected a hierarchical multi-agent system for document parsing, relationship extraction, and anomaly scoring.",
           tags: ["TypeScript", "Graph Algorithms", "Multi-Agent Systems", "NetworkX"],
           color: "#6366f1",
-          icon: "🔍",
+          icon: "Search",
           link: "https://github.com/NITISH-R-G"
         },
         {
@@ -86,7 +86,7 @@ export const portfolioData = {
           description: "Ported a YC-backed startup's macOS-only Swift application to Windows by rewriting the core in C# and .NET. Expanded integration to support every major AI provider SDK with tool calling, streaming APIs, and structured outputs.",
           tags: ["C#", ".NET", "Swift", "Multi-provider AI SDKs"],
           color: "#22c55e",
-          icon: "⚡",
+          icon: "Zap",
           link: "https://github.com/NITISH-R-G"
         },
         {
@@ -95,7 +95,7 @@ export const portfolioData = {
           description: "Three-generation AI credit decision engine: rule-driven frontend (V1) → TypeScript REST API backend (V2) → Python ML risk model with logistic regression and tree-based classifiers.",
           tags: ["Python", "TypeScript", "ML", "REST APIs"],
           color: "#f59e0b",
-          icon: "📊",
+          icon: "BarChart3",
           link: "https://github.com/NITISH-R-G"
         },
         {
@@ -104,7 +104,7 @@ export const portfolioData = {
           description: "Cross-platform emergency roadside app (4★, most-starred repo): real-time GPS, SOS dispatch, nearest-responder matching algorithm, and offline-first architecture for low-connectivity environments.",
           tags: ["Dart", "Flutter", "GPS", "Real-time Systems"],
           color: "#ef4444",
-          icon: "🚗",
+          icon: "MapPin",
           link: "https://github.com/NITISH-R-G"
         },
         {
@@ -113,7 +113,7 @@ export const portfolioData = {
           description: "Document-grounded RAG system with FAISS vector indexing, semantic chunking, and structured prompt pipelines. Benchmarked retrieval quality using MRR and Recall@K metrics.",
           tags: ["Python", "LangChain", "OpenAI API", "FAISS"],
           color: "#8b5cf6",
-          icon: "🤖",
+          icon: "Bot",
           link: "https://github.com/NITISH-R-G"
         },
         {
@@ -122,7 +122,7 @@ export const portfolioData = {
           description: "Automatic Train Control simulation implementing block signaling algorithms and collision-avoidance logic under concurrent train scenarios using graph traversal and state-machine design.",
           tags: ["TypeScript", "Simulation", "Algorithms"],
           color: "#06b6d4",
-          icon: "🚂",
+          icon: "Train",
           link: "https://github.com/NITISH-R-G"
         }
       ]

@@ -3,6 +3,7 @@ import { usePortfolio } from '../hooks/usePortfolio'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import ProjectsCoverflow from './ProjectsCoverflow'
 import Button from './Button'
+import Icon from './Icon'
 
 const container = {
   hidden: {},
@@ -70,7 +71,7 @@ export default function MainContent() {
           <div className="education-list">
             {sections.education.items.map((edu, i) => (
               <div key={i} className="education-card">
-                <div className="education-icon" aria-hidden="true">🎓</div>
+                <div className="education-icon" aria-hidden="true"><Icon name="GraduationCap" size={18} /></div>
                 <div className="education-content">
                   <h3 className="education-title">{edu.institution}</h3>
                   <div className="education-meta">
