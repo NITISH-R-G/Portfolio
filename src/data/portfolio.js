@@ -58,6 +58,19 @@ export const portfolioData = {
     { id: "projects", label: "Projects", icon: "FolderKanban", enabled: true },
     { id: "experience", label: "Experience", icon: "Briefcase", enabled: true },
     { id: "education", label: "Education", icon: "GraduationCap", enabled: true },
+    { id: "certifications", label: "Certifications", icon: "Award", enabled: true },
+    { id: "hackathons", label: "Hackathons", icon: "Trophy", enabled: false },
+    { id: "conferences", label: "Conferences", icon: "Users", enabled: false },
+    { id: "research", label: "Research", icon: "FlaskConical", enabled: false },
+    { id: "publications", label: "Publications", icon: "BookOpen", enabled: false },
+    { id: "awards", label: "Awards", icon: "Medal", enabled: false },
+    { id: "openSource", label: "Open Source", icon: "GitBranch", enabled: false },
+    { id: "founder", label: "Founder", icon: "Rocket", enabled: false },
+    { id: "teaching", label: "Teaching", icon: "GraduationCap", enabled: false },
+    { id: "talks", label: "Talks", icon: "Mic", enabled: false },
+    { id: "designWork", label: "Design", icon: "Palette", enabled: false },
+    { id: "media", label: "Media", icon: "Newspaper", enabled: false },
+    { id: "testimonials", label: "Testimonials", icon: "Quote", enabled: false },
     { id: "contact", label: "Contact", icon: "Mail", enabled: true }
   ],
 
@@ -267,6 +280,67 @@ export const portfolioData = {
     testimonials: {
       enabled: false,
       items: []
+    },
+
+    hackathons: {
+      enabled: false,
+      items: []
+    },
+
+    conferences: {
+      enabled: false,
+      items: []
+    },
+
+    research: {
+      enabled: false,
+      items: []
+    },
+
+    publications: {
+      enabled: false,
+      items: []
+    },
+
+    awards: {
+      enabled: false,
+      items: []
+    },
+
+    openSource: {
+      enabled: false,
+      items: []
+    },
+
+    founder: {
+      enabled: false,
+      items: []
+    },
+
+    teaching: {
+      enabled: false,
+      items: []
+    },
+
+    talks: {
+      enabled: false,
+      items: []
+    },
+
+    designWork: {
+      enabled: false,
+      items: []
+    },
+
+    media: {
+      enabled: false,
+      items: []
+    },
+
+    resume: {
+      enabled: false,
+      url: '',
+      text: ''
     }
   },
 
