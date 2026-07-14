@@ -87,8 +87,8 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
         position: 'absolute',
         left: '50%',
         top: 0,
-        width: 'clamp(320px, 65%, 520px)',
-        marginLeft: 'clamp(-160px, -32.5%, -260px)',
+        width: 'clamp(300px, 55%, 460px)',
+        marginLeft: 'clamp(-150px, -27.5%, -230px)',
         transformOrigin: 'center center',
       }}
       transition={springTransition}

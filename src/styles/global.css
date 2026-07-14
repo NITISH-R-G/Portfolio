@@ -248,13 +248,13 @@ a {
 /* Main Content — Clean reading column */
 .main-content {
   padding: var(--space-7) clamp(40px, 5vw, 80px);
-  padding-bottom: 120px;
+  padding-bottom: 160px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .content-section {
-  margin-bottom: 56px;
+  margin-bottom: 64px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -280,7 +280,7 @@ a {
 .coverflow-viewport {
   position: relative;
   width: 100%;
-  height: clamp(360px, 42vw, 480px);
+  height: clamp(320px, 36vw, 420px);
   overflow: visible;
   perspective: 1000px;
 }
@@ -317,7 +317,7 @@ a {
 
 .coverflow-image-area {
   width: 100%;
-  height: clamp(180px, 22vw, 260px);
+  height: clamp(150px, 18vw, 210px);
   position: relative;
   overflow: hidden;
 }
@@ -659,7 +659,7 @@ a {
 /* Floating Nav — Simplified */
 .floating-nav {
   position: fixed;
-  bottom: var(--space-6);
+  bottom: var(--space-8);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -895,11 +895,11 @@ a:focus-visible,
   }
 
   .coverflow-viewport {
-    height: clamp(320px, 50vw, 420px);
+    height: clamp(280px, 45vw, 380px);
   }
 
   .coverflow-image-area {
-    height: clamp(160px, 20vw, 220px);
+    height: clamp(140px, 18vw, 200px);
   }
 
   .intro-text,
@@ -913,16 +913,16 @@ a:focus-visible,
 /* Mobile: <768px — stack vertically */
 @media (max-width: 768px) {
   .coverflow-viewport {
-    height: clamp(340px, 80vw, 420px);
+    height: clamp(300px, 75vw, 380px);
   }
 
   .coverflow-card {
-    width: clamp(260px, 80%, 340px) !important;
-    margin-left: clamp(-130px, -40%, -170px) !important;
+    width: clamp(240px, 78%, 320px) !important;
+    margin-left: clamp(-120px, -39%, -160px) !important;
   }
 
   .coverflow-image-area {
-    height: clamp(140px, 30vw, 180px);
+    height: clamp(130px, 28vw, 170px);
   }
 
   .coverflow-card-icon {
