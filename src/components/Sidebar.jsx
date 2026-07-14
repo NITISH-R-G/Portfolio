@@ -48,6 +48,7 @@ export default function Sidebar() {
           width="64"
           height="64"
           loading="eager"
+          decoding="async"
           whileHover={!reducedMotion ? { rotate: 2, scale: 1.02 } : {}}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         />

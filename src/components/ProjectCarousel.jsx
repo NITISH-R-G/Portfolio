@@ -32,7 +32,10 @@ function ProjectCard({ project, index, reducedMotion }) {
           src={imgSrc}
           alt={project.imageAlt || project.title}
           className="project-scroll-image"
+          width="600"
+          height="400"
           loading={index < 3 ? 'eager' : 'lazy'}
+          decoding="async"
         />
       </div>
       <div className="project-scroll-content">

@@ -42,6 +42,15 @@ function fileToDataUrl(file) {
   })
 }
 
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 const IMAGE_PRESETS = {
   project: { maxW: 1200, maxH: 800, quality: 0.82 },
   certificate: { maxW: 1200, maxH: 900, quality: 0.82 },
@@ -52,9 +61,9 @@ function optimizeImage(file, preset = 'project') {
   const cfg = IMAGE_PRESETS[preset] || IMAGE_PRESETS.project
   return new Promise((resolve) => {
     const img = new Image()
-    const url = URL.createObjectURL(file)
+    const objectUrl = URL.createObjectURL(file)
     img.onload = () => {
-      URL.revokeObjectURL(url)
+      URL.revokeObjectURL(objectUrl)
       let { naturalWidth: w, naturalHeight: h } = img
       if (w > cfg.maxW || h > cfg.maxH) {
         const ratio = Math.min(cfg.maxW / w, cfg.maxH / h)
@@ -69,18 +78,24 @@ function optimizeImage(file, preset = 'project') {
       const usePng = file.type === 'image/png'
       const mimeType = usePng ? 'image/png' : 'image/jpeg'
       const quality = usePng ? undefined : cfg.quality
-      const dataUrl = canvas.toDataURL(mimeType, quality)
-      const originalSize = file.size
-      const optimizedSize = Math.round((dataUrl.length - `data:${mimeType};base64,`.length) * 0.75)
-      resolve({ dataUrl, originalSize, optimizedSize, width: w, height: h })
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          const dataUrl = canvas.toDataURL(mimeType, quality)
+          const optimizedSize = Math.round((dataUrl.length - `data:${mimeType};base64,`.length) * 0.75)
+          resolve({ dataUrl, originalSize: file.size, optimizedSize, width: w, height: h })
+          return
+        }
+        const dataUrl = await blobToDataUrl(blob)
+        resolve({ dataUrl, originalSize: file.size, optimizedSize: blob.size, width: w, height: h })
+      }, mimeType, quality)
     }
     img.onerror = () => {
-      URL.revokeObjectURL(url)
+      URL.revokeObjectURL(objectUrl)
       fileToDataUrl(file).then(dataUrl => {
         resolve({ dataUrl, originalSize: file.size, optimizedSize: file.size, width: 0, height: 0 })
       })
     }
-    img.src = url
+    img.src = objectUrl
   })
 }
 
@@ -371,7 +386,7 @@ function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove
       <label className="field-label" htmlFor={inputId}>{label}</label>
       {previewUrl && (
         <div className="image-preview">
-          <img src={previewUrl} alt="Preview" className="image-preview-img" />
+          <img src={previewUrl} alt="Preview" className="image-preview-img" decoding="async" />
           <button
             type="button"
             className="image-preview-remove"

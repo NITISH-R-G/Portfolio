@@ -102,7 +102,7 @@ export default function CertGallery({ certs, reducedMotion }) {
             aria-label={`View details: ${cert.title}`}
           >
             {cert.image ? (
-              <img src={cert.image} alt={cert.imageAlt || cert.title} className="cert-thumb-img" loading="lazy" />
+              <img src={cert.image} alt={cert.imageAlt || cert.title} className="cert-thumb-img" width="400" height="300" loading="lazy" decoding="async" />
             ) : (
               <div className="cert-thumb-placeholder">
                 <span className="cert-thumb-initial">{cert.issuer?.[0] || '?'}</span>
@@ -157,6 +157,9 @@ export default function CertGallery({ certs, reducedMotion }) {
                     src={currentCert.image}
                     alt={currentCert.imageAlt || currentCert.title}
                     className="cert-lightbox-image"
+                    width="900"
+                    height="700"
+                    decoding="async"
                   />
                 ) : (
                   <div className="cert-lightbox-placeholder">
@@ -196,7 +199,7 @@ export default function CertGallery({ certs, reducedMotion }) {
                         tabIndex={i === lightboxIndex ? 0 : -1}
                       >
                         {cert.image ? (
-                          <img src={cert.image} alt="" className="cert-strip-img" loading="lazy" />
+                          <img src={cert.image} alt="" className="cert-strip-img" width="60" height="45" loading="lazy" decoding="async" />
                         ) : (
                           <div className="cert-strip-placeholder">{cert.issuer?.[0] || '?'}</div>
                         )}
