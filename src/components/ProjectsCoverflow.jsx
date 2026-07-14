@@ -4,64 +4,48 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
 function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMotion }) {
-  const x = useTransform(
-    activeIndex,
-    (latest) => {
-      if (reducedMotion) return '0%'
-      const diff = index - latest
-      if (diff === 0) return '0%'
-      const side = diff < 0 ? -1 : 1
-      const absDiff = Math.abs(diff)
-      const slatShift = side * (72 + (absDiff - 1) * 8)
-      return `${slatShift}%`
-    }
-  )
+  const diff = useTransform(activeIndex, (latest) => latest - index)
 
-  const scale = useTransform(
-    activeIndex,
-    (latest) => {
-      if (reducedMotion) return 1
-      const diff = Math.abs(index - latest)
-      if (diff === 0) return 1
-      if (diff === 1) return 0.72
-      return 0.58
-    }
-  )
+  const x = useTransform(diff, (d) => {
+    if (reducedMotion) return '0%'
+    if (Math.abs(d) < 0.01) return '0%'
+    const side = d < 0 ? 1 : -1
+    const absDiff = Math.abs(d)
+    const shift = side * (72 + (Math.max(0, Math.round(absDiff) - 1)) * 8)
+    return `${shift}%`
+  })
 
-  const rotateY = useTransform(
-    activeIndex,
-    (latest) => {
-      if (reducedMotion) return 0
-      const diff = index - latest
-      if (diff === 0) return 0
-      const side = diff < 0 ? -1 : 1
-      return side * 18
-    }
-  )
+  const scale = useTransform(diff, (d) => {
+    if (reducedMotion) return 1
+    const absD = Math.abs(d)
+    if (absD < 0.5) return 1
+    if (absD < 1.5) return 0.72
+    return 0.58
+  })
 
-  const opacity = useTransform(
-    activeIndex,
-    (latest) => {
-      const diff = Math.abs(index - latest)
-      if (diff === 0) return 1
-      if (diff === 1) return 0.55
-      if (diff === 2) return 0.25
-      return 0
-    }
-  )
+  const rotateY = useTransform(diff, (d) => {
+    if (reducedMotion) return 0
+    const absD = Math.abs(d)
+    if (absD < 0.01) return 0
+    return (d < 0 ? 1 : -1) * 18
+  })
 
-  const zIndex = useTransform(
-    activeIndex,
-    (latest) => {
-      const diff = Math.abs(index - latest)
-      return 10 - diff
-    }
-  )
+  const opacity = useTransform(diff, (d) => {
+    const absD = Math.abs(d)
+    if (absD < 0.5) return 1
+    if (absD < 1.5) return 0.55
+    if (absD < 2.5) return 0.25
+    return 0
+  })
 
-  const isActive = useTransform(
-    activeIndex,
-    (latest) => Math.abs(index - latest) < 0.5
-  )
+  const infoOpacity = useTransform(diff, (d) => {
+    if (Math.abs(d) < 0.5) return 1
+    return 0
+  })
+
+  const zIndex = useTransform(diff, (d) => {
+    return 10 - Math.round(Math.abs(d))
+  })
 
   const springTransition = reducedMotion
     ? { duration: 0 }
@@ -107,7 +91,11 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
           />
           <div className="coverflow-card-icon">{project.icon}</div>
         </div>
-        <div className="coverflow-info">
+        <motion.div
+          className="coverflow-info"
+          style={{ opacity: infoOpacity, pointerEvents: 'none' }}
+          transition={reducedMotion ? { duration: 0 } : { duration: 0.15 }}
+        >
           <h3 className="coverflow-title">{project.title}</h3>
           <p className="coverflow-desc">{project.description}</p>
           <div className="coverflow-tags">
@@ -118,7 +106,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
           <a href={project.link} className="coverflow-link" onClick={(e) => e.stopPropagation()}>
             View details →
           </a>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   )
