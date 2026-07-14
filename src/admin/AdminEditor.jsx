@@ -33,6 +33,15 @@ function downloadJSON(data, filename) {
   downloadFile(content, filename)
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 function normalizeSkills(skills) {
   if (!skills || typeof skills !== 'object') return { enabled: true, categories: [] }
   if (Array.isArray(skills.categories)) return skills
@@ -64,6 +73,7 @@ export default function AdminEditor() {
   const [activeTab, setActiveTab] = useState('projects')
   const [saved, setSaved] = useState(false)
   const tabRefs = useRef([])
+  const fileStore = useRef({})
 
   const update = useCallback((path, value) => {
     setData(prev => {
@@ -85,7 +95,19 @@ export default function AdminEditor() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const handleExport = () => downloadJSON(data, 'portfolio.js')
+  const handleExport = async () => {
+    const exportData = deepClone(data)
+    const certs = exportData?.sections?.certifications?.items
+    if (certs && Object.keys(fileStore.current).length > 0) {
+      for (const cert of certs) {
+        const file = fileStore.current[cert.id]
+        if (file) {
+          cert.image = await fileToDataUrl(file)
+        }
+      }
+    }
+    downloadJSON(exportData, 'portfolio.js')
+  }
 
   const handleReset = () => {
     if (confirm('Reset all changes to defaults?')) {
@@ -169,7 +191,7 @@ export default function AdminEditor() {
         {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
         {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
         {activeTab === 'skills' && <SkillsEditor skills={data.skills} update={update} />}
-        {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} />}
+        {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} fileStore={fileStore.current} />}
         {activeTab === 'contact' && <ContactEditor contact={data.contact} update={update} />}
         {activeTab === 'json' && <JsonEditor data={data} setData={setData} />}
       </main>
@@ -489,7 +511,13 @@ function SkillsEditor({ skills, update }) {
 
 /* ── Certifications ──────────────────────────────────────────── */
 
-function CertificationsEditor({ items, update }) {
+function CertificationsEditor({ items, update, fileStore }) {
+  const [previews, setPreviews] = useState(() => {
+    const map = {}
+    items.forEach(c => { if (c.id) map[c.id] = null })
+    return map
+  })
+
   const addItem = () => {
     update('sections.certifications.items', [...items, {
       id: `cert-${Date.now()}`,
@@ -509,7 +537,15 @@ function CertificationsEditor({ items, update }) {
     update('sections.certifications.items', next)
   }
 
-  const removeItem = (i) => update('sections.certifications.items', items.filter((_, idx) => idx !== i))
+  const removeItem = (i) => {
+    const cert = items[i]
+    if (cert?.id && previews[cert.id]) {
+      URL.revokeObjectURL(previews[cert.id])
+      delete fileStore[cert.id]
+      setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n })
+    }
+    update('sections.certifications.items', items.filter((_, idx) => idx !== i))
+  }
 
   const moveItem = (i, dir) => {
     const next = [...items]
@@ -519,26 +555,98 @@ function CertificationsEditor({ items, update }) {
     update('sections.certifications.items', next)
   }
 
+  const handleFileSelect = (i, file) => {
+    if (!file || !file.type.startsWith('image/')) return
+    const cert = items[i]
+    const prevUrl = previews[cert.id]
+    if (prevUrl) URL.revokeObjectURL(prevUrl)
+    const url = URL.createObjectURL(file)
+    fileStore[cert.id] = file
+    setPreviews(prev => ({ ...prev, [cert.id]: url }))
+    updateItem(i, 'image', '')
+  }
+
+  const handleRemoveImage = (i) => {
+    const cert = items[i]
+    if (cert?.id && previews[cert.id]) {
+      URL.revokeObjectURL(previews[cert.id])
+      delete fileStore[cert.id]
+      setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n })
+    }
+    updateItem(i, 'image', '')
+  }
+
+  const getPreviewUrl = (cert) => {
+    if (cert.id && previews[cert.id]) return previews[cert.id]
+    if (cert.image) return cert.image
+    return null
+  }
+
   return (
     <div>
-      {items.map((cert, i) => (
-        <ItemCard key={cert.id} title={cert.title} index={i} onRemove={() => removeItem(i)}>
-          <div className="field-row">
-            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
-          </div>
-          <div className="field-grid">
-            <Field label="Title" value={cert.title} onChange={v => updateItem(i, 'title', v)} />
-            <Field label="Issuer" value={cert.issuer} onChange={v => updateItem(i, 'issuer', v)} placeholder="e.g. HackerRank, AWS, Google" />
-          </div>
-          <div className="field-grid">
-            <Field label="Date" value={cert.date} onChange={v => updateItem(i, 'date', v)} placeholder="e.g. 2025, Nov 2025 – Nov 2028" />
-            <Field label="Credential" value={cert.credential} onChange={v => updateItem(i, 'credential', v)} placeholder="e.g. #73 Globally, Completion" />
-          </div>
-          <Field label="Description" value={cert.description} onChange={v => updateItem(i, 'description', v)} multiline />
-          <Field label="Image URL" value={cert.image} onChange={v => updateItem(i, 'image', v)} placeholder="https://..." />
-          <Field label="Image Alt Text" value={cert.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text" />
-        </ItemCard>
-      ))}
+      <p className="field-help" style={{ marginBottom: 12 }}>
+        Upload an image or paste a URL. Uploaded files preview locally and are embedded as data URLs when you download JS.
+      </p>
+      {items.map((cert, i) => {
+        const previewUrl = getPreviewUrl(cert)
+        return (
+          <ItemCard key={cert.id} title={cert.title} index={i} onRemove={() => removeItem(i)}>
+            <div className="field-row">
+              <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
+            </div>
+            <div className="field-grid">
+              <Field label="Title" value={cert.title} onChange={v => updateItem(i, 'title', v)} />
+              <Field label="Issuer" value={cert.issuer} onChange={v => updateItem(i, 'issuer', v)} placeholder="e.g. HackerRank, AWS, Google" />
+            </div>
+            <div className="field-grid">
+              <Field label="Date" value={cert.date} onChange={v => updateItem(i, 'date', v)} placeholder="e.g. 2025, Nov 2025 – Nov 2028" />
+              <Field label="Credential" value={cert.credential} onChange={v => updateItem(i, 'credential', v)} placeholder="e.g. #73 Globally, Completion" />
+            </div>
+            <Field label="Description" value={cert.description} onChange={v => updateItem(i, 'description', v)} multiline />
+
+            {/* Image section */}
+            <div className="cert-image-section">
+              {previewUrl && (
+                <div className="cert-image-preview">
+                  <img src={previewUrl} alt={cert.imageAlt || cert.title || 'Certificate preview'} className="cert-image-preview-img" />
+                  <button
+                    type="button"
+                    className="btn-remove cert-image-remove"
+                    onClick={() => handleRemoveImage(i)}
+                    aria-label="Remove image"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <div className="cert-image-controls">
+                <label className="cert-file-label">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="cert-file-input"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) handleFileSelect(i, file)
+                      e.target.value = ''
+                    }}
+                  />
+                  <span className="cert-file-btn">Choose Image</span>
+                </label>
+                <Field
+                  label="Image URL"
+                  value={cert.image}
+                  onChange={v => { updateItem(i, 'image', v); if (previews[cert.id]) { URL.revokeObjectURL(previews[cert.id]); delete fileStore[cert.id]; setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n }) } }}
+                  placeholder="https://..."
+                />
+                <Field label="Image Alt Text" value={cert.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text" />
+              </div>
+            </div>
+          </ItemCard>
+        )
+      })}
       <AddButton onClick={addItem} label="Add Certification" />
     </div>
   )
