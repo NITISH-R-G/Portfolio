@@ -22,7 +22,7 @@ export default function Button({
     padding: '10px 18px',
     border: 'none',
     borderRadius: '8px',
-    fontFamily: 'var(--font)',
+    fontFamily: 'var(--font-sans)',
     fontSize: '13px',
     fontWeight: 500,
     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -32,17 +32,17 @@ export default function Button({
 
   const variants = {
     primary: {
-      background: 'var(--accent)',
-      color: 'var(--background)',
+      background: 'var(--color-text)',
+      color: 'var(--color-bg)',
     },
     ghost: {
       background: 'transparent',
-      color: 'var(--foreground)',
-      border: '1px solid var(--border)',
+      color: 'var(--color-text)',
+      border: '1px solid var(--color-border)',
     },
     external: {
       background: 'transparent',
-      color: 'var(--accent)',
+      color: 'var(--color-text-muted)',
       padding: '8px 12px',
     },
   }

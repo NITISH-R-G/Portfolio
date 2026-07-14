@@ -45,6 +45,9 @@ export default function Sidebar() {
           src={profile.image}
           alt={profile.name}
           className="profile-photo"
+          width="64"
+          height="64"
+          loading="eager"
           whileHover={!reducedMotion ? { rotate: 2, scale: 1.02 } : {}}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         />
@@ -68,7 +71,7 @@ export default function Sidebar() {
                 key={skill}
                 className="skill-tag"
                 variants={item}
-                whileHover={!reducedMotion ? { scale: 1.05, borderColor: 'var(--border-hover)' } : {}}
+                whileHover={!reducedMotion ? { scale: 1.05, borderColor: 'var(--color-border-strong)' } : {}}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               >
                 {skill}
@@ -106,7 +109,7 @@ export default function Sidebar() {
             target="_blank"
             rel="noopener noreferrer"
             variants={socialItem}
-            whileHover={!reducedMotion ? { scale: 1.1, borderColor: 'var(--border-hover)' } : {}}
+            whileHover={!reducedMotion ? { scale: 1.1, borderColor: 'var(--color-border-strong)' } : {}}
             whileTap={!reducedMotion ? { scale: 0.95 } : {}}
             transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           >

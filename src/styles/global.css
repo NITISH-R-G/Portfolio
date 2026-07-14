@@ -472,18 +472,16 @@ a {
   right: -18px;
 }
 
-/* Legacy coverflow (hidden) */
+/* Legacy coverflow / project card classes (unused) */
 .coverflow-container, .coverflow-viewport, .coverflow-track,
 .coverflow-card, .coverflow-card-inner, .coverflow-image-area,
 .coverflow-image-bg, .coverflow-card-icon, .coverflow-info,
 .coverflow-title, .coverflow-desc, .coverflow-tags, .coverflow-link,
-.coverflow-controls, .coverflow-arrow, .coverflow-dots, .coverflow-dot {
-  display: none;
-}
-
+.coverflow-controls, .coverflow-arrow, .coverflow-dots, .coverflow-dot,
 .project-card, .project-image-wrapper, .project-image-placeholder,
 .project-info, .project-title, .project-tags, .project-tag,
-.project-description, .project-link {
+.project-description, .project-link,
+.floating-nav, .nav-indicator {
   display: none;
 }
 
@@ -766,14 +764,7 @@ a {
   z-index: 10;
 }
 
-/* Legacy floating nav (hidden) */
-.floating-nav {
-  display: none;
-}
-
-.nav-indicator {
-  pointer-events: none;
-}
+/* Legacy floating nav (hidden) — consolidated above */
 
 /* Tooltip */
 .nav-tooltip {
@@ -918,6 +909,7 @@ a:focus-visible,
 .social-icon:focus-visible,
 .skill-tag:focus-visible,
 .project-card:focus-visible,
+.project-scroll-card:focus-visible,
 .contact-row:focus-visible,
 .btn:focus-visible {
   outline: 2px solid var(--color-focus-ring);
@@ -972,14 +964,6 @@ a:focus-visible,
     margin-bottom: 40px;
   }
 
-  .coverflow-viewport {
-    height: clamp(280px, 45vw, 380px);
-  }
-
-  .coverflow-image-area {
-    height: clamp(140px, 18vw, 200px);
-  }
-
   .intro-text,
   .about-text {
     overflow-wrap: anywhere;
@@ -990,48 +974,6 @@ a:focus-visible,
 
 /* Mobile: <768px — stack vertically */
 @media (max-width: 768px) {
-  .coverflow-viewport {
-    height: clamp(300px, 75vw, 380px);
-  }
-
-  .coverflow-card {
-    width: clamp(240px, 78%, 320px) !important;
-    margin-left: clamp(-120px, -39%, -160px) !important;
-  }
-
-  .coverflow-image-area {
-    height: clamp(130px, 28vw, 170px);
-  }
-
-  .coverflow-card-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
-  }
-
-  .coverflow-info {
-    padding: var(--space-3) var(--space-4) var(--space-3);
-  }
-
-  .coverflow-title {
-    font-size: 1rem;
-  }
-
-  .coverflow-desc {
-    font-size: var(--text-meta);
-  }
-
-  .floating-nav {
-    bottom: var(--space-4);
-    padding: var(--space-1) var(--space-2);
-    max-width: calc(100vw - var(--space-4));
-  }
-
-  .nav-icon {
-    width: 28px;
-    height: 28px;
-  }
-
   .experience-card,
   .education-card {
     flex-direction: column;
@@ -1517,6 +1459,54 @@ a:focus-visible,
 .btn-add-icon {
   font-size: 1.1em;
   line-height: 1;
+}
+
+/* Admin responsive */
+@media (max-width: 640px) {
+  .admin-header {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .admin-actions {
+    width: 100%;
+  }
+
+  .admin-actions .btn-admin {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tabs {
+    gap: 0;
+  }
+
+  .admin-tab {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-meta);
+  }
+}
+
+/* Carousel touch-friendly arrows */
+@media (hover: none) and (pointer: coarse) {
+  .project-carousel-arrow {
+    opacity: 0.7;
+    width: 44px;
+    height: 44px;
+  }
+
+  .project-carousel:hover .project-carousel-arrow {
+    opacity: 0.7;
+  }
+
+  .project-carousel-arrow:hover:not(:disabled) {
+    opacity: 1;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────

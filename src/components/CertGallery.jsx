@@ -196,7 +196,7 @@ export default function CertGallery({ certs, reducedMotion }) {
                         tabIndex={i === lightboxIndex ? 0 : -1}
                       >
                         {cert.image ? (
-                          <img src={cert.image} alt="" className="cert-strip-img" />
+                          <img src={cert.image} alt="" className="cert-strip-img" loading="lazy" />
                         ) : (
                           <div className="cert-strip-placeholder">{cert.issuer?.[0] || '?'}</div>
                         )}
