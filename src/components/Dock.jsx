@@ -1,5 +1,5 @@
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'motion/react'
-import { Children, cloneElement, createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigation } from '../hooks/usePortfolio'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import Icon from './Icon'
@@ -95,19 +95,33 @@ function DockItem({ item }) {
     return unsub
   }, [isHovered, reducedMotion])
 
-  const iconSize = useTransform(width, (w) => Math.round(w / 2.5))
+  const handleClick = () => {
+    onNavigate(item.id)
+    const target = document.getElementById(item.id)
+    if (target) {
+      target.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleClick()
+    }
+  }
 
   return (
-    <motion.div
+    <motion.button
       ref={ref}
+      type="button"
       className="dock-item"
       style={{ width: reducedMotion ? 40 : width }}
       onHoverStart={() => isHovered.set(1)}
       onHoverEnd={() => isHovered.set(0)}
       onFocus={() => isHovered.set(1)}
       onBlur={() => isHovered.set(0)}
-      tabIndex={0}
-      role="button"
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       aria-label={item.label}
       aria-current={isActive ? 'true' : undefined}
     >
@@ -119,6 +133,7 @@ function DockItem({ item }) {
             animate={{ opacity: 1, y: -4 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
+            aria-hidden="true"
           >
             {item.label}
           </motion.div>
@@ -126,10 +141,10 @@ function DockItem({ item }) {
       </AnimatePresence>
       <motion.div
         className={`dock-icon ${isActive ? 'active' : ''}`}
-        onClick={() => onNavigate(item.id)}
+        aria-hidden="true"
       >
         <Icon name={item.icon} size={20} />
       </motion.div>
-    </motion.div>
+    </motion.button>
   )
 }

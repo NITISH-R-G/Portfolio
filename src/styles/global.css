@@ -722,6 +722,12 @@ a {
   flex-shrink: 0;
   cursor: pointer;
   outline: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dock-item:focus-visible {
