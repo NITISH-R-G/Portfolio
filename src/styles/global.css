@@ -1466,6 +1466,24 @@ a:focus-visible,
   outline-offset: 2px;
 }
 
+.image-size-info {
+  font-size: var(--text-meta);
+  color: var(--color-text-faint);
+  margin: var(--space-1) 0;
+}
+
+.image-size-original {
+  color: var(--color-text-muted);
+}
+
+.image-size-optimized {
+  color: #22c55e;
+}
+
+.image-size.reduction {
+  color: #22c55e;
+}
+
 .field-error {
   font-size: var(--text-body);
   color: #ef4444;

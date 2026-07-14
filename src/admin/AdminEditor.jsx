@@ -42,6 +42,54 @@ function fileToDataUrl(file) {
   })
 }
 
+const IMAGE_PRESETS = {
+  project: { maxW: 1200, maxH: 800, quality: 0.82 },
+  certificate: { maxW: 1200, maxH: 900, quality: 0.82 },
+  profile: { maxW: 400, maxH: 400, quality: 0.85 },
+}
+
+function optimizeImage(file, preset = 'project') {
+  const cfg = IMAGE_PRESETS[preset] || IMAGE_PRESETS.project
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { naturalWidth: w, naturalHeight: h } = img
+      if (w > cfg.maxW || h > cfg.maxH) {
+        const ratio = Math.min(cfg.maxW / w, cfg.maxH / h)
+        w = Math.round(w * ratio)
+        h = Math.round(h * ratio)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, w, h)
+      const usePng = file.type === 'image/png'
+      const mimeType = usePng ? 'image/png' : 'image/jpeg'
+      const quality = usePng ? undefined : cfg.quality
+      const dataUrl = canvas.toDataURL(mimeType, quality)
+      const originalSize = file.size
+      const optimizedSize = Math.round((dataUrl.length - `data:${mimeType};base64,`.length) * 0.75)
+      resolve({ dataUrl, originalSize, optimizedSize, width: w, height: h })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      fileToDataUrl(file).then(dataUrl => {
+        resolve({ dataUrl, originalSize: file.size, optimizedSize: file.size, width: 0, height: 0 })
+      })
+    }
+    img.src = url
+  })
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
 function normalizeSkills(skills) {
   if (!skills || typeof skills !== 'object') return { enabled: true, categories: [] }
   if (Array.isArray(skills.categories)) return skills
@@ -102,15 +150,15 @@ export default function AdminEditor() {
       const projects = exportData?.sections?.projects?.items
       if (projects) {
         for (const p of projects) {
-          const file = store[p.id]
-          if (file) p.coverImage = await fileToDataUrl(file)
+          const entry = store[p.id]
+          if (entry?.dataUrl) p.coverImage = entry.dataUrl
         }
       }
       const certs = exportData?.sections?.certifications?.items
       if (certs) {
         for (const c of certs) {
-          const file = store[c.id]
-          if (file) c.image = await fileToDataUrl(file)
+          const entry = store[c.id]
+          if (entry?.dataUrl) c.image = entry.dataUrl
         }
       }
     }
@@ -316,7 +364,7 @@ function UrlField({ label, value, onChange, placeholder, help, id }) {
   return <Field id={id} label={label} type="url" value={value} onChange={onChange} placeholder={placeholder} help={help} />
 }
 
-function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove, placeholder, id }) {
+function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove, placeholder, id, sizeInfo }) {
   const inputId = id || `field-${label?.toLowerCase().replace(/\s+/g, '-')}`
   return (
     <div className="field">
@@ -335,6 +383,22 @@ function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove
             </svg>
           </button>
         </div>
+      )}
+      {sizeInfo && (
+        <p className="image-size-info">
+          {sizeInfo.originalSize > 0 && (
+            <>
+              <span className="image-size-original">{formatBytes(sizeInfo.originalSize)}</span>
+              {' → '}
+              <span className="image-size-optimized">{formatBytes(sizeInfo.optimizedSize)}</span>
+              {sizeInfo.originalSize > sizeInfo.optimizedSize && (
+                <span className="image-size reduction">
+                  {' '}({Math.round((1 - sizeInfo.optimizedSize / sizeInfo.originalSize) * 100)}% smaller)
+                </span>
+              )}
+            </>
+          )}
+        </p>
       )}
       <div className="image-controls">
         <label className="image-file-label">
@@ -371,6 +435,7 @@ function ProjectsEditor({ projects, update, fileStore }) {
     projects.forEach(p => { if (p.id) map[p.id] = null })
     return map
   })
+  const [sizeInfos, setSizeInfos] = useState({})
 
   const addItem = () => {
     update('sections.projects.items', [...projects, {
@@ -394,10 +459,11 @@ function ProjectsEditor({ projects, update, fileStore }) {
 
   const removeItem = (i) => {
     const p = projects[i]
-    if (p?.id && previews[p.id]) {
-      URL.revokeObjectURL(previews[p.id])
+    if (p?.id) {
+      if (previews[p.id]) URL.revokeObjectURL(previews[p.id])
       delete fileStore[p.id]
       setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n })
+      setSizeInfos(prev => { const n = { ...prev }; delete n[p.id]; return n })
     }
     update('sections.projects.items', projects.filter((_, idx) => idx !== i))
   }
@@ -410,23 +476,25 @@ function ProjectsEditor({ projects, update, fileStore }) {
     update('sections.projects.items', next)
   }
 
-  const handleFileSelect = (i, file) => {
+  const handleFileSelect = async (i, file) => {
     if (!file || !file.type.startsWith('image/')) return
     const p = projects[i]
     const prevUrl = previews[p.id]
     if (prevUrl) URL.revokeObjectURL(prevUrl)
-    const url = URL.createObjectURL(file)
-    fileStore[p.id] = file
-    setPreviews(prev => ({ ...prev, [p.id]: url }))
+    const result = await optimizeImage(file, 'project')
+    fileStore[p.id] = { dataUrl: result.dataUrl, originalName: file.name }
+    setPreviews(prev => ({ ...prev, [p.id]: URL.createObjectURL(file) }))
+    setSizeInfos(prev => ({ ...prev, [p.id]: { originalSize: result.originalSize, optimizedSize: result.optimizedSize } }))
     updateItem(i, 'coverImage', '')
   }
 
   const handleRemoveImage = (i) => {
     const p = projects[i]
-    if (p?.id && previews[p.id]) {
-      URL.revokeObjectURL(previews[p.id])
+    if (p?.id) {
+      if (previews[p.id]) URL.revokeObjectURL(previews[p.id])
       delete fileStore[p.id]
       setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n })
+      setSizeInfos(prev => { const n = { ...prev }; delete n[p.id]; return n })
     }
     updateItem(i, 'coverImage', '')
   }
@@ -453,11 +521,12 @@ function ProjectsEditor({ projects, update, fileStore }) {
           <ImageField
             label="Cover Image"
             value={p.coverImage}
-            onChange={v => { updateItem(i, 'coverImage', v); if (previews[p.id]) { URL.revokeObjectURL(previews[p.id]); delete fileStore[p.id]; setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n }) } }}
+            onChange={v => { updateItem(i, 'coverImage', v); if (previews[p.id]) { URL.revokeObjectURL(previews[p.id]); delete fileStore[p.id]; setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n }); setSizeInfos(prev => { const n = { ...prev }; delete n[p.id]; return n }) } }}
             previewUrl={getPreviewUrl(p)}
             onFileSelect={(file) => handleFileSelect(i, file)}
             onRemove={() => handleRemoveImage(i)}
             placeholder="https://images.unsplash.com/..."
+            sizeInfo={sizeInfos[p.id] || null}
           />
           <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text for the image" />
           <div className="field-grid">
@@ -647,6 +716,7 @@ function CertificationsEditor({ items, update, fileStore }) {
     items.forEach(c => { if (c.id) map[c.id] = null })
     return map
   })
+  const [sizeInfos, setSizeInfos] = useState({})
 
   const addItem = () => {
     update('sections.certifications.items', [...items, {
@@ -669,10 +739,11 @@ function CertificationsEditor({ items, update, fileStore }) {
 
   const removeItem = (i) => {
     const cert = items[i]
-    if (cert?.id && previews[cert.id]) {
-      URL.revokeObjectURL(previews[cert.id])
+    if (cert?.id) {
+      if (previews[cert.id]) URL.revokeObjectURL(previews[cert.id])
       delete fileStore[cert.id]
       setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n })
+      setSizeInfos(prev => { const n = { ...prev }; delete n[cert.id]; return n })
     }
     update('sections.certifications.items', items.filter((_, idx) => idx !== i))
   }
@@ -685,23 +756,25 @@ function CertificationsEditor({ items, update, fileStore }) {
     update('sections.certifications.items', next)
   }
 
-  const handleFileSelect = (i, file) => {
+  const handleFileSelect = async (i, file) => {
     if (!file || !file.type.startsWith('image/')) return
     const cert = items[i]
     const prevUrl = previews[cert.id]
     if (prevUrl) URL.revokeObjectURL(prevUrl)
-    const url = URL.createObjectURL(file)
-    fileStore[cert.id] = file
-    setPreviews(prev => ({ ...prev, [cert.id]: url }))
+    const result = await optimizeImage(file, 'certificate')
+    fileStore[cert.id] = { dataUrl: result.dataUrl, originalName: file.name }
+    setPreviews(prev => ({ ...prev, [cert.id]: URL.createObjectURL(file) }))
+    setSizeInfos(prev => ({ ...prev, [cert.id]: { originalSize: result.originalSize, optimizedSize: result.optimizedSize } }))
     updateItem(i, 'image', '')
   }
 
   const handleRemoveImage = (i) => {
     const cert = items[i]
-    if (cert?.id && previews[cert.id]) {
-      URL.revokeObjectURL(previews[cert.id])
+    if (cert?.id) {
+      if (previews[cert.id]) URL.revokeObjectURL(previews[cert.id])
       delete fileStore[cert.id]
       setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n })
+      setSizeInfos(prev => { const n = { ...prev }; delete n[cert.id]; return n })
     }
     updateItem(i, 'image', '')
   }
@@ -731,11 +804,12 @@ function CertificationsEditor({ items, update, fileStore }) {
           <ImageField
             label="Certificate Image"
             value={cert.image}
-            onChange={v => { updateItem(i, 'image', v); if (previews[cert.id]) { URL.revokeObjectURL(previews[cert.id]); delete fileStore[cert.id]; setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n }) } }}
+            onChange={v => { updateItem(i, 'image', v); if (previews[cert.id]) { URL.revokeObjectURL(previews[cert.id]); delete fileStore[cert.id]; setPreviews(prev => { const n = { ...prev }; delete n[cert.id]; return n }); setSizeInfos(prev => { const n = { ...prev }; delete n[cert.id]; return n }) } }}
             previewUrl={getPreviewUrl(cert)}
             onFileSelect={(file) => handleFileSelect(i, file)}
             onRemove={() => handleRemoveImage(i)}
             placeholder="https://..."
+            sizeInfo={sizeInfos[cert.id] || null}
           />
           <Field label="Image Alt Text" value={cert.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text" />
         </ItemCard>
