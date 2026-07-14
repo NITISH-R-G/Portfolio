@@ -107,7 +107,7 @@ a {
 /* Page Layout — Editorial resume shell */
 .page-wrapper {
   display: grid;
-  grid-template-columns: clamp(260px, 22vw, 300px) minmax(0, 1fr);
+  grid-template-columns: clamp(320px, 26vw, 380px) minmax(0, 1fr);
   min-height: 100dvh;
   min-width: 0;
 }
@@ -249,7 +249,6 @@ a {
 .main-content {
   padding: var(--space-7) clamp(40px, 5vw, 80px);
   padding-bottom: 120px;
-  max-width: 800px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -864,8 +863,8 @@ a:focus-visible,
 
 /* Responsive — Clean breakpoints */
 /*
- * ≥1280px: left panel 280-300px, content flex
- * 1024-1279px: left panel 260-280px, content flex
+ * ≥1280px: left panel 340-380px, content flex
+ * 1024-1279px: left panel 320-340px, content flex
  * 768-1023px: single column, sidebar stacks above
  * <768px: stack vertically, sidebar in document flow
  */
