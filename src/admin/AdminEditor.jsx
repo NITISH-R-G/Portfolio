@@ -325,18 +325,97 @@ export default function AdminEditor() {
           {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
           {activeTab === 'skills' && <SkillsEditor skills={data.skills} update={update} />}
           {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} fileStore={fileStore.current} />}
-          {activeTab === 'hackathons' && <GenericListEditor sectionKey="hackathons" section={data.sections.hackathons} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. MIT Hacks' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'result', label: 'Result', placeholder: 'e.g. 1st Place' }, { key: 'description', label: 'Description', multiline: true }]} />}
-          {activeTab === 'conferences' && <GenericListEditor sectionKey="conferences" section={data.sections.conferences} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. NeurIPS 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Dec 2026' }, { key: 'role', label: 'Role', placeholder: 'e.g. Attendee, Presenter' }, { key: 'description', label: 'Description', multiline: true }]} />}
-          {activeTab === 'research' && <GenericListEditor sectionKey="research" section={data.sections.research} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. RAG Pipeline Optimization' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-          {activeTab === 'publications' && <GenericListEditor sectionKey="publications" section={data.sections.publications} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Paper Title' }, { key: 'venue', label: 'Venue', placeholder: 'e.g. arXiv, IEEE' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }, { key: 'description', label: 'Description', multiline: true }]} />}
-          {activeTab === 'awards' && <GenericListEditor sectionKey="awards" section={data.sections.awards} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Best AI Hack' }, { key: 'issuer', label: 'Issuer', placeholder: 'e.g. Google, MIT' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]} />}
-          {activeTab === 'openSource' && <GenericListEditor sectionKey="openSource" section={data.sections.openSource} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. langchain' }, { key: 'role', label: 'Role', placeholder: 'e.g. Contributor, Maintainer' }, { key: 'link', label: 'Link', placeholder: 'https://...' }, { key: 'description', label: 'Description', multiline: true }]} />}
-          {activeTab === 'founder' && <GenericListEditor sectionKey="founder" section={data.sections.founder} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. CODESTREAK' }, { key: 'role', label: 'Role', placeholder: 'e.g. Founder & CEO' }, { key: 'date', label: 'Date', placeholder: 'e.g. Nov 2025 – Present' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-          {activeTab === 'teaching' && <GenericListEditor sectionKey="teaching" section={data.sections.teaching} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. ML Workshop' }, { key: 'audience', label: 'Audience', placeholder: 'e.g. IIT Students' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]} />}
-          {activeTab === 'talks' && <GenericListEditor sectionKey="talks" section={data.sections.talks} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. AI Agents in Production' }, { key: 'event', label: 'Event', placeholder: 'e.g. TechConf 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-          {activeTab === 'designWork' && <GenericListEditor sectionKey="designWork" section={data.sections.designWork} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Portfolio Redesign' }, { key: 'type', label: 'Type', placeholder: 'e.g. UI/UX, Branding' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-          {activeTab === 'media' && <GenericListEditor sectionKey="media" section={data.sections.media} update={update} fields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Featured in TechCrunch' }, { key: 'outlet', label: 'Outlet', placeholder: 'e.g. TechCrunch, Dev.to' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }]} />}
-          {activeTab === 'testimonials' && <GenericListEditor sectionKey="testimonials" section={data.sections.testimonials} update={update} fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. Jane Smith' }, { key: 'role', label: 'Role', placeholder: 'e.g. PM at Google' }, { key: 'text', label: 'Testimonial', multiline: true }]} />}
+          {activeTab === 'hackathons' && <EnhancedListEditor sectionKey="hackathons" section={data.sections.hackathons} update={update}
+            basicFields={[{ key: 'name', label: 'Name', placeholder: 'e.g. MIT Hacks' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'result', label: 'Result', placeholder: 'e.g. 1st Place' }, { key: 'description', label: 'Description', multiline: true }]}
+            extraFields={[
+              { key: 'event', label: 'Event', placeholder: 'e.g. Smart India Hackathon' },
+              { key: 'role', label: 'Role', placeholder: 'e.g. Team Lead' },
+              { key: 'team', label: 'Team', placeholder: 'e.g. 4 members' },
+            ]}
+            hasMetrics hasTools hasLinks
+          />}
+          {activeTab === 'conferences' && <EnhancedListEditor sectionKey="conferences" section={data.sections.conferences} update={update}
+            basicFields={[{ key: 'name', label: 'Name', placeholder: 'e.g. NeurIPS 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Dec 2026' }, { key: 'role', label: 'Role', placeholder: 'e.g. Attendee, Presenter' }, { key: 'description', label: 'Description', multiline: true }]}
+          />}
+          {activeTab === 'research' && <EnhancedListEditor sectionKey="research" section={data.sections.research} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. RAG Pipeline Optimization' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'abstract', label: 'Abstract', multiline: true, placeholder: 'Research abstract or summary' }]}
+            extraFields={[
+              { key: 'venue', label: 'Venue', placeholder: 'e.g. IIT Madras Research Symposium' },
+              { key: 'authors', label: 'Authors', placeholder: 'e.g. Nitish R.G.' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'ongoing', label: 'Ongoing' }, { value: 'submitted', label: 'Submitted' }, { value: 'published', label: 'Published' }, { value: 'under-review', label: 'Under Review' }] },
+              { key: 'paperLink', label: 'Paper Link', placeholder: 'https://...' },
+              { key: 'demoLink', label: 'Demo Link', placeholder: 'https://...' },
+            ]}
+            hasMetrics hasTags
+          />}
+          {activeTab === 'publications' && <EnhancedListEditor sectionKey="publications" section={data.sections.publications} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Paper Title' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'abstract', label: 'Abstract', multiline: true, placeholder: 'Brief abstract or summary' }]}
+            extraFields={[
+              { key: 'venue', label: 'Venue', placeholder: 'e.g. arXiv, IEEE' },
+              { key: 'authors', label: 'Authors', placeholder: 'e.g. Nitish R.G., Dr. Smith' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'published', label: 'Published' }, { value: 'submitted', label: 'Submitted' }, { value: 'under-review', label: 'Under Review' }, { value: 'preprint', label: 'Preprint' }] },
+              { key: 'paperLink', label: 'Paper Link', placeholder: 'https://...' },
+            ]}
+            hasTags
+          />}
+          {activeTab === 'awards' && <EnhancedListEditor sectionKey="awards" section={data.sections.awards} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Best AI Hack' }, { key: 'issuer', label: 'Issuer', placeholder: 'e.g. Google, MIT' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]}
+            extraFields={[
+              { key: 'category', label: 'Category', placeholder: 'e.g. AI/ML, Best Design' },
+              { key: 'venue', label: 'Venue', placeholder: 'e.g. Global Competition' },
+            ]}
+            hasMetrics
+          />}
+          {activeTab === 'openSource' && <EnhancedListEditor sectionKey="openSource" section={data.sections.openSource} update={update}
+            basicFields={[{ key: 'name', label: 'Name', placeholder: 'e.g. langchain' }, { key: 'role', label: 'Role', placeholder: 'e.g. Contributor, Maintainer' }, { key: 'description', label: 'Description', multiline: true }]}
+            extraFields={[
+              { key: 'repoLink', label: 'Repo Link', placeholder: 'https://github.com/...' },
+              { key: 'stars', label: 'Stars', type: 'number', placeholder: 'e.g. 12' },
+              { key: 'contributors', label: 'Contributors', type: 'number', placeholder: 'e.g. 5' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }, { value: 'maintenance', label: 'Maintenance' }] },
+            ]}
+            hasTools hasLinks
+          />}
+          {activeTab === 'founder' && <EnhancedListEditor sectionKey="founder" section={data.sections.founder} update={update}
+            basicFields={[{ key: 'company', label: 'Company', placeholder: 'e.g. CODESTREAK' }, { key: 'role', label: 'Role', placeholder: 'e.g. Founder & CEO' }, { key: 'date', label: 'Date', placeholder: 'e.g. Nov 2025 – Present' }]}
+            extraFields={[
+              { key: 'context', label: 'Context', placeholder: 'e.g. International AI community' },
+              { key: 'problem', label: 'Problem', multiline: true, placeholder: 'What problem does this solve?' },
+              { key: 'approach', label: 'Approach', multiline: true, placeholder: 'How was it built?' },
+              { key: 'impact', label: 'Impact', multiline: true, placeholder: 'What was the outcome?' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'acquired', label: 'Acquired' }, { value: 'paused', label: 'Paused' }, { value: 'closed', label: 'Closed' }] },
+            ]}
+            hasMetrics hasTools hasLinks
+          />}
+          {activeTab === 'teaching' && <EnhancedListEditor sectionKey="teaching" section={data.sections.teaching} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. ML Workshop' }, { key: 'audience', label: 'Audience', placeholder: 'e.g. IIT Students' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'description', label: 'Description', multiline: true }]}
+          />}
+          {activeTab === 'talks' && <EnhancedListEditor sectionKey="talks" section={data.sections.talks} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. AI Agents in Production' }, { key: 'event', label: 'Event', placeholder: 'e.g. TechConf 2026' }, { key: 'date', label: 'Date', placeholder: 'e.g. Mar 2026' }, { key: 'description', label: 'Description', multiline: true }]}
+            extraFields={[
+              { key: 'audience', label: 'Audience', placeholder: 'e.g. 200+ developers' },
+              { key: 'format', label: 'Format', type: 'select', options: [{ value: 'talk', label: 'Talk' }, { value: 'workshop', label: 'Workshop' }, { value: 'panel', label: 'Panel' }, { value: 'keynote', label: 'Keynote' }] },
+              { key: 'venue', label: 'Venue', placeholder: 'e.g. Online, Convention Center' },
+              { key: 'recordingLink', label: 'Recording Link', placeholder: 'https://...' },
+              { key: 'slidesLink', label: 'Slides Link', placeholder: 'https://...' },
+            ]}
+            hasMetrics hasTools
+          />}
+          {activeTab === 'designWork' && <EnhancedListEditor sectionKey="designWork" section={data.sections.designWork} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Portfolio Redesign' }, { key: 'type', label: 'Type', placeholder: 'e.g. UI/UX, Branding' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }]}
+            extraFields={[
+              { key: 'problem', label: 'Problem', multiline: true, placeholder: 'What problem did this solve?' },
+              { key: 'process', label: 'Process', multiline: true, placeholder: 'How was it approached?' },
+              { key: 'outcome', label: 'Outcome', multiline: true, placeholder: 'What was the result?' },
+            ]}
+            hasMetrics hasTools hasLinks hasGallery
+          />}
+          {activeTab === 'media' && <EnhancedListEditor sectionKey="media" section={data.sections.media} update={update}
+            basicFields={[{ key: 'title', label: 'Title', placeholder: 'e.g. Featured in TechCrunch' }, { key: 'outlet', label: 'Outlet', placeholder: 'e.g. TechCrunch, Dev.to' }, { key: 'date', label: 'Date', placeholder: 'e.g. 2026' }, { key: 'link', label: 'Link', placeholder: 'https://...' }]}
+          />}
+          {activeTab === 'testimonials' && <EnhancedListEditor sectionKey="testimonials" section={data.sections.testimonials} update={update}
+            basicFields={[{ key: 'name', label: 'Name', placeholder: 'e.g. Jane Smith' }, { key: 'role', label: 'Role', placeholder: 'e.g. PM at Google' }, { key: 'text', label: 'Testimonial', multiline: true }]}
+          />}
           {activeTab === 'resume' && <ResumeEditor resume={data.sections.resume} update={update} />}
           {activeTab === 'contact' && <ContactEditor contact={data.contact} update={update} />}
           {activeTab === 'json' && <JsonEditor data={data} setData={setData} />}
@@ -518,6 +597,167 @@ function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove
   )
 }
 
+/* ── Rich Field Components ─────────────────────────────────── */
+
+function FieldGroup({ label, children, collapsible }) {
+  const [open, setOpen] = useState(true)
+  if (!collapsible) {
+    return (
+      <div className="field-group">
+        {label && <div className="field-group-label">{label}</div>}
+        {children}
+      </div>
+    )
+  }
+  return (
+    <details className="field-group field-group-collapsible" open={open} onToggle={e => setOpen(e.target.open)}>
+      <summary className="field-group-summary">
+        <span className="field-group-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        {label}
+      </summary>
+      <div className="field-group-body">{children}</div>
+    </details>
+  )
+}
+
+function MetricsEditor({ metrics = [], onChange }) {
+  const addMetric = () => {
+    onChange([...metrics, { label: '', value: '', note: '' }])
+  }
+  const updateMetric = (i, field, val) => {
+    const next = metrics.map((m, idx) => idx === i ? { ...m, [field]: val } : m)
+    onChange(next)
+  }
+  const removeMetric = (i) => {
+    onChange(metrics.filter((_, idx) => idx !== i))
+  }
+
+  return (
+    <div className="metrics-editor">
+      {metrics.length > 0 && (
+        <div className="metrics-list">
+          {metrics.map((m, i) => (
+            <div key={i} className="metrics-item">
+              <input
+                type="text"
+                className="field-input metrics-value"
+                value={m.value || ''}
+                onChange={e => updateMetric(i, 'value', e.target.value)}
+                placeholder="Value"
+              />
+              <input
+                type="text"
+                className="field-input metrics-label"
+                value={m.label || ''}
+                onChange={e => updateMetric(i, 'label', e.target.value)}
+                placeholder="Label"
+              />
+              <input
+                type="text"
+                className="field-input metrics-note"
+                value={m.note || ''}
+                onChange={e => updateMetric(i, 'note', e.target.value)}
+                placeholder="Note (optional)"
+              />
+              <button type="button" onClick={() => removeMetric(i)} className="btn-remove-inline" aria-label="Remove metric">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={addMetric} className="btn-add-small">+ Add metric</button>
+    </div>
+  )
+}
+
+function TagsEditor({ tags = [], onChange }) {
+  const [input, setInput] = useState('')
+
+  const addTag = () => {
+    const t = input.trim()
+    if (t && !tags.includes(t)) {
+      onChange([...tags, t])
+    }
+    setInput('')
+  }
+
+  const removeTag = (i) => {
+    onChange(tags.filter((_, idx) => idx !== i))
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addTag() }
+    if (e.key === 'Backspace' && !input && tags.length > 0) {
+      removeTag(tags.length - 1)
+    }
+  }
+
+  return (
+    <div className="field">
+      <div className="tags-editor">
+        <div className="tags-list">
+          {tags.map((t, i) => (
+            <span key={i} className="tag-chip">
+              {t}
+              <button type="button" onClick={() => removeTag(i)} className="tag-remove" aria-label={`Remove ${t}`}>×</button>
+            </span>
+          ))}
+        </div>
+        <input
+          type="text"
+          className="field-input tags-input"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={addTag}
+          placeholder="Type and press Enter to add"
+        />
+      </div>
+    </div>
+  )
+}
+
+function LinksEditor({ links = [], onChange }) {
+  const addLink = () => {
+    onChange([...links, { label: '', url: '' }])
+  }
+  const updateLink = (i, field, val) => {
+    const next = links.map((l, idx) => idx === i ? { ...l, [field]: val } : l)
+    onChange(next)
+  }
+  const removeLink = (i) => {
+    onChange(links.filter((_, idx) => idx !== i))
+  }
+
+  return (
+    <div className="links-editor">
+      {links.length > 0 && (
+        <div className="links-list">
+          {links.map((l, i) => (
+            <div key={i} className="links-item">
+              <input
+                type="text"
+                className="field-input links-label"
+                value={l.label || ''}
+                onChange={e => updateLink(i, 'label', e.target.value)}
+                placeholder="Label"
+              />
+              <input
+                type="url"
+                className="field-input links-url"
+                value={l.url || ''}
+                onChange={e => updateLink(i, 'url', e.target.value)}
+                placeholder="https://..."
+              />
+              <button type="button" onClick={() => removeLink(i)} className="btn-remove-inline" aria-label="Remove link">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={addLink} className="btn-add-small">+ Add link</button>
+    </div>
+  )
+}
+
 /* ── Projects ──────────────────────────────────────────────── */
 
 function ProjectsEditor({ projects, update, fileStore }) {
@@ -533,12 +773,25 @@ function ProjectsEditor({ projects, update, fileStore }) {
       id: `project-${Date.now()}`,
       title: 'New Project',
       description: '',
+      role: '',
+      team: '',
+      context: '',
+      problem: '',
+      approach: '',
+      impact: '',
+      metrics: [],
+      tools: [],
+      links: [],
       tags: [],
       color: '#6366f1',
       icon: 'Code',
-      link: 'https://github.com/NITISH-R-G',
       coverImage: '',
       imageAlt: '',
+      featured: false,
+      status: 'completed',
+      responsibilities: '',
+      constraints: '',
+      lessons: '',
     }])
   }
 
@@ -598,32 +851,70 @@ function ProjectsEditor({ projects, update, fileStore }) {
 
   return (
     <div>
+      <Toggle
+        label="Featured section"
+        checked={projects.length > 0 && projects.some(p => p.featured)}
+        onChange={() => {}}
+        help="Mark individual projects as featured below"
+      />
       {projects.map((p, i) => (
         <ItemCard key={p.id} title={p.title} index={i} onRemove={() => removeItem(i)}>
           <div className="field-row">
             <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === projects.length - 1} />
+            <Toggle label="Featured" checked={!!p.featured} onChange={v => updateItem(i, 'featured', v)} />
           </div>
-          <div className="field-grid">
-            <Field label="Title" value={p.title} onChange={v => updateItem(i, 'title', v)} />
-            <Field label="Icon" value={p.icon} onChange={v => updateItem(i, 'icon', v)} placeholder="e.g. Bot, Search, Train" />
-          </div>
-          <Field label="Description" value={p.description} onChange={v => updateItem(i, 'description', v)} multiline />
-          <Field label="Tags (comma-separated)" value={p.tags?.join(', ')} onChange={v => updateItem(i, 'tags', v.split(',').map(t => t.trim()).filter(Boolean))} />
-          <ImageField
-            label="Cover Image"
-            value={p.coverImage}
-            onChange={v => { updateItem(i, 'coverImage', v); if (previews[p.id]) { URL.revokeObjectURL(previews[p.id]); delete fileStore[p.id]; setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n }); setSizeInfos(prev => { const n = { ...prev }; delete n[p.id]; return n }) } }}
-            previewUrl={getPreviewUrl(p)}
-            onFileSelect={(file) => handleFileSelect(i, file)}
-            onRemove={() => handleRemoveImage(i)}
-            placeholder="https://images.unsplash.com/..."
-            sizeInfo={sizeInfos[p.id] || null}
-          />
-          <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text for the image" />
-          <div className="field-grid">
-            <Field label="Color" value={p.color} onChange={v => updateItem(i, 'color', v)} type="color" />
-            <UrlField label="Link" value={p.link} onChange={v => updateItem(i, 'link', v)} placeholder="https://github.com/..." />
-          </div>
+
+          <FieldGroup label="Basic Info">
+            <div className="field-grid">
+              <Field label="Title" value={p.title} onChange={v => updateItem(i, 'title', v)} />
+              <Field label="Icon" value={p.icon} onChange={v => updateItem(i, 'icon', v)} placeholder="e.g. Bot, Search, Train" />
+            </div>
+            <Field label="Description" value={p.description} onChange={v => updateItem(i, 'description', v)} multiline />
+            <div className="field-grid">
+              <Select label="Status" value={p.status} onChange={v => updateItem(i, 'status', v)} options={[{ value: 'completed', label: 'Completed' }, { value: 'ongoing', label: 'Ongoing' }, { value: 'deployed', label: 'Deployed' }, { value: 'archived', label: 'Archived' }]} />
+              <Field label="Role" value={p.role} onChange={v => updateItem(i, 'role', v)} placeholder="e.g. Lead Engineer" />
+            </div>
+            <div className="field-grid">
+              <Field label="Team" value={p.team} onChange={v => updateItem(i, 'team', v)} placeholder="e.g. Solo, Team of 3" />
+              <Field label="Context" value={p.context} onChange={v => updateItem(i, 'context', v)} placeholder="e.g. Academic, Personal, Startup" />
+            </div>
+          </FieldGroup>
+
+          <FieldGroup label="Case Study" collapsible>
+            <Field label="Problem" value={p.problem} onChange={v => updateItem(i, 'problem', v)} multiline placeholder="What problem does this solve?" />
+            <Field label="Approach" value={p.approach} onChange={v => updateItem(i, 'approach', v)} multiline placeholder="How was it built?" />
+            <Field label="Impact / Outcome" value={p.impact} onChange={v => updateItem(i, 'impact', v)} multiline placeholder="What was the result?" />
+            <Field label="Responsibilities" value={p.responsibilities} onChange={v => updateItem(i, 'responsibilities', v)} multiline placeholder="What was your specific role?" />
+            <Field label="Constraints" value={p.constraints} onChange={v => updateItem(i, 'constraints', v)} multiline placeholder="What challenges did you face?" />
+            <Field label="Lessons Learned" value={p.lessons} onChange={v => updateItem(i, 'lessons', v)} multiline placeholder="What did you learn?" />
+          </FieldGroup>
+
+          <FieldGroup label="Proof & Metrics" collapsible>
+            <MetricsEditor metrics={p.metrics || []} onChange={v => updateItem(i, 'metrics', v)} />
+          </FieldGroup>
+
+          <FieldGroup label="Links & Tags" collapsible>
+            <TagsEditor tags={p.tools || []} onChange={v => updateItem(i, 'tools', v)} />
+            <LinksEditor links={p.links || []} onChange={v => updateItem(i, 'links', v)} />
+          </FieldGroup>
+
+          <FieldGroup label="Media" collapsible>
+            <TagsEditor tags={p.tags || []} onChange={v => updateItem(i, 'tags', v)} />
+            <ImageField
+              label="Cover Image"
+              value={p.coverImage}
+              onChange={v => { updateItem(i, 'coverImage', v); if (previews[p.id]) { URL.revokeObjectURL(previews[p.id]); delete fileStore[p.id]; setPreviews(prev => { const n = { ...prev }; delete n[p.id]; return n }); setSizeInfos(prev => { const n = { ...prev }; delete n[p.id]; return n }) } }}
+              previewUrl={getPreviewUrl(p)}
+              onFileSelect={(file) => handleFileSelect(i, file)}
+              onRemove={() => handleRemoveImage(i)}
+              placeholder="https://images.unsplash.com/..."
+              sizeInfo={sizeInfos[p.id] || null}
+            />
+            <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text for the image" />
+            <div className="field-grid">
+              <Field label="Color" value={p.color} onChange={v => updateItem(i, 'color', v)} type="color" />
+            </div>
+          </FieldGroup>
         </ItemCard>
       ))}
       <AddButton onClick={addItem} label="Add Project" />
@@ -641,6 +932,10 @@ function ExperienceEditor({ items, update }) {
       location: 'Location',
       period: 'Start – End',
       description: '',
+      responsibilities: [],
+      metrics: [],
+      tools: [],
+      links: [],
     }])
   }
 
@@ -676,6 +971,12 @@ function ExperienceEditor({ items, update }) {
             <Field label="Period" value={exp.period} onChange={v => updateItem(i, 'period', v)} />
           </div>
           <Field label="Description" value={exp.description} onChange={v => updateItem(i, 'description', v)} multiline />
+          <FieldGroup label="Proof & Impact" collapsible>
+            <Field label="Responsibilities" value={Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : ''} onChange={v => updateItem(i, 'responsibilities', v.split('\n').filter(Boolean))} multiline placeholder="One per line" help="List key responsibilities, one per line" />
+            <MetricsEditor metrics={exp.metrics || []} onChange={v => updateItem(i, 'metrics', v)} />
+            <TagsEditor tags={exp.tools || []} onChange={v => updateItem(i, 'tools', v)} />
+            <LinksEditor links={exp.links || []} onChange={v => updateItem(i, 'links', v)} />
+          </FieldGroup>
         </ItemCard>
       ))}
       <AddButton onClick={addItem} label="Add Experience" />
@@ -999,6 +1300,130 @@ function GenericListEditor({ sectionKey, section, update, fields }) {
               placeholder={f.placeholder}
             />
           ))}
+        </ItemCard>
+      ))}
+      <AddButton onClick={addItem} label={`Add ${sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1).replace(/([A-Z])/g, ' $1')}`} />
+    </div>
+  )
+}
+
+/* ── Enhanced List Editor (with field groups + rich fields) ─── */
+
+function EnhancedListEditor({ sectionKey, section, update, basicFields = [], extraFields = [], hasMetrics, hasTags, hasLinks, hasTools, hasGallery }) {
+  const items = Array.isArray(section?.items) ? section.items : []
+  const enabled = section?.enabled !== false
+
+  const addItem = () => {
+    const newItem = { id: `${sectionKey}-${Date.now()}` }
+    basicFields.forEach(f => { newItem[f.key] = '' })
+    extraFields.forEach(f => { newItem[f.key] = '' })
+    if (hasMetrics) newItem.metrics = []
+    if (hasTags) newItem.tags = []
+    if (hasLinks) newItem.links = []
+    if (hasTools) newItem.tools = []
+    if (hasGallery) newItem.gallery = []
+    update(`sections.${sectionKey}.items`, [...items, newItem])
+  }
+
+  const updateItem = (i, field, value) => {
+    const next = [...items]
+    next[i] = { ...next[i], [field]: value }
+    update(`sections.${sectionKey}.items`, next)
+  }
+
+  const removeItem = (i) => {
+    update(`sections.${sectionKey}.items`, items.filter((_, idx) => idx !== i))
+  }
+
+  const moveItem = (i, dir) => {
+    const next = [...items]
+    const j = i + dir
+    if (j < 0 || j >= next.length) return
+    ;[next[i], next[j]] = [next[j], next[i]]
+    update(`sections.${sectionKey}.items`, next)
+  }
+
+  const toggleEnabled = (val) => {
+    update(`sections.${sectionKey}.enabled`, val)
+  }
+
+  const titleKey = basicFields[0]?.key || 'title'
+
+  return (
+    <div>
+      <Toggle label="Section enabled" checked={enabled} onChange={toggleEnabled} help={enabled ? 'Visible on public site when items exist' : 'Hidden from public site'} />
+      {items.length === 0 && (
+        <p className="field-help" style={{ margin: '12px 0' }}>No items yet. Add one below to get started.</p>
+      )}
+      {items.map((item, i) => (
+        <ItemCard key={item.id || i} title={item[titleKey] || `Item ${i + 1}`} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-row">
+            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
+          </div>
+
+          <FieldGroup label="Basic Info">
+            {basicFields.map(f => (
+              f.type === 'select' ? (
+                <Select key={f.key} label={f.label} value={item[f.key] || ''} onChange={v => updateItem(i, f.key, v)} options={f.options} />
+              ) : (
+                <Field
+                  key={f.key}
+                  label={f.label}
+                  value={item[f.key] || ''}
+                  onChange={v => updateItem(i, f.key, v)}
+                  multiline={f.multiline}
+                  placeholder={f.placeholder}
+                  type={f.type}
+                />
+              )
+            ))}
+          </FieldGroup>
+
+          {extraFields.length > 0 && (
+            <FieldGroup label="Details" collapsible>
+              {extraFields.map(f => (
+                f.type === 'select' ? (
+                  <Select key={f.key} label={f.label} value={item[f.key] || ''} onChange={v => updateItem(i, f.key, v)} options={f.options} />
+                ) : (
+                  <Field
+                    key={f.key}
+                    label={f.label}
+                    value={item[f.key] || ''}
+                    onChange={v => updateItem(i, f.key, v)}
+                    multiline={f.multiline}
+                    placeholder={f.placeholder}
+                    type={f.type}
+                  />
+                )
+              ))}
+            </FieldGroup>
+          )}
+
+          {hasMetrics && (
+            <FieldGroup label="Metrics & Proof" collapsible>
+              <MetricsEditor metrics={item.metrics || []} onChange={v => updateItem(i, 'metrics', v)} />
+            </FieldGroup>
+          )}
+
+          {(hasTags || hasTools) && (
+            <FieldGroup label="Tags & Stack" collapsible>
+              {hasTools && <TagsEditor tags={item.tools || []} onChange={v => updateItem(i, 'tools', v)} />}
+              {hasTags && <TagsEditor tags={item.tags || []} onChange={v => updateItem(i, 'tags', v)} />}
+            </FieldGroup>
+          )}
+
+          {hasLinks && (
+            <FieldGroup label="Links" collapsible>
+              <LinksEditor links={item.links || []} onChange={v => updateItem(i, 'links', v)} />
+            </FieldGroup>
+          )}
+
+          {hasGallery && (
+            <FieldGroup label="Gallery" collapsible>
+              <TagsEditor tags={item.gallery || []} onChange={v => updateItem(i, 'gallery', v)} />
+              <p className="field-help">Add image URLs for the project gallery</p>
+            </FieldGroup>
+          )}
         </ItemCard>
       ))}
       <AddButton onClick={addItem} label={`Add ${sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1).replace(/([A-Z])/g, ' $1')}`} />

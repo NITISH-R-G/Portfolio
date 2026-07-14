@@ -5,6 +5,7 @@ import ProjectCarousel from './ProjectCarousel'
 import Button from './Button'
 import Icon from './Icon'
 import CertGallery from './CertGallery'
+import CaseStudyCard from './CaseStudyCard'
 
 const container = {
   hidden: {},
@@ -46,14 +47,18 @@ function GenericListItem({ item, fields }) {
   )
 }
 
-function GenericSection({ id, label, items, fields, icon }) {
+function GenericSection({ id, label, items, fields, icon, useCaseStudy }) {
   if (!items || items.length === 0) return null
   return (
     <motion.section id={id} className="content-section" variants={sectionItem}>
       <h2 className="section-label">{label}</h2>
-      <div className="generic-list">
+      <div className={useCaseStudy ? 'case-study-list' : 'generic-list'}>
         {items.map((item, i) => (
-          <GenericListItem key={item.id || i} item={item} fields={fields} />
+          useCaseStudy ? (
+            <CaseStudyCard key={item.id || i} item={item} icon={icon} />
+          ) : (
+            <GenericListItem key={item.id || i} item={item} fields={fields} />
+          )
         ))}
       </div>
     </motion.section>
@@ -65,16 +70,16 @@ export default function MainContent() {
   const reducedMotion = useReducedMotion()
 
   const sectionConfigs = [
-    { id: 'hackathons', label: 'HACKATHONS', items: sections.hackathons?.items, fields: [{ key: 'name' }, { key: 'date' }, { key: 'result' }, { key: 'description', multiline: true }] },
+    { id: 'hackathons', label: 'HACKATHONS', items: sections.hackathons?.items, icon: 'Trophy', useCaseStudy: true },
     { id: 'conferences', label: 'CONFERENCES', items: sections.conferences?.items, fields: [{ key: 'name' }, { key: 'date' }, { key: 'role' }, { key: 'description', multiline: true }] },
-    { id: 'research', label: 'RESEARCH', items: sections.research?.items, fields: [{ key: 'title' }, { key: 'date' }, { key: 'description', multiline: true }] },
-    { id: 'publications', label: 'PUBLICATIONS', items: sections.publications?.items, fields: [{ key: 'title' }, { key: 'venue' }, { key: 'date' }, { key: 'description', multiline: true }] },
-    { id: 'awards', label: 'AWARDS', items: sections.awards?.items, fields: [{ key: 'title' }, { key: 'issuer' }, { key: 'date' }, { key: 'description', multiline: true }] },
-    { id: 'openSource', label: 'OPEN SOURCE', items: sections.openSource?.items, fields: [{ key: 'name' }, { key: 'role' }, { key: 'description', multiline: true }] },
-    { id: 'founder', label: 'FOUNDER', items: sections.founder?.items, fields: [{ key: 'name' }, { key: 'role' }, { key: 'date' }, { key: 'description', multiline: true }] },
+    { id: 'research', label: 'RESEARCH', items: sections.research?.items, icon: 'FlaskConical', useCaseStudy: true },
+    { id: 'publications', label: 'PUBLICATIONS', items: sections.publications?.items, icon: 'BookOpen', useCaseStudy: true },
+    { id: 'awards', label: 'AWARDS', items: sections.awards?.items, icon: 'Medal', useCaseStudy: true },
+    { id: 'openSource', label: 'OPEN SOURCE', items: sections.openSource?.items, icon: 'GitBranch', useCaseStudy: true },
+    { id: 'founder', label: 'FOUNDER', items: sections.founder?.items, icon: 'Rocket', useCaseStudy: true },
     { id: 'teaching', label: 'TEACHING', items: sections.teaching?.items, fields: [{ key: 'title' }, { key: 'audience' }, { key: 'date' }, { key: 'description', multiline: true }] },
-    { id: 'talks', label: 'TALKS', items: sections.talks?.items, fields: [{ key: 'title' }, { key: 'event' }, { key: 'date' }, { key: 'description', multiline: true }] },
-    { id: 'designWork', label: 'DESIGN', items: sections.designWork?.items, fields: [{ key: 'title' }, { key: 'type' }, { key: 'date' }, { key: 'description', multiline: true }] },
+    { id: 'talks', label: 'TALKS', items: sections.talks?.items, icon: 'Mic', useCaseStudy: true },
+    { id: 'designWork', label: 'DESIGN', items: sections.designWork?.items, icon: 'Palette', useCaseStudy: true },
     { id: 'media', label: 'MEDIA', items: sections.media?.items, fields: [{ key: 'title' }, { key: 'outlet' }, { key: 'date' }] },
     { id: 'testimonials', label: 'TESTIMONIALS', items: sections.testimonials?.items, fields: [{ key: 'name' }, { key: 'role' }, { key: 'text', multiline: true }] },
   ]
@@ -155,7 +160,7 @@ export default function MainContent() {
       )}
 
       {sectionConfigs.filter(s => hasContent({ enabled: true, items: s.items })).map(s => (
-        <GenericSection key={s.id} id={s.id} label={s.label} items={s.items} fields={s.fields} />
+        <GenericSection key={s.id} id={s.id} label={s.label} items={s.items} fields={s.fields} icon={s.icon} useCaseStudy={s.useCaseStudy} />
       ))}
 
       {sections.resume?.enabled && sections.resume?.url && (
