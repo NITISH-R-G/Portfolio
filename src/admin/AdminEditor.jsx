@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { portfolioData } from '../data/portfolio'
 
 const STORAGE_KEY = 'portfolio-draft'
@@ -28,6 +28,21 @@ function downloadFile(content, filename) {
   URL.revokeObjectURL(url)
 }
 
+function downloadJSON(data, filename) {
+  const content = `const portfolio = ${JSON.stringify(data, null, 2)}\n\nexport default portfolio\n`
+  downloadFile(content, filename)
+}
+
+const TABS = [
+  { id: 'projects', label: 'Projects' },
+  { id: 'experience', label: 'Experience' },
+  { id: 'education', label: 'Education' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'certifications', label: 'Certifications' },
+  { id: 'contact', label: 'Contact' },
+  { id: 'json', label: 'Raw JSON' },
+]
+
 export default function AdminEditor() {
   const [data, setData] = useState(() => loadDraft() || deepClone(portfolioData))
   const [activeTab, setActiveTab] = useState('projects')
@@ -53,10 +68,7 @@ export default function AdminEditor() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const handleExport = () => {
-    const content = `const portfolio = ${JSON.stringify(data, null, 2)}\n\nexport default portfolio\n`
-    downloadFile(content, 'portfolio.js')
-  }
+  const handleExport = () => downloadJSON(data, 'portfolio.js')
 
   const handleReset = () => {
     if (confirm('Reset all changes to defaults?')) {
@@ -65,107 +77,108 @@ export default function AdminEditor() {
     }
   }
 
-  const tabs = [
-    { id: 'projects', label: 'Projects' },
-    { id: 'experience', label: 'Experience' },
-    { id: 'education', label: 'Education' },
-    { id: 'skills', label: 'Skills' },
-    { id: 'certifications', label: 'Certs' },
-    { id: 'contact', label: 'Contact' },
-    { id: 'json', label: 'Raw JSON' },
-  ]
-
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
+    <div className="admin-wrap">
+      <header className="admin-header">
         <div>
-          <h1 style={styles.title}>Portfolio Editor</h1>
-          <p style={styles.subtitle}>Edit content, then download the updated file.</p>
+          <h1 className="admin-title">Portfolio Editor</h1>
+          <p className="admin-subtitle">Edit content, then download the updated file.</p>
         </div>
-        <div style={styles.actions}>
-          <button onClick={handleSave} style={{ ...styles.btn, ...styles.btnPrimary }}>
+        <div className="admin-actions">
+          <button onClick={handleSave} className={`btn-admin ${saved ? 'btn-admin-saved' : 'btn-admin-primary'}`}>
             {saved ? 'Saved ✓' : 'Save Draft'}
           </button>
-          <button onClick={handleExport} style={{ ...styles.btn, ...styles.btnGhost }}>
+          <button onClick={handleExport} className="btn-admin btn-admin-ghost">
             Download JS
           </button>
-          <button onClick={handleReset} style={{ ...styles.btn, ...styles.btnDanger }}>
+          <button onClick={handleReset} className="btn-admin btn-admin-danger">
             Reset
           </button>
         </div>
       </header>
 
-      <nav style={styles.tabs}>
-        {tabs.map(t => (
+      <nav className="admin-tabs" role="tablist">
+        {TABS.map(t => (
           <button
             key={t.id}
+            role="tab"
+            aria-selected={activeTab === t.id}
             onClick={() => setActiveTab(t.id)}
-            style={{
-              ...styles.tab,
-              ...(activeTab === t.id ? styles.tabActive : {}),
-            }}
+            className={`admin-tab ${activeTab === t.id ? 'admin-tab-active' : ''}`}
           >
             {t.label}
           </button>
         ))}
       </nav>
 
-      <main style={styles.main}>
-        {activeTab === 'projects' && (
-          <ProjectsEditor projects={data.sections.projects.items} update={update} />
-        )}
-        {activeTab === 'experience' && (
-          <ExperienceEditor items={data.sections.experience.items} update={update} />
-        )}
-        {activeTab === 'education' && (
-          <EducationEditor items={data.sections.education.items} update={update} />
-        )}
-        {activeTab === 'skills' && (
-          <SkillsEditor skills={data.sections.skills.items} update={update} />
-        )}
-        {activeTab === 'certifications' && (
-          <CertificationsEditor items={data.sections.certifications.items} update={update} />
-        )}
-        {activeTab === 'contact' && (
-          <ContactEditor contact={data.contact} update={update} />
-        )}
-        {activeTab === 'json' && (
-          <JsonEditor data={data} update={update} />
-        )}
+      <main className="admin-main" role="tabpanel">
+        {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} />}
+        {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
+        {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
+        {activeTab === 'skills' && <SkillsEditor skills={data.sections.skills.items} update={update} />}
+        {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} />}
+        {activeTab === 'contact' && <ContactEditor contact={data.contact} update={update} />}
+        {activeTab === 'json' && <JsonEditor data={data} setData={setData} />}
       </main>
     </div>
   )
 }
 
-function Field({ label, value, onChange, multiline, type = 'text' }) {
-  const inputStyle = multiline ? styles.textarea : styles.input
+/* ── Form Primitives ────────────────────────────────────────── */
+
+function Field({ label, value, onChange, multiline, type = 'text', placeholder, help }) {
   return (
-    <label style={styles.field}>
-      <span style={styles.label}>{label}</span>
+    <div className="field">
+      <label className="field-label">{label}</label>
       {multiline ? (
         <textarea
+          className="field-textarea"
           value={value || ''}
           onChange={e => onChange(e.target.value)}
-          style={inputStyle}
+          placeholder={placeholder}
           rows={3}
         />
       ) : (
         <input
           type={type}
+          className="field-input"
           value={value || ''}
           onChange={e => onChange(e.target.value)}
-          style={inputStyle}
+          placeholder={placeholder}
         />
       )}
-    </label>
+      {help && <p className="field-help">{help}</p>}
+    </div>
   )
 }
 
-function ItemCard({ children, onRemove }) {
+function Select({ label, value, onChange, options }) {
   return (
-    <div style={styles.card}>
-      <div style={styles.cardHeader}>
-        <button onClick={onRemove} style={styles.removeBtn}>Remove</button>
+    <div className="field">
+      <label className="field-label">{label}</label>
+      <select
+        className="field-select"
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+      >
+        {options.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+function ItemCard({ children, onRemove, title, index }) {
+  return (
+    <div className="item-card">
+      <div className="item-card-header">
+        {title && <span className="item-card-title">{title}</span>}
+        <div className="item-card-actions">
+          {onRemove && (
+            <button onClick={onRemove} className="btn-remove">Remove</button>
+          )}
+        </div>
       </div>
       {children}
     </div>
@@ -174,13 +187,26 @@ function ItemCard({ children, onRemove }) {
 
 function AddButton({ onClick, label }) {
   return (
-    <button onClick={onClick} style={styles.addBtn}>+ {label}</button>
+    <button onClick={onClick} className="btn-add">
+      <span className="btn-add-icon">+</span> {label}
+    </button>
   )
 }
 
+function MoveButtons({ onUp, onDown, canUp, canDown }) {
+  return (
+    <div className="move-buttons">
+      <button onClick={onUp} disabled={canUp} className="btn-move" title="Move up">↑</button>
+      <button onClick={onDown} disabled={canDown} className="btn-move" title="Move down">↓</button>
+    </div>
+  )
+}
+
+/* ── Projects ──────────────────────────────────────────────── */
+
 function ProjectsEditor({ projects, update }) {
   const addItem = () => {
-    const newItem = {
+    update('sections.projects.items', [...projects, {
       id: `project-${Date.now()}`,
       title: 'New Project',
       description: '',
@@ -190,8 +216,7 @@ function ProjectsEditor({ projects, update }) {
       link: 'https://github.com/NITISH-R-G',
       coverImage: '',
       imageAlt: '',
-    }
-    update('sections.projects.items', [...projects, newItem])
+    }])
   }
 
   const updateItem = (i, field, value) => {
@@ -200,9 +225,7 @@ function ProjectsEditor({ projects, update }) {
     update('sections.projects.items', next)
   }
 
-  const removeItem = (i) => {
-    update('sections.projects.items', projects.filter((_, idx) => idx !== i))
-  }
+  const removeItem = (i) => update('sections.projects.items', projects.filter((_, idx) => idx !== i))
 
   const moveItem = (i, dir) => {
     const next = [...projects]
@@ -215,19 +238,22 @@ function ProjectsEditor({ projects, update }) {
   return (
     <div>
       {projects.map((p, i) => (
-        <ItemCard key={p.id} onRemove={() => removeItem(i)}>
-          <div style={styles.row}>
-            <button onClick={() => moveItem(i, -1)} style={styles.moveBtn} disabled={i === 0}>↑</button>
-            <button onClick={() => moveItem(i, 1)} style={styles.moveBtn} disabled={i === projects.length - 1}>↓</button>
+        <ItemCard key={p.id} title={p.title} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-row">
+            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === projects.length - 1} />
           </div>
-          <Field label="Title" value={p.title} onChange={v => updateItem(i, 'title', v)} />
+          <div className="field-grid">
+            <Field label="Title" value={p.title} onChange={v => updateItem(i, 'title', v)} />
+            <Field label="Icon" value={p.icon} onChange={v => updateItem(i, 'icon', v)} placeholder="e.g. Bot, Search, Train" />
+          </div>
           <Field label="Description" value={p.description} onChange={v => updateItem(i, 'description', v)} multiline />
           <Field label="Tags (comma-separated)" value={p.tags?.join(', ')} onChange={v => updateItem(i, 'tags', v.split(',').map(t => t.trim()).filter(Boolean))} />
-          <Field label="Cover Image URL" value={p.coverImage} onChange={v => updateItem(i, 'coverImage', v)} />
-          <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} />
-          <Field label="Color" value={p.color} onChange={v => updateItem(i, 'color', v)} />
-          <Field label="Icon (Lucide name)" value={p.icon} onChange={v => updateItem(i, 'icon', v)} />
-          <Field label="Link" value={p.link} onChange={v => updateItem(i, 'link', v)} />
+          <Field label="Cover Image URL" value={p.coverImage} onChange={v => updateItem(i, 'coverImage', v)} placeholder="https://images.unsplash.com/..." />
+          <Field label="Image Alt Text" value={p.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text for the image" />
+          <div className="field-grid">
+            <Field label="Color" value={p.color} onChange={v => updateItem(i, 'color', v)} type="color" />
+            <Field label="Link" value={p.link} onChange={v => updateItem(i, 'link', v)} placeholder="https://github.com/..." />
+          </div>
         </ItemCard>
       ))}
       <AddButton onClick={addItem} label="Add Project" />
@@ -235,16 +261,17 @@ function ProjectsEditor({ projects, update }) {
   )
 }
 
+/* ── Experience ──────────────────────────────────────────────── */
+
 function ExperienceEditor({ items, update }) {
   const addItem = () => {
-    const newItem = {
+    update('sections.experience.items', [...items, {
       role: 'New Role',
       company: 'Company',
       location: 'Location',
       period: 'Start – End',
       description: '',
-    }
-    update('sections.experience.items', [...items, newItem])
+    }])
   }
 
   const updateItem = (i, field, value) => {
@@ -253,9 +280,7 @@ function ExperienceEditor({ items, update }) {
     update('sections.experience.items', next)
   }
 
-  const removeItem = (i) => {
-    update('sections.experience.items', items.filter((_, idx) => idx !== i))
-  }
+  const removeItem = (i) => update('sections.experience.items', items.filter((_, idx) => idx !== i))
 
   const moveItem = (i, dir) => {
     const next = [...items]
@@ -268,15 +293,18 @@ function ExperienceEditor({ items, update }) {
   return (
     <div>
       {items.map((exp, i) => (
-        <ItemCard key={i} onRemove={() => removeItem(i)}>
-          <div style={styles.row}>
-            <button onClick={() => moveItem(i, -1)} style={styles.moveBtn} disabled={i === 0}>↑</button>
-            <button onClick={() => moveItem(i, 1)} style={styles.moveBtn} disabled={i === items.length - 1}>↓</button>
+        <ItemCard key={i} title={exp.role} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-row">
+            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
           </div>
-          <Field label="Role" value={exp.role} onChange={v => updateItem(i, 'role', v)} />
-          <Field label="Company" value={exp.company} onChange={v => updateItem(i, 'company', v)} />
-          <Field label="Location" value={exp.location} onChange={v => updateItem(i, 'location', v)} />
-          <Field label="Period" value={exp.period} onChange={v => updateItem(i, 'period', v)} />
+          <div className="field-grid">
+            <Field label="Role" value={exp.role} onChange={v => updateItem(i, 'role', v)} />
+            <Field label="Company" value={exp.company} onChange={v => updateItem(i, 'company', v)} />
+          </div>
+          <div className="field-grid">
+            <Field label="Location" value={exp.location} onChange={v => updateItem(i, 'location', v)} />
+            <Field label="Period" value={exp.period} onChange={v => updateItem(i, 'period', v)} />
+          </div>
           <Field label="Description" value={exp.description} onChange={v => updateItem(i, 'description', v)} multiline />
         </ItemCard>
       ))}
@@ -285,16 +313,17 @@ function ExperienceEditor({ items, update }) {
   )
 }
 
+/* ── Education ──────────────────────────────────────────────── */
+
 function EducationEditor({ items, update }) {
   const addItem = () => {
-    const newItem = {
+    update('sections.education.items', [...items, {
       institution: 'Institution',
       degree: 'Degree',
       location: 'Location',
       period: 'Start – End',
       description: '',
-    }
-    update('sections.education.items', [...items, newItem])
+    }])
   }
 
   const updateItem = (i, field, value) => {
@@ -303,18 +332,20 @@ function EducationEditor({ items, update }) {
     update('sections.education.items', next)
   }
 
-  const removeItem = (i) => {
-    update('sections.education.items', items.filter((_, idx) => idx !== i))
-  }
+  const removeItem = (i) => update('sections.education.items', items.filter((_, idx) => idx !== i))
 
   return (
     <div>
       {items.map((edu, i) => (
-        <ItemCard key={i} onRemove={() => removeItem(i)}>
-          <Field label="Institution" value={edu.institution} onChange={v => updateItem(i, 'institution', v)} />
-          <Field label="Degree" value={edu.degree} onChange={v => updateItem(i, 'degree', v)} />
-          <Field label="Location" value={edu.location} onChange={v => updateItem(i, 'location', v)} />
-          <Field label="Period" value={edu.period} onChange={v => updateItem(i, 'period', v)} />
+        <ItemCard key={i} title={edu.institution} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-grid">
+            <Field label="Institution" value={edu.institution} onChange={v => updateItem(i, 'institution', v)} />
+            <Field label="Degree" value={edu.degree} onChange={v => updateItem(i, 'degree', v)} />
+          </div>
+          <div className="field-grid">
+            <Field label="Location" value={edu.location} onChange={v => updateItem(i, 'location', v)} />
+            <Field label="Period" value={edu.period} onChange={v => updateItem(i, 'period', v)} />
+          </div>
           <Field label="Description" value={edu.description} onChange={v => updateItem(i, 'description', v)} multiline />
         </ItemCard>
       ))}
@@ -322,6 +353,8 @@ function EducationEditor({ items, update }) {
     </div>
   )
 }
+
+/* ── Skills ──────────────────────────────────────────────── */
 
 function SkillsEditor({ skills, update }) {
   return (
@@ -336,32 +369,64 @@ function SkillsEditor({ skills, update }) {
   )
 }
 
+/* ── Certifications ──────────────────────────────────────────── */
+
 function CertificationsEditor({ items, update }) {
   const addItem = () => {
-    update('sections.certifications.items', [...items, 'New Certification'])
+    update('sections.certifications.items', [...items, {
+      id: `cert-${Date.now()}`,
+      title: 'New Certification',
+      issuer: '',
+      date: '',
+      credential: '',
+      image: '',
+      imageAlt: '',
+      description: '',
+    }])
   }
 
-  const updateItem = (i, value) => {
+  const updateItem = (i, field, value) => {
     const next = [...items]
-    next[i] = value
+    next[i] = { ...next[i], [field]: value }
     update('sections.certifications.items', next)
   }
 
-  const removeItem = (i) => {
-    update('sections.certifications.items', items.filter((_, idx) => idx !== i))
+  const removeItem = (i) => update('sections.certifications.items', items.filter((_, idx) => idx !== i))
+
+  const moveItem = (i, dir) => {
+    const next = [...items]
+    const j = i + dir
+    if (j < 0 || j >= next.length) return
+    ;[next[i], next[j]] = [next[j], next[i]]
+    update('sections.certifications.items', next)
   }
 
   return (
     <div>
       {items.map((cert, i) => (
-        <ItemCard key={i} onRemove={() => removeItem(i)}>
-          <Field label={`Certification ${i + 1}`} value={cert} onChange={v => updateItem(i, v)} />
+        <ItemCard key={cert.id} title={cert.title} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-row">
+            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
+          </div>
+          <div className="field-grid">
+            <Field label="Title" value={cert.title} onChange={v => updateItem(i, 'title', v)} />
+            <Field label="Issuer" value={cert.issuer} onChange={v => updateItem(i, 'issuer', v)} placeholder="e.g. HackerRank, AWS, Google" />
+          </div>
+          <div className="field-grid">
+            <Field label="Date" value={cert.date} onChange={v => updateItem(i, 'date', v)} placeholder="e.g. 2025, Nov 2025 – Nov 2028" />
+            <Field label="Credential" value={cert.credential} onChange={v => updateItem(i, 'credential', v)} placeholder="e.g. #73 Globally, Completion" />
+          </div>
+          <Field label="Description" value={cert.description} onChange={v => updateItem(i, 'description', v)} multiline />
+          <Field label="Image URL" value={cert.image} onChange={v => updateItem(i, 'image', v)} placeholder="https://..." />
+          <Field label="Image Alt Text" value={cert.imageAlt} onChange={v => updateItem(i, 'imageAlt', v)} placeholder="Descriptive alt text" />
         </ItemCard>
       ))}
       <AddButton onClick={addItem} label="Add Certification" />
     </div>
   )
 }
+
+/* ── Contact ──────────────────────────────────────────────── */
 
 function ContactEditor({ contact, update }) {
   const updateLink = (i, field, value) => {
@@ -382,9 +447,11 @@ function ContactEditor({ contact, update }) {
     <div>
       <Field label="CTA Text" value={contact.cta} onChange={v => update('contact.cta', v)} multiline />
       {contact.links.map((link, i) => (
-        <ItemCard key={i} onRemove={() => removeLink(i)}>
-          <Field label="Label" value={link.label} onChange={v => updateLink(i, 'label', v)} />
-          <Field label="Value" value={link.value} onChange={v => updateLink(i, 'value', v)} />
+        <ItemCard key={i} title={link.label} index={i} onRemove={() => removeLink(i)}>
+          <div className="field-grid">
+            <Field label="Label" value={link.label} onChange={v => updateLink(i, 'label', v)} />
+            <Field label="Value" value={link.value} onChange={v => updateLink(i, 'value', v)} />
+          </div>
           <Field label="Href" value={link.href} onChange={v => updateLink(i, 'href', v)} />
         </ItemCard>
       ))}
@@ -393,9 +460,16 @@ function ContactEditor({ contact, update }) {
   )
 }
 
-function JsonEditor({ data, update }) {
-  const [json, setJson] = useState(JSON.stringify(data, null, 2))
+/* ── Raw JSON ──────────────────────────────────────────────── */
+
+function JsonEditor({ data, setData }) {
+  const [json, setJson] = useState(() => JSON.stringify(data, null, 2))
   const [error, setError] = useState(null)
+  const textareaRef = useRef(null)
+
+  useEffect(() => {
+    setJson(JSON.stringify(data, null, 2))
+  }, [data])
 
   const handleApply = () => {
     try {
@@ -407,160 +481,24 @@ function JsonEditor({ data, update }) {
     }
   }
 
-  const setData = (parsed) => {
-    update('__root', parsed)
-  }
-
   return (
     <div>
-      <p style={styles.help}>
+      <p className="field-help">
         Edit the raw JSON below. Click "Apply" to update the editor state.
       </p>
       <textarea
+        ref={textareaRef}
+        className="field-json"
         value={json}
         onChange={e => setJson(e.target.value)}
-        style={styles.jsonArea}
         spellCheck={false}
       />
-      {error && <p style={styles.error}>JSON Error: {error}</p>}
-      <button onClick={handleApply} style={{ ...styles.btn, ...styles.btnPrimary, marginTop: 8 }}>
-        Apply JSON
-      </button>
+      {error && <p className="field-error">JSON Error: {error}</p>}
+      <div className="field-row" style={{ marginTop: 8 }}>
+        <button onClick={handleApply} className="btn-admin btn-admin-primary">
+          Apply JSON
+        </button>
+      </div>
     </div>
   )
-}
-
-const styles = {
-  container: {
-    fontFamily: "'Inter', system-ui, sans-serif",
-    background: '#000000',
-    color: '#fff',
-    minHeight: '100vh',
-    padding: '24px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  title: { fontSize: '1.5rem', fontWeight: 600, margin: 0 },
-  subtitle: { fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' },
-  actions: { display: 'flex', gap: 8 },
-  btn: {
-    padding: '8px 16px',
-    borderRadius: 6,
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.06)',
-    color: '#fff',
-    fontSize: '0.8125rem',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  btnPrimary: { background: '#f0f0f0', color: '#000000', border: 'none' },
-  btnGhost: { background: 'transparent' },
-  btnDanger: { background: 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' },
-  tabs: {
-    display: 'flex',
-    gap: 4,
-    marginBottom: 24,
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
-    paddingBottom: 8,
-    overflowX: 'auto',
-  },
-  tab: {
-    padding: '6px 14px',
-    borderRadius: 6,
-    border: 'none',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: '0.8125rem',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    whiteSpace: 'nowrap',
-  },
-  tabActive: { background: 'rgba(255,255,255,0.1)', color: '#fff' },
-  main: { maxWidth: 720 },
-  card: {
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    background: 'rgba(255,255,255,0.03)',
-  },
-  cardHeader: { display: 'flex', justifyContent: 'flex-end', marginBottom: 8 },
-  field: { display: 'block', marginBottom: 12 },
-  label: { display: 'block', fontSize: '0.6875rem', color: 'rgba(255,255,255,0.5)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  input: {
-    width: '100%',
-    padding: '8px 12px',
-    borderRadius: 6,
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.06)',
-    color: '#fff',
-    fontSize: '0.8125rem',
-    fontFamily: 'inherit',
-    outline: 'none',
-  },
-  textarea: {
-    width: '100%',
-    padding: '8px 12px',
-    borderRadius: 6,
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.06)',
-    color: '#fff',
-    fontSize: '0.8125rem',
-    fontFamily: 'inherit',
-    outline: 'none',
-    resize: 'vertical',
-    minHeight: 80,
-  },
-  jsonArea: {
-    width: '100%',
-    minHeight: 400,
-    padding: 12,
-    borderRadius: 6,
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.03)',
-    color: '#e2e8f0',
-    fontSize: '0.75rem',
-    fontFamily: "'SF Mono', 'Fira Code', monospace",
-    outline: 'none',
-    resize: 'vertical',
-    lineHeight: 1.5,
-  },
-  row: { display: 'flex', gap: 4, marginBottom: 8 },
-  moveBtn: {
-    padding: '4px 8px',
-    borderRadius: 4,
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.5)',
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-  },
-  removeBtn: {
-    padding: '4px 10px',
-    borderRadius: 4,
-    border: '1px solid rgba(239,68,68,0.3)',
-    background: 'transparent',
-    color: '#ef4444',
-    cursor: 'pointer',
-    fontSize: '0.6875rem',
-  },
-  addBtn: {
-    padding: '10px 16px',
-    borderRadius: 6,
-    border: '1px dashed rgba(255,255,255,0.15)',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.5)',
-    cursor: 'pointer',
-    fontSize: '0.8125rem',
-    width: '100%',
-    fontFamily: 'inherit',
-  },
-  help: { fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
-  error: { fontSize: '0.8125rem', color: '#ef4444', marginTop: 8 },
 }

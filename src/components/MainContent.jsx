@@ -1,9 +1,11 @@
-import { motion } from 'motion/react'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import ProjectCarousel from './ProjectCarousel'
 import Button from './Button'
 import Icon from './Icon'
+import CertGallery from './CertGallery'
 
 const container = {
   hidden: {},
@@ -90,13 +92,7 @@ export default function MainContent() {
       {sections.certifications.enabled && sections.certifications.items && (
         <motion.section id="certifications" className="content-section" variants={sectionItem}>
           <h2 className="section-label">CERTIFICATIONS</h2>
-          <div className="certifications-list">
-            {sections.certifications.items.map((cert, i) => (
-              <div key={i} className="certification-item">
-                {cert}
-              </div>
-            ))}
-          </div>
+          <CertGallery certs={sections.certifications.items} reducedMotion={reducedMotion} />
         </motion.section>
       )}
       

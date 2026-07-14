@@ -211,11 +211,56 @@ export const portfolioData = {
     certifications: {
       enabled: true,
       items: [
-        "HackerRank 5-Star Gold — SQL | Ranked #73 Globally — HackerRank Orchestrate Autonomous AI Agents",
-        "Oracle Cloud Infrastructure 2025: Generative AI Professional | Data Science Professional | AI Foundations",
-        "Google Gemini Certified University Student (Nov 2025 – Nov 2028)",
-        "AWS: Generative AI Fundamentals | Foundations of Prompt Engineering | ML & AI Fundamentals",
-        "McKinsey Forward Program — Completion Certificate"
+        {
+          id: 'cert-1',
+          title: 'HackerRank 5-Star Gold — SQL',
+          issuer: 'HackerRank',
+          date: '',
+          credential: '#73 Globally',
+          image: '',
+          imageAlt: 'HackerRank certification badge',
+          description: 'Ranked #73 Globally — Orchestrate Autonomous AI Agents'
+        },
+        {
+          id: 'cert-2',
+          title: 'Oracle Cloud Infrastructure 2025',
+          issuer: 'Oracle',
+          date: '2025',
+          credential: 'Generative AI Professional',
+          image: '',
+          imageAlt: 'Oracle Cloud Infrastructure certification',
+          description: 'Data Science Professional, AI Foundations'
+        },
+        {
+          id: 'cert-3',
+          title: 'Google Gemini Certified University Student',
+          issuer: 'Google',
+          date: 'Nov 2025 – Nov 2028',
+          credential: '',
+          image: '',
+          imageAlt: 'Google Gemini certification',
+          description: 'Gemini for Google Workspace certification for university students'
+        },
+        {
+          id: 'cert-4',
+          title: 'AWS AI/ML Certifications',
+          issuer: 'AWS',
+          date: '',
+          credential: 'Multiple Certificates',
+          image: '',
+          imageAlt: 'AWS certification badges',
+          description: 'Generative AI Fundamentals, Foundations of Prompt Engineering, ML & AI Fundamentals'
+        },
+        {
+          id: 'cert-5',
+          title: 'McKinsey Forward Program',
+          issuer: 'McKinsey',
+          date: '',
+          credential: 'Completion Certificate',
+          image: '',
+          imageAlt: 'McKinsey Forward Program certificate',
+          description: 'Problem-solving and leadership program'
+        }
       ]
     },
 
