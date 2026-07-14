@@ -169,19 +169,55 @@ export default function MainContent() {
         <GenericSection key={s.id} id={s.id} label={s.label} items={s.items} fields={s.fields} icon={s.icon} useCaseStudy={s.useCaseStudy} />
       ))}
 
-      {sections.resume?.enabled && sections.resume?.url && (
+      {sections.resume?.enabled && sections.resume?.items?.length > 0 && (
         <motion.section id="resume" className="content-section" variants={sectionItem}>
           <h2 className="section-label">RESUME</h2>
-          <Button variant="primary" href={sections.resume.url} externalIcon>
-            {sections.resume.text || 'Download Resume'}
-          </Button>
+          <div className="resume-variants">
+            {sections.resume.items.map((item, i) => (
+              item.url ? (
+                <div key={item.id || i} className="resume-variant">
+                  <Button variant="primary" href={item.url} externalIcon>
+                    {item.label || 'Download Resume'}
+                  </Button>
+                  {item.note && <p className="resume-note">{item.note}</p>}
+                </div>
+              ) : null
+            ))}
+          </div>
         </motion.section>
       )}
 
       {contact.enabled && (
         <motion.section id="contact" className="content-section" variants={sectionItem}>
           <h2 className="section-label">CONTACT</h2>
+
+          {contact.availability?.status && contact.availability.status !== 'closed' && (
+            <div className="contact-availability">
+              <span className={`availability-badge availability-${contact.availability.status}`}>
+                {contact.availability.label || 'Open to opportunities'}
+              </span>
+              {contact.availability.currentAffiliation && (
+                <span className="availability-affiliation">{contact.availability.currentAffiliation}</span>
+              )}
+            </div>
+          )}
+
           <p className="contact-cta">{contact.cta}</p>
+
+          {contact.availability?.preferredRoles?.length > 0 && (
+            <div className="contact-preferred">
+              <span className="contact-preferred-label">Preferred roles:</span>
+              <span className="contact-preferred-items">{contact.availability.preferredRoles.join(' · ')}</span>
+            </div>
+          )}
+
+          {contact.availability?.preferredLocations?.length > 0 && (
+            <div className="contact-preferred">
+              <span className="contact-preferred-label">Location:</span>
+              <span className="contact-preferred-items">{contact.availability.preferredLocations.join(' · ')}</span>
+            </div>
+          )}
+
           <div className="contact-table">
             {contact.links.map((link, i) => (
               <Button
@@ -196,6 +232,10 @@ export default function MainContent() {
               </Button>
             ))}
           </div>
+
+          {contact.availability?.responseTime && (
+            <p className="contact-response-time">{contact.availability.responseTime}</p>
+          )}
         </motion.section>
       )}
 

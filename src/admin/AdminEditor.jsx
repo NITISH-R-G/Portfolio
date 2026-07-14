@@ -1228,19 +1228,56 @@ function ContactEditor({ contact, update }) {
     update('contact.links', contact.links.filter((_, idx) => idx !== i))
   }
 
+  const availability = contact.availability || { status: 'closed', label: '', interests: [], preferredRoles: [], preferredLocations: [], responseTime: '', currentAffiliation: '' }
+
+  const updateAvailability = (field, value) => {
+    update('contact.availability', { ...availability, [field]: value })
+  }
+
   return (
     <div>
-      <Field label="CTA Text" value={contact.cta} onChange={v => update('contact.cta', v)} multiline />
-      {contact.links.map((link, i) => (
-        <ItemCard key={i} title={link.label} index={i} onRemove={() => removeLink(i)}>
-          <div className="field-grid">
-            <Field label="Label" value={link.label} onChange={v => updateLink(i, 'label', v)} />
-            <Field label="Value" value={link.value} onChange={v => updateLink(i, 'value', v)} />
-          </div>
-          <UrlField label="Href" value={link.href} onChange={v => updateLink(i, 'href', v)} placeholder="https://..." />
-        </ItemCard>
-      ))}
-      <AddButton onClick={addLink} label="Add Contact Link" />
+      <FieldGroup label="CTA & Message">
+        <Field label="CTA Text" value={contact.cta} onChange={v => update('contact.cta', v)} multiline />
+        <Field label="Email" value={contact.email || ''} onChange={v => update('contact.email', v)} type="email" placeholder="you@example.com" />
+        <div className="field-grid">
+          <UrlField label="GitHub" value={contact.github || ''} onChange={v => update('contact.github', v)} placeholder="https://github.com/..." />
+          <UrlField label="LinkedIn" value={contact.linkedin || ''} onChange={v => update('contact.linkedin', v)} placeholder="https://linkedin.com/in/..." />
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Availability & Status" collapsible defaultOpen={false}>
+        <div className="field-grid">
+          <Select label="Status" value={availability.status} onChange={v => updateAvailability('status', v)} options={[
+            { value: 'open', label: 'Open to opportunities' },
+            { value: 'selective', label: 'Selective' },
+            { value: 'closed', label: 'Not available' },
+          ]} />
+          <Field label="Status Label" value={availability.label} onChange={v => updateAvailability('label', v)} placeholder="e.g. Open to opportunities" help="Short status message shown on public site" />
+        </div>
+        <TagsEditor tags={availability.interests || []} onChange={v => updateAvailability('interests', v)} />
+        <p className="field-help">Interests: internships, full-time, collaboration, research, speaking, freelance</p>
+        <TagsEditor tags={availability.preferredRoles || []} onChange={v => updateAvailability('preferredRoles', v)} />
+        <p className="field-help">Preferred roles: Software Engineer, ML Engineer, etc.</p>
+        <TagsEditor tags={availability.preferredLocations || []} onChange={v => updateAvailability('preferredLocations', v)} />
+        <p className="field-help">Preferred locations: Remote, India, etc.</p>
+        <div className="field-grid">
+          <Field label="Response Time" value={availability.responseTime || ''} onChange={v => updateAvailability('responseTime', v)} placeholder="e.g. Usually responds within 24 hours" />
+          <Field label="Current Affiliation" value={availability.currentAffiliation || ''} onChange={v => updateAvailability('currentAffiliation', v)} placeholder="e.g. B.S. Data Science @ IIT Madras" />
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Contact Links">
+        {contact.links.map((link, i) => (
+          <ItemCard key={i} title={link.label} index={i} onRemove={() => removeLink(i)}>
+            <div className="field-grid">
+              <Field label="Label" value={link.label} onChange={v => updateLink(i, 'label', v)} />
+              <Field label="Value" value={link.value} onChange={v => updateLink(i, 'value', v)} />
+            </div>
+            <UrlField label="Href" value={link.href} onChange={v => updateLink(i, 'href', v)} placeholder="https://..." />
+          </ItemCard>
+        ))}
+        <AddButton onClick={addLink} label="Add Contact Link" />
+      </FieldGroup>
     </div>
   )
 }
@@ -1434,11 +1471,61 @@ function EnhancedListEditor({ sectionKey, section, update, basicFields = [], ext
 /* ── Resume ──────────────────────────────────────────────── */
 
 function ResumeEditor({ resume, update }) {
+  const items = resume?.items || []
+
+  const addItem = () => {
+    update('sections.resume.items', [...items, {
+      id: `resume-${Date.now()}`,
+      label: 'Resume',
+      url: '',
+      note: '',
+      variant: 'resume',
+    }])
+  }
+
+  const updateItem = (i, field, value) => {
+    const next = [...items]
+    next[i] = { ...next[i], [field]: value }
+    update('sections.resume.items', next)
+  }
+
+  const removeItem = (i) => {
+    update('sections.resume.items', items.filter((_, idx) => idx !== i))
+  }
+
+  const moveItem = (i, dir) => {
+    const next = [...items]
+    const j = i + dir
+    if (j < 0 || j >= next.length) return
+    ;[next[i], next[j]] = [next[j], next[i]]
+    update('sections.resume.items', next)
+  }
+
   return (
     <div>
-      <Toggle label="Section enabled" checked={resume?.enabled !== false} onChange={v => update('sections.resume.enabled', v)} help="Show resume download link on public site" />
-      <Field label="Resume URL" value={resume?.url || ''} onChange={v => update('sections.resume.url', v)} placeholder="https://drive.google.com/..." type="url" help="Link to your resume PDF" />
-      <Field label="Button Text" value={resume?.text || ''} onChange={v => update('sections.resume.text', v)} placeholder="e.g. Download Resume" help="Text shown on the download button" />
+      <Toggle label="Section enabled" checked={resume?.enabled !== false} onChange={v => update('sections.resume.enabled', v)} help="Show resume download links on public site" />
+      <p className="field-help" style={{ margin: '8px 0 16px' }}>
+        Add resume variants (e.g. standard resume, one-page CV, academic CV, research CV). ATS-friendly tip: use clear labels like "Software Engineering Resume" or "Research CV".
+      </p>
+      {items.map((item, i) => (
+        <ItemCard key={item.id || i} title={item.label || `Variant ${i + 1}`} index={i} onRemove={() => removeItem(i)}>
+          <div className="field-row">
+            <MoveButtons onUp={() => moveItem(i, -1)} onDown={() => moveItem(i, 1)} canUp={i === 0} canDown={i === items.length - 1} />
+          </div>
+          <div className="field-grid">
+            <Field label="Label" value={item.label} onChange={v => updateItem(i, 'label', v)} placeholder="e.g. Resume, One-Page CV, Research CV" help="Display label on the button" />
+            <Select label="Variant" value={item.variant} onChange={v => updateItem(i, 'variant', v)} options={[
+              { value: 'resume', label: 'Standard Resume' },
+              { value: 'cv', label: 'Full CV' },
+              { value: 'onepage', label: 'One-Page Version' },
+              { value: 'research', label: 'Research CV' },
+            ]} />
+          </div>
+          <UrlField label="Download URL" value={item.url} onChange={v => updateItem(i, 'url', v)} placeholder="https://drive.google.com/..." help="Link to the resume PDF" />
+          <Field label="Note (optional)" value={item.note} onChange={v => updateItem(i, 'note', v)} placeholder="e.g. ATS-friendly, Last updated Jan 2026" help="Short note shown below the button" />
+        </ItemCard>
+      ))}
+      <AddButton onClick={addItem} label="Add Resume Variant" />
     </div>
   )
 }

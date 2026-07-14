@@ -634,8 +634,15 @@ export const portfolioData = {
 
     resume: {
       enabled: false,
-      url: '',
-      text: ''
+      items: [
+        {
+          id: 'resume-main',
+          label: 'Resume',
+          url: '',
+          note: '',
+          variant: 'resume'
+        }
+      ]
     }
   },
 
@@ -645,6 +652,15 @@ export const portfolioData = {
     email: "nitishrg.8220psgps2020@gmail.com",
     github: "https://github.com/NITISH-R-G",
     linkedin: "",
+    availability: {
+      status: "open",
+      label: "Open to opportunities",
+      interests: ["internships", "full-time", "collaboration", "research", "speaking"],
+      preferredRoles: ["Software Engineer", "ML Engineer", "Full-Stack Developer", "Data Scientist"],
+      preferredLocations: ["Remote", "India"],
+      responseTime: "Usually responds within 24 hours",
+      currentAffiliation: "B.S. Data Science @ IIT Madras"
+    },
     links: [
       { label: "Email", value: "nitishrg.8220psgps2020@gmail.com", href: "mailto:nitishrg.8220psgps2020@gmail.com" },
       { label: "GitHub", value: "github.com/NITISH-R-G", href: "https://github.com/NITISH-R-G" }
