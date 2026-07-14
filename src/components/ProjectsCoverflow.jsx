@@ -1,11 +1,17 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import Icon from './Icon'
 
-function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMotion }) {
+function CoverflowCard({ project, index, activeIndex, onSelect, reducedMotion }) {
   const diff = useTransform(activeIndex, (latest) => latest - index)
+
+  const isActive = useTransform(diff, (d) => Math.abs(d) < 0.5)
+  const isNeighbor = useTransform(diff, (d) => {
+    const absD = Math.abs(d)
+    return absD >= 0.5 && absD < 1.5
+  })
 
   const x = useTransform(diff, (d) => {
     if (reducedMotion) return '0%'
@@ -78,7 +84,6 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
         width: 'clamp(300px, 55%, 460px)',
         marginLeft: 'clamp(-150px, -27.5%, -230px)',
         transformOrigin: 'center center',
-        willChange: 'transform, opacity',
       }}
       transition={springTransition}
     >
@@ -95,7 +100,6 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
         <motion.div
           className="coverflow-info"
           style={{ opacity: infoOpacity, pointerEvents: 'none' }}
-          transition={reducedMotion ? { duration: 0 } : { duration: 0.15 }}
         >
           <h3 className="coverflow-title">{project.title}</h3>
           <p className="coverflow-desc">{project.description}</p>
@@ -171,7 +175,6 @@ export default function ProjectsCoverflow({ projects }) {
               project={project}
               index={i}
               activeIndex={motionIndex}
-              total={total}
               onSelect={goTo}
               reducedMotion={reducedMotion}
             />

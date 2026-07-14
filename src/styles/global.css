@@ -277,6 +277,7 @@ a {
   width: 100%;
   user-select: none;
   padding: var(--space-4) 0;
+  contain: layout style;
 }
 
 .coverflow-viewport {
@@ -284,20 +285,22 @@ a {
   width: 100%;
   height: clamp(320px, 36vw, 420px);
   overflow: visible;
-  perspective: 1000px;
+  contain: layout style;
 }
 
 .coverflow-track {
   position: relative;
   width: 100%;
   height: 100%;
+  contain: layout style;
 }
 
 .coverflow-card {
   cursor: pointer;
   outline: none;
-  transform-style: preserve-3d;
-  contain: layout style;
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: clamp(300px, 55%, 460px) clamp(150px, 18vw, 210px);
 }
 
 .coverflow-card:focus-visible {
@@ -311,7 +314,6 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   min-height: clamp(150px, 18vw, 210px);
@@ -320,7 +322,6 @@ a {
 
 .coverflow-card-inner:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .coverflow-image-area {
@@ -345,9 +346,7 @@ a {
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
-  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--color-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
 }
