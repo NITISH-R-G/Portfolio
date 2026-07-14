@@ -28,7 +28,7 @@ export const portfolioData = {
 
   about: {
     enabled: true,
-    text: "Software engineering student at IIT Madras (B.S. Data Science) with strong foundations in computer science, data structures, algorithms, and object-oriented programming. Ranked #73 globally for autonomous AI agent creation (HackerRank Orchestrate June 2026) and holds a HackerRank 5-Star Gold badge in SQL. Experienced in designing, developing, and testing software systems across Python, TypeScript, JavaScript, and C++. Passionate about leveraging new technologies and engineering best practices to ship products that have real-world impact."
+    text: "Software engineering student at IIT Madras (B.S. Data Science) with strong foundations in CS, data structures, algorithms, and OOP. Ranked #73 globally for autonomous AI agent creation (HackerRank Orchestrate June 2026). HackerRank 5-Star Gold in SQL. Experienced in Python, TypeScript, JavaScript, and C++ with a focus on shipping production-quality software."
   },
 
   skills: {
@@ -77,8 +77,8 @@ export const portfolioData = {
   sections: {
     intro: {
       enabled: true,
-      text: "I'm Nitish R.G., a software engineering student at IIT Madras ranked #73 globally for autonomous AI agent creation. I build AI/ML systems, full-stack applications, and data-driven solutions with real-world impact.",
-      subtext: "Currently pursuing B.S. Data Science at IIT Madras and B.E. Computer Science at Sri Shakthi Institute. Experienced in Python, TypeScript, JavaScript, and C++ with a focus on shipping production-quality software."
+      text: "I'm Nitish R.G., a software engineering student at IIT Madras ranked #73 globally for autonomous AI agent creation. I build AI/ML systems, full-stack applications, and data-driven solutions.",
+      subtext: "Pursuing B.S. Data Science at IIT Madras and B.E. Computer Science at Sri Shakthi Institute. Experienced in Python, TypeScript, JavaScript, and C++."
     },
 
     projects: {
@@ -87,7 +87,7 @@ export const portfolioData = {
         {
           id: "raven",
           title: "RAVEN — Relational Verification Engine",
-          description: "Multi-layer financial fraud detection system combining document ingestion, cross-document coherence verification, and graph-based fraud ring detection using NetworkX.",
+          description: "Multi-layer financial fraud detection combining document ingestion, cross-document coherence scoring, and graph-based fraud ring detection using NetworkX.",
           role: "Lead Engineer",
           team: "Solo",
           context: "Personal project exploring financial AI systems",
@@ -116,7 +116,7 @@ export const portfolioData = {
         {
           id: "clicky",
           title: "clicky (YC-backed fork)",
-          description: "Ported a YC-backed startup's macOS-only Swift application to Windows by rewriting the core in C# and .NET with multi-provider AI SDK support.",
+          description: "Ported a YC-backed macOS Swift app to Windows by rewriting the core in C# .NET with multi-provider AI SDK support.",
           role: "Core Contributor",
           team: "2 engineers",
           context: "Open-source contribution to a YC-backed startup",
@@ -145,7 +145,7 @@ export const portfolioData = {
         {
           id: "intelli-credit",
           title: "Intelli-Credit",
-          description: "Three-generation AI credit decision engine: rule-driven frontend → TypeScript REST API → Python ML risk model with logistic regression and tree-based classifiers.",
+          description: "Three-generation AI credit decision engine: rule-based frontend → TypeScript REST API → Python ML risk model with logistic regression and gradient-boosted trees.",
           role: "ML Engineer & Backend Developer",
           team: "Solo",
           context: "Academic project exploring ML in financial services",
@@ -174,7 +174,7 @@ export const portfolioData = {
         {
           id: "roadsos",
           title: "RoadSOS",
-          description: "Cross-platform emergency roadside app: real-time GPS, SOS dispatch, nearest-responder matching algorithm, and offline-first architecture.",
+          description: "Cross-platform emergency roadside app with real-time GPS, SOS dispatch, nearest-responder matching, and offline-first architecture.",
           role: "Mobile Developer",
           team: "Solo",
           context: "Personal project addressing real-world safety needs",
@@ -203,7 +203,7 @@ export const portfolioData = {
         {
           id: "discourse-rag",
           title: "discourse-rag-assistant",
-          description: "Document-grounded RAG system with FAISS vector indexing, semantic chunking, and structured prompt pipelines. Benchmarked using MRR and Recall@K.",
+          description: "Document-grounded RAG system with FAISS vector indexing, semantic chunking, and structured prompt pipelines. Benchmarked with MRR and Recall@K.",
           role: "AI/ML Engineer",
           team: "Solo",
           context: "Research-oriented project exploring RAG systems",
@@ -232,7 +232,7 @@ export const portfolioData = {
         {
           id: "railatc",
           title: "RailATC",
-          description: "Automatic Train Control simulation implementing block signaling algorithms and collision-avoidance logic using graph traversal and state-machine design.",
+          description: "Automatic Train Control simulation with block signaling algorithms and collision-avoidance logic using graph traversal and state-machine design.",
           role: "Simulation Engineer",
           team: "Solo",
           context: "Academic project exploring safety-critical systems",
@@ -269,7 +269,7 @@ export const portfolioData = {
           company: "CODESTREAK",
           location: "Remote",
           period: "Nov 2025 – Present",
-          description: "Founded and scaled an international AI/data engineering community with talents from IITs, Stanford, University of Toronto, researchers worldwide, and professionals from quant firms.",
+          description: "Founded and scaled an international AI/data engineering community with members from IITs, Stanford, University of Toronto, and quant firms.",
           responsibilities: [
             "Founded and scaled community to 200+ members across 15 countries",
             "Designed technical curriculum covering AI/ML, data engineering, and systems design",
@@ -290,7 +290,7 @@ export const portfolioData = {
           company: "Infosys Springboard",
           location: "Remote",
           period: "Dec 2025 – Feb 2026",
-          description: "Completed advanced AI/data science engineering tracks; delivered production-style technical assignments covering deep learning, NLP, and applied ML pipelines.",
+          description: "Completed advanced AI/data science tracks; delivered production-style assignments covering deep learning, NLP, and applied ML pipelines.",
           responsibilities: [
             "Completed 3 advanced AI/ML engineering tracks",
             "Built production-style NLP pipelines for text classification",
@@ -308,7 +308,7 @@ export const portfolioData = {
           company: "EVOASTRA Ventures Pvt Ltd",
           location: "Remote",
           period: "Sep 2025 – Nov 2025",
-          description: "Executed end-to-end data science workflows: EDA, feature engineering, model prototyping, performance benchmarking, and insight generation for applied business use cases.",
+          description: "Executed end-to-end data science workflows: EDA, feature engineering, model prototyping, and insight generation for applied business use cases.",
           responsibilities: [
             "Led EDA and feature engineering for 3 business datasets",
             "Prototyped and benchmarked 5 ML models for demand forecasting",
@@ -326,7 +326,7 @@ export const portfolioData = {
           company: "SCJ Entertainments",
           location: "Remote",
           period: "Aug 2025 – Nov 2025",
-          description: "Implemented and integrated AI/ML components within production delivery cycles; applied sound engineering principles to model deployment and software release activities.",
+          description: "Implemented AI/ML components within production delivery cycles; applied engineering principles to model deployment and release activities.",
           responsibilities: [
             "Integrated ML models into production delivery pipelines",
             "Built automated testing for model inference endpoints",
@@ -344,7 +344,7 @@ export const portfolioData = {
           company: "Suvidha Foundation",
           location: "Remote",
           period: "Aug 2025 – Oct 2025",
-          description: "Built and validated ML pipelines: data preprocessing, feature selection, model training, hyperparameter tuning, and evaluation using scikit-learn on real-world datasets.",
+          description: "Built and validated ML pipelines: data preprocessing, feature selection, model training, and evaluation using scikit-learn.",
           responsibilities: [
             "Built end-to-end ML pipelines for 2 classification tasks",
             "Implemented hyperparameter tuning reducing error by 12%",
@@ -362,7 +362,7 @@ export const portfolioData = {
           company: "Encolink",
           location: "Remote",
           period: "Oct 2025 – Nov 2025",
-          description: "Engineered responsive, accessible frontend components; improved UI consistency and performance across web interfaces using modern JavaScript and CSS best practices.",
+          description: "Engineered responsive, accessible frontend components; improved UI consistency and performance using modern JavaScript and CSS.",
           responsibilities: [
             "Built 15+ responsive UI components with accessibility compliance",
             "Improved page load performance by 30% through code splitting",
@@ -386,14 +386,14 @@ export const portfolioData = {
           location: "Chennai, India",
           degree: "B.S. Data Science and Applications",
           period: "Jul 2025 – Present",
-          description: "Coursework: Mathematics for Data Science, Statistics, Python for Data Science, Computational Thinking, DBMS, Machine Learning Foundations & Techniques. Core CS: Data Structures, Algorithms, OOP, Systems Design."
+          description: "Coursework: Mathematics for Data Science, Statistics, Python, Computational Thinking, DBMS, Machine Learning. Core CS: Data Structures, Algorithms, OOP, Systems Design."
         },
         {
           institution: "Sri Shakthi Institute of Engineering and Technology",
           location: "Coimbatore, India",
           degree: "B.E. Computer Science Engineering",
           period: "Sep 2025 – May 2029",
-          description: "Coursework: Algorithms and Complexity, Operating Systems, Computer Networks, Software Engineering, Database Systems, Object-Oriented Design with Java."
+          description: "Coursework: Algorithms and Complexity, Operating Systems, Computer Networks, Software Engineering, Database Systems, OOP with Java."
         }
       ]
     },
@@ -409,7 +409,7 @@ export const portfolioData = {
           credential: '#73 Globally',
           image: '',
           imageAlt: 'HackerRank certification badge',
-          description: 'Ranked #73 Globally — Orchestrate Autonomous AI Agents'
+          description: 'Ranked #73 globally — Orchestrate Autonomous AI Agents'
         },
         {
           id: 'cert-2',
@@ -429,7 +429,7 @@ export const portfolioData = {
           credential: '',
           image: '',
           imageAlt: 'Google Gemini certification',
-          description: 'Gemini for Google Workspace certification for university students'
+          description: 'Gemini for Google Workspace certification'
         },
         {
           id: 'cert-4',
@@ -515,7 +515,7 @@ export const portfolioData = {
     },
 
     awards: {
-      enabled: false,
+      enabled: true,
       items: [
         {
           id: "award-1",
@@ -655,7 +655,7 @@ export const portfolioData = {
     availability: {
       status: "open",
       label: "Open to opportunities",
-      interests: ["internships", "full-time", "collaboration", "research", "speaking"],
+      interests: ["internships", "full-time", "collaboration", "research"],
       preferredRoles: ["Software Engineer", "ML Engineer", "Full-Stack Developer", "Data Scientist"],
       preferredLocations: ["Remote", "India"],
       responseTime: "Usually responds within 24 hours",
