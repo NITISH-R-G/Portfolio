@@ -129,13 +129,12 @@ export const portfolioData = {
   contact: {
     enabled: true,
     cta: "Open to learning, collaboration, and project conversations.",
-    email: "contact@example.com",
+    email: "nitishrg.8220psgps2020@gmail.com",
     github: "https://github.com/NITISH-R-G",
     linkedin: "",
     links: [
-      { label: "Email", value: "contact@example.com", href: "mailto:contact@example.com" },
-      { label: "GitHub", value: "github.com/NITISH-R-G", href: "https://github.com/NITISH-R-G" },
-      { label: "LinkedIn", value: "linkedin.com/in/nitish", href: "#" }
+      { label: "Email", value: "nitishrg.8220psgps2020@gmail.com", href: "mailto:nitishrg.8220psgps2020@gmail.com" },
+      { label: "GitHub", value: "github.com/NITISH-R-G", href: "https://github.com/NITISH-R-G" }
     ]
   },
 
