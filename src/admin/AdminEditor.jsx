@@ -599,8 +599,8 @@ function ImageField({ label, value, onChange, previewUrl, onFileSelect, onRemove
 
 /* ── Rich Field Components ─────────────────────────────────── */
 
-function FieldGroup({ label, children, collapsible }) {
-  const [open, setOpen] = useState(true)
+function FieldGroup({ label, children, collapsible, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
   if (!collapsible) {
     return (
       <div className="field-group">
@@ -880,7 +880,7 @@ function ProjectsEditor({ projects, update, fileStore }) {
             </div>
           </FieldGroup>
 
-          <FieldGroup label="Case Study" collapsible>
+          <FieldGroup label="Case Study" collapsible defaultOpen={false}>
             <Field label="Problem" value={p.problem} onChange={v => updateItem(i, 'problem', v)} multiline placeholder="What problem does this solve?" />
             <Field label="Approach" value={p.approach} onChange={v => updateItem(i, 'approach', v)} multiline placeholder="How was it built?" />
             <Field label="Impact / Outcome" value={p.impact} onChange={v => updateItem(i, 'impact', v)} multiline placeholder="What was the result?" />
@@ -889,16 +889,16 @@ function ProjectsEditor({ projects, update, fileStore }) {
             <Field label="Lessons Learned" value={p.lessons} onChange={v => updateItem(i, 'lessons', v)} multiline placeholder="What did you learn?" />
           </FieldGroup>
 
-          <FieldGroup label="Proof & Metrics" collapsible>
+          <FieldGroup label="Proof & Metrics" collapsible defaultOpen={false}>
             <MetricsEditor metrics={p.metrics || []} onChange={v => updateItem(i, 'metrics', v)} />
           </FieldGroup>
 
-          <FieldGroup label="Links & Tags" collapsible>
+          <FieldGroup label="Links & Tags" collapsible defaultOpen={false}>
             <TagsEditor tags={p.tools || []} onChange={v => updateItem(i, 'tools', v)} />
             <LinksEditor links={p.links || []} onChange={v => updateItem(i, 'links', v)} />
           </FieldGroup>
 
-          <FieldGroup label="Media" collapsible>
+          <FieldGroup label="Media" collapsible defaultOpen={false}>
             <TagsEditor tags={p.tags || []} onChange={v => updateItem(i, 'tags', v)} />
             <ImageField
               label="Cover Image"
@@ -971,7 +971,7 @@ function ExperienceEditor({ items, update }) {
             <Field label="Period" value={exp.period} onChange={v => updateItem(i, 'period', v)} />
           </div>
           <Field label="Description" value={exp.description} onChange={v => updateItem(i, 'description', v)} multiline />
-          <FieldGroup label="Proof & Impact" collapsible>
+          <FieldGroup label="Proof & Impact" collapsible defaultOpen={false}>
             <Field label="Responsibilities" value={Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : ''} onChange={v => updateItem(i, 'responsibilities', v.split('\n').filter(Boolean))} multiline placeholder="One per line" help="List key responsibilities, one per line" />
             <MetricsEditor metrics={exp.metrics || []} onChange={v => updateItem(i, 'metrics', v)} />
             <TagsEditor tags={exp.tools || []} onChange={v => updateItem(i, 'tools', v)} />
@@ -1380,7 +1380,7 @@ function EnhancedListEditor({ sectionKey, section, update, basicFields = [], ext
           </FieldGroup>
 
           {extraFields.length > 0 && (
-            <FieldGroup label="Details" collapsible>
+            <FieldGroup label="Details" collapsible defaultOpen={false}>
               {extraFields.map(f => (
                 f.type === 'select' ? (
                   <Select key={f.key} label={f.label} value={item[f.key] || ''} onChange={v => updateItem(i, f.key, v)} options={f.options} />
@@ -1400,26 +1400,26 @@ function EnhancedListEditor({ sectionKey, section, update, basicFields = [], ext
           )}
 
           {hasMetrics && (
-            <FieldGroup label="Metrics & Proof" collapsible>
+            <FieldGroup label="Metrics & Proof" collapsible defaultOpen={false}>
               <MetricsEditor metrics={item.metrics || []} onChange={v => updateItem(i, 'metrics', v)} />
             </FieldGroup>
           )}
 
           {(hasTags || hasTools) && (
-            <FieldGroup label="Tags & Stack" collapsible>
+            <FieldGroup label="Tags & Stack" collapsible defaultOpen={false}>
               {hasTools && <TagsEditor tags={item.tools || []} onChange={v => updateItem(i, 'tools', v)} />}
               {hasTags && <TagsEditor tags={item.tags || []} onChange={v => updateItem(i, 'tags', v)} />}
             </FieldGroup>
           )}
 
           {hasLinks && (
-            <FieldGroup label="Links" collapsible>
+            <FieldGroup label="Links" collapsible defaultOpen={false}>
               <LinksEditor links={item.links || []} onChange={v => updateItem(i, 'links', v)} />
             </FieldGroup>
           )}
 
           {hasGallery && (
-            <FieldGroup label="Gallery" collapsible>
+            <FieldGroup label="Gallery" collapsible defaultOpen={false}>
               <TagsEditor tags={item.gallery || []} onChange={v => updateItem(i, 'gallery', v)} />
               <p className="field-help">Add image URLs for the project gallery</p>
             </FieldGroup>

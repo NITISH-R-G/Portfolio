@@ -1,11 +1,13 @@
+import { lazy, Suspense } from 'react'
 import { motion } from 'motion/react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import ProjectCarousel from './ProjectCarousel'
 import Button from './Button'
 import Icon from './Icon'
-import CertGallery from './CertGallery'
-import CaseStudyCard from './CaseStudyCard'
+
+const CertGallery = lazy(() => import('./CertGallery'))
+const CaseStudyCard = lazy(() => import('./CaseStudyCard'))
 
 const container = {
   hidden: {},
@@ -53,13 +55,15 @@ function GenericSection({ id, label, items, fields, icon, useCaseStudy }) {
     <motion.section id={id} className="content-section" variants={sectionItem}>
       <h2 className="section-label">{label}</h2>
       <div className={useCaseStudy ? 'case-study-list' : 'generic-list'}>
-        {items.map((item, i) => (
-          useCaseStudy ? (
-            <CaseStudyCard key={item.id || i} item={item} icon={icon} />
-          ) : (
-            <GenericListItem key={item.id || i} item={item} fields={fields} />
-          )
-        ))}
+        <Suspense fallback={null}>
+          {items.map((item, i) => (
+            useCaseStudy ? (
+              <CaseStudyCard key={item.id || i} item={item} icon={icon} />
+            ) : (
+              <GenericListItem key={item.id || i} item={item} fields={fields} />
+            )
+          ))}
+        </Suspense>
       </div>
     </motion.section>
   )
@@ -155,7 +159,9 @@ export default function MainContent() {
       {sections.certifications.enabled && sections.certifications.items && (
         <motion.section id="certifications" className="content-section" variants={sectionItem}>
           <h2 className="section-label">CERTIFICATIONS</h2>
-          <CertGallery certs={sections.certifications.items} reducedMotion={reducedMotion} />
+          <Suspense fallback={null}>
+            <CertGallery certs={sections.certifications.items} reducedMotion={reducedMotion} />
+          </Suspense>
         </motion.section>
       )}
 
