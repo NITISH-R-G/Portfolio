@@ -25,11 +25,22 @@ function deepMerge(target, source) {
   return result
 }
 
+function normalizeSkills(skills) {
+  if (!skills || typeof skills !== 'object') return skills
+  if (Array.isArray(skills.categories)) return skills
+  if (Array.isArray(skills.items)) {
+    return { enabled: skills.enabled !== false, categories: [{ name: 'General', items: skills.items }] }
+  }
+  return skills
+}
+
 export function usePortfolio() {
   const data = useMemo(() => {
     const draft = loadDraft()
     if (!draft) return defaults
-    return deepMerge(defaults, draft)
+    const merged = deepMerge(defaults, draft)
+    merged.skills = normalizeSkills(merged.skills)
+    return merged
   }, [])
   return data
 }

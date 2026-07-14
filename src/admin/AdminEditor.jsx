@@ -33,6 +33,15 @@ function downloadJSON(data, filename) {
   downloadFile(content, filename)
 }
 
+function normalizeSkills(skills) {
+  if (!skills || typeof skills !== 'object') return { enabled: true, categories: [] }
+  if (Array.isArray(skills.categories)) return skills
+  if (Array.isArray(skills.items)) {
+    return { enabled: skills.enabled !== false, categories: [{ name: 'General', items: skills.items }] }
+  }
+  return skills
+}
+
 const TABS = [
   { id: 'projects', label: 'Projects' },
   { id: 'experience', label: 'Experience' },
@@ -47,7 +56,11 @@ const TAB_IDS = TABS.map(t => `tab-${t.id}`)
 const PANEL_IDS = TABS.map(t => `panel-${t.id}`)
 
 export default function AdminEditor() {
-  const [data, setData] = useState(() => loadDraft() || deepClone(portfolioData))
+  const [data, setData] = useState(() => {
+    const loaded = loadDraft() || deepClone(portfolioData)
+    loaded.skills = normalizeSkills(loaded.skills)
+    return loaded
+  })
   const [activeTab, setActiveTab] = useState('projects')
   const [saved, setSaved] = useState(false)
   const tabRefs = useRef([])
@@ -155,7 +168,7 @@ export default function AdminEditor() {
         {activeTab === 'projects' && <ProjectsEditor projects={data.sections.projects.items} update={update} />}
         {activeTab === 'experience' && <ExperienceEditor items={data.sections.experience.items} update={update} />}
         {activeTab === 'education' && <EducationEditor items={data.sections.education.items} update={update} />}
-        {activeTab === 'skills' && <SkillsEditor skills={data.sections.skills.items} update={update} />}
+        {activeTab === 'skills' && <SkillsEditor skills={data.skills} update={update} />}
         {activeTab === 'certifications' && <CertificationsEditor items={data.sections.certifications.items} update={update} />}
         {activeTab === 'contact' && <ContactEditor contact={data.contact} update={update} />}
         {activeTab === 'json' && <JsonEditor data={data} setData={setData} />}
@@ -401,14 +414,74 @@ function EducationEditor({ items, update }) {
 
 /* ── Skills ──────────────────────────────────────────────── */
 
+function flattenCategories(skills) {
+  if (!skills || typeof skills !== 'object') return []
+  const cats = Array.isArray(skills.categories) ? skills.categories : []
+  if (cats.length === 0) {
+    if (Array.isArray(skills.items)) return skills.items
+    return []
+  }
+  return cats.flatMap(cat => {
+    if (!cat || typeof cat !== 'object') return []
+    const name = cat.name || 'Uncategorized'
+    const items = Array.isArray(cat.items) ? cat.items : []
+    return items.map(item => `${name}: ${item}`)
+  })
+}
+
+function parseFlatSkills(lines) {
+  const categories = {}
+  for (const line of lines) {
+    if (!line) continue
+    const sep = line.indexOf(':')
+    if (sep > 0 && sep < line.length - 1) {
+      const name = line.slice(0, sep).trim()
+      const item = line.slice(sep + 1).trim()
+      if (name && item) {
+        if (!categories[name]) categories[name] = []
+        categories[name].push(item)
+      }
+    } else {
+      if (!categories['General']) categories['General'] = []
+      categories['General'].push(line.trim())
+    }
+  }
+  return Object.entries(categories).map(([name, items]) => ({ name, items }))
+}
+
 function SkillsEditor({ skills, update }) {
+  const flat = flattenCategories(skills)
+  const [draft, setDraft] = useState(flat.join('\n'))
+  const [warn, setWarn] = useState(false)
+
+  useEffect(() => {
+    const next = flattenCategories(skills).join('\n')
+    setDraft(next)
+  }, [skills])
+
+  function handleChange(v) {
+    setDraft(v)
+    const lines = v.split('\n').map(s => s.trim()).filter(Boolean)
+    const categories = parseFlatSkills(lines)
+    update('skills', { enabled: skills?.enabled !== false, categories })
+  }
+
+  const lineCount = draft.split('\n').length
+
   return (
     <div>
+      {warn && (
+        <p style={{ color: '#f59e0b', fontSize: 12, marginBottom: 8 }}>
+          Skills data was malformed — loaded defaults.
+        </p>
+      )}
       <Field
-        label="Skills (one per line)"
-        value={skills.join('\n')}
-        onChange={v => update('sections.skills.items', v.split('\n').map(s => s.trim()).filter(Boolean))}
+        label="Skills (one per line, format: Category: Skill)"
+        value={draft}
+        onChange={handleChange}
         multiline
+        placeholder={"Languages: Python\nAI & ML: TensorFlow\nBackend: FastAPI"}
+        help={`${lineCount} items across ${parseFlatSkills(draft.split('\n').map(s => s.trim()).filter(Boolean)).length} categories`}
       />
     </div>
   )
