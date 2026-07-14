@@ -1,65 +1,72 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
-import { motion, useMotionValue, useTransform, animate } from 'motion/react'
+import { useState, useCallback, useEffect, useRef, forwardRef } from 'react'
+import React from 'react'
+import { useMotionValue, animate } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import Icon from './Icon'
 
-function CoverflowCard({ project, index, activeIndex, onSelect, reducedMotion }) {
-  const diff = useTransform(activeIndex, (latest) => latest - index)
+const Z_BASE = 10
+const ROTATION_DEG = 18
+const WIDTH_PERCENT = 72
+const DEPTH_STEP = 8
 
-  const isActive = useTransform(diff, (d) => Math.abs(d) < 0.5)
-  const isNeighbor = useTransform(diff, (d) => {
-    const absD = Math.abs(d)
-    return absD >= 0.5 && absD < 1.5
-  })
+function computeTransform(index, current, reducedMotion) {
+  if (reducedMotion) {
+    const isActive = Math.abs(current - index) < 0.5
+    return {
+      tx: '0%',
+      sc: 1,
+      ry: 0,
+      op: isActive ? 1 : 0,
+      z: isActive ? Z_BASE : 0,
+      iop: isActive ? 1 : 0,
+    }
+  }
+  const d = current - index
+  const absD = Math.abs(d)
+  const tx = absD < 0.01
+    ? '0%'
+    : `${(d < 0 ? 1 : -1) * (WIDTH_PERCENT + (Math.max(0, Math.round(absD) - 1)) * DEPTH_STEP)}%`
+  return {
+    tx,
+    sc: absD < 0.5 ? 1 : absD < 1.5 ? 0.72 : 0.58,
+    ry: absD < 0.01 ? 0 : (d < 0 ? 1 : -1) * ROTATION_DEG,
+    op: absD < 0.5 ? 1 : absD < 1.5 ? 0.55 : absD < 2.5 ? 0.25 : 0,
+    z: Z_BASE - Math.round(absD),
+    iop: absD < 0.5 ? 1 : 0,
+  }
+}
 
-  const x = useTransform(diff, (d) => {
-    if (reducedMotion) return '0%'
-    if (Math.abs(d) < 0.01) return '0%'
-    const side = d < 0 ? 1 : -1
-    const absDiff = Math.abs(d)
-    const shift = side * (72 + (Math.max(0, Math.round(absDiff) - 1)) * 8)
-    return `${shift}%`
-  })
+function applyStyles(el, t) {
+  el.style.transform = `translateX(${t.tx}) scale(${t.sc}) rotateY(${t.ry}deg)`
+  el.style.opacity = t.op
+  el.style.zIndex = t.z
+  const info = el.querySelector('.coverflow-info')
+  if (info) info.style.opacity = t.iop
+}
 
-  const scale = useTransform(diff, (d) => {
-    if (reducedMotion) return 1
-    const absD = Math.abs(d)
-    if (absD < 0.5) return 1
-    if (absD < 1.5) return 0.72
-    return 0.58
-  })
+const CoverflowCard = forwardRef(function CoverflowCard({ project, index, onSelect }, ref) {
+  const innerRef = useRef(null)
+  const mergedRef = useCallback((el) => {
+    innerRef.current = el
+    if (typeof ref === 'function') ref(el)
+    else if (ref) ref.current = el
+  }, [ref])
 
-  const rotateY = useTransform(diff, (d) => {
-    if (reducedMotion) return 0
-    const absD = Math.abs(d)
-    if (absD < 0.01) return 0
-    return (d < 0 ? 1 : -1) * 18
-  })
-
-  const opacity = useTransform(diff, (d) => {
-    const absD = Math.abs(d)
-    if (absD < 0.5) return 1
-    if (absD < 1.5) return 0.55
-    if (absD < 2.5) return 0.25
-    return 0
-  })
-
-  const infoOpacity = useTransform(diff, (d) => {
-    if (Math.abs(d) < 0.5) return 1
-    return 0
-  })
-
-  const zIndex = useTransform(diff, (d) => {
-    return 10 - Math.round(Math.abs(d))
-  })
-
-  const springTransition = reducedMotion
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 200, damping: 28, mass: 1 }
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+    el.style.position = 'absolute'
+    el.style.left = '50%'
+    el.style.top = '0'
+    el.style.width = 'clamp(300px, 55%, 460px)'
+    el.style.marginLeft = 'clamp(-150px, -27.5%, -230px)'
+    el.style.transformOrigin = 'center center'
+  }, [])
 
   return (
-    <motion.div
+    <div
+      ref={mergedRef}
       className="coverflow-card"
       data-cursor="interactive"
       onClick={() => onSelect(index)}
@@ -72,20 +79,6 @@ function CoverflowCard({ project, index, activeIndex, onSelect, reducedMotion })
       role="button"
       tabIndex={0}
       aria-label={`Project: ${project.title}`}
-      style={{
-        x,
-        scale,
-        rotateY,
-        opacity,
-        zIndex,
-        position: 'absolute',
-        left: '50%',
-        top: 0,
-        width: 'clamp(300px, 55%, 460px)',
-        marginLeft: 'clamp(-150px, -27.5%, -230px)',
-        transformOrigin: 'center center',
-      }}
-      transition={springTransition}
     >
       <div className="coverflow-card-inner">
         <div className="coverflow-image-area">
@@ -97,10 +90,7 @@ function CoverflowCard({ project, index, activeIndex, onSelect, reducedMotion })
           />
           <div className="coverflow-card-icon"><Icon name={project.icon} size={20} /></div>
         </div>
-        <motion.div
-          className="coverflow-info"
-          style={{ opacity: infoOpacity, pointerEvents: 'none' }}
-        >
+        <div className="coverflow-info" style={{ pointerEvents: 'none' }}>
           <h3 className="coverflow-title">{project.title}</h3>
           <p className="coverflow-desc">{project.description}</p>
           <div className="coverflow-tags">
@@ -111,35 +101,55 @@ function CoverflowCard({ project, index, activeIndex, onSelect, reducedMotion })
           <a href={project.link} className="coverflow-link" onClick={(e) => e.stopPropagation()}>
             View details →
           </a>
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
-}
+})
+
+const MemoizedCard = React.memo(CoverflowCard, (prev, next) =>
+  prev.project.id === next.project.id && prev.index === next.index
+)
 
 export default function ProjectsCoverflow({ projects }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const reducedMotion = useReducedMotion()
   const motionIndex = useMotionValue(0)
   const total = projects.length
+  const cardEls = useRef([])
+
+  const setCardRef = useCallback((index) => (el) => {
+    cardEls.current[index] = el
+  }, [])
 
   useEffect(() => {
     if (reducedMotion) {
       motionIndex.set(activeIndex)
-    } else {
-      animate(motionIndex, activeIndex, {
-        type: 'spring',
-        stiffness: 200,
-        damping: 28,
-        mass: 1,
+      cardEls.current.forEach((el, i) => {
+        if (el) applyStyles(el, computeTransform(i, activeIndex, true))
       })
+      return
     }
+
+    const unsub = motionIndex.on('change', (current) => {
+      cardEls.current.forEach((el, i) => {
+        if (el) applyStyles(el, computeTransform(i, current, false))
+      })
+    })
+
+    animate(motionIndex, activeIndex, {
+      type: 'spring',
+      stiffness: 200,
+      damping: 28,
+      mass: 1,
+    })
+
+    return unsub
   }, [activeIndex, reducedMotion, motionIndex])
 
   const goTo = useCallback(
     (idx) => {
-      const clamped = Math.max(0, Math.min(total - 1, idx))
-      setActiveIndex(clamped)
+      setActiveIndex(Math.max(0, Math.min(total - 1, idx)))
     },
     [total]
   )
@@ -149,15 +159,9 @@ export default function ProjectsCoverflow({ projects }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        goPrev()
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        goNext()
-      }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev() }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [goPrev, goNext])
@@ -170,25 +174,19 @@ export default function ProjectsCoverflow({ projects }) {
       <div className="coverflow-viewport">
         <div className="coverflow-track">
           {projects.map((project, i) => (
-            <CoverflowCard
+            <MemoizedCard
               key={project.id}
               project={project}
               index={i}
-              activeIndex={motionIndex}
               onSelect={goTo}
-              reducedMotion={reducedMotion}
+              ref={setCardRef(i)}
             />
           ))}
         </div>
       </div>
 
       <div className="coverflow-controls">
-        <button
-          className="coverflow-arrow"
-          onClick={goPrev}
-          disabled={!canGoPrev}
-          aria-label="Previous project"
-        >
+        <button className="coverflow-arrow" onClick={goPrev} disabled={!canGoPrev} aria-label="Previous project">
           <ChevronLeft size={16} strokeWidth={1.5} />
         </button>
 
@@ -205,12 +203,7 @@ export default function ProjectsCoverflow({ projects }) {
           ))}
         </div>
 
-        <button
-          className="coverflow-arrow"
-          onClick={goNext}
-          disabled={!canGoNext}
-          aria-label="Next project"
-        >
+        <button className="coverflow-arrow" onClick={goNext} disabled={!canGoNext} aria-label="Next project">
           <ChevronRight size={16} strokeWidth={1.5} />
         </button>
       </div>
