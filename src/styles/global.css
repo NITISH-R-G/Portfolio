@@ -295,6 +295,8 @@ a {
   cursor: pointer;
   outline: none;
   transform-style: preserve-3d;
+  contain: layout style;
+  aspect-ratio: 4 / 5;
 }
 
 .coverflow-card:focus-visible {
@@ -309,6 +311,9 @@ a {
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .coverflow-card-inner:hover {
@@ -344,6 +349,9 @@ a {
 
 .coverflow-info {
   padding: var(--space-4) var(--space-5) var(--space-4);
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .coverflow-title {
@@ -359,6 +367,10 @@ a {
   font-size: var(--text-body);
   line-height: var(--leading-body);
   margin-bottom: var(--space-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .coverflow-tags {

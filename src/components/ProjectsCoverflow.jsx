@@ -7,6 +7,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
   const x = useTransform(
     activeIndex,
     (latest) => {
+      if (reducedMotion) return '0%'
       const diff = index - latest
       if (diff === 0) return '0%'
       const side = diff < 0 ? -1 : 1
@@ -19,6 +20,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
   const scale = useTransform(
     activeIndex,
     (latest) => {
+      if (reducedMotion) return 1
       const diff = Math.abs(index - latest)
       if (diff === 0) return 1
       if (diff === 1) return 0.72
@@ -29,6 +31,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
   const rotateY = useTransform(
     activeIndex,
     (latest) => {
+      if (reducedMotion) return 0
       const diff = index - latest
       if (diff === 0) return 0
       const side = diff < 0 ? -1 : 1
@@ -62,7 +65,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
 
   const springTransition = reducedMotion
     ? { duration: 0 }
-    : { type: 'spring', stiffness: 280, damping: 30, mass: 0.9 }
+    : { type: 'spring', stiffness: 200, damping: 28, mass: 1 }
 
   return (
     <motion.div
@@ -90,6 +93,7 @@ function CoverflowCard({ project, index, activeIndex, total, onSelect, reducedMo
         width: 'clamp(300px, 55%, 460px)',
         marginLeft: 'clamp(-150px, -27.5%, -230px)',
         transformOrigin: 'center center',
+        willChange: 'transform, opacity',
       }}
       transition={springTransition}
     >
@@ -132,9 +136,9 @@ export default function ProjectsCoverflow({ projects }) {
     } else {
       animate(motionIndex, activeIndex, {
         type: 'spring',
-        stiffness: 280,
-        damping: 30,
-        mass: 0.9,
+        stiffness: 200,
+        damping: 28,
+        mass: 1,
       })
     }
   }, [activeIndex, reducedMotion, motionIndex])
