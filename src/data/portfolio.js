@@ -63,7 +63,7 @@ export const portfolioData = {
     { id: "conferences", label: "Conferences", icon: "Users", enabled: false },
     { id: "research", label: "Research", icon: "FlaskConical", enabled: false },
     { id: "publications", label: "Publications", icon: "BookOpen", enabled: false },
-    { id: "awards", label: "Awards", icon: "Medal", enabled: false },
+    { id: "awards", label: "Awards", icon: "Medal", enabled: true },
     { id: "openSource", label: "Open Source", icon: "GitBranch", enabled: false },
     { id: "founder", label: "Founder", icon: "Rocket", enabled: false },
     { id: "teaching", label: "Teaching", icon: "GraduationCap", enabled: false },

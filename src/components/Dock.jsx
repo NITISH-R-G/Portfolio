@@ -24,7 +24,7 @@ export default function Dock({ activeSection, onNavigate }) {
   const [isPanelHovered, setIsPanelHovered] = useState(false)
 
   const magnification = reducedMotion ? PANEL_HEIGHT : DEFAULT_MAGNIFICATION
-  const spring = useMemo(() => ({ mass: 0.1, stiffness: 150, damping: 12 }), [])
+  const spring = useMemo(() => ({ mass: 0.08, stiffness: 200, damping: 18 }), [])
 
   const maxHeight = useMemo(
     () => Math.max(DOCK_HEIGHT, magnification + magnification / 2 + 4),
@@ -132,7 +132,7 @@ function DockItem({ item }) {
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: -4 }}
             exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
             aria-hidden="true"
           >
             {item.label}

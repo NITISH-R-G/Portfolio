@@ -183,12 +183,13 @@ a {
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 100%;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
 }
 
 .skill-tag:hover {
   color: var(--color-text);
   border-color: var(--color-border-strong);
+  background: var(--color-surface-2);
 }
 
 /* Languages */
@@ -328,13 +329,13 @@ a {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .project-scroll-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px);
 }
 
 /* Von Restorff: first card gets subtle emphasis */
@@ -436,13 +437,13 @@ a {
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   flex-shrink: 0;
-  transition: background 0.2s, color 0.2s, transform 0.3s;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.18s ease;
 }
 
 .project-scroll-card:hover .project-scroll-arrow {
   background: var(--color-text);
   color: var(--color-bg);
-  transform: rotate(-45deg);
+  transform: translateX(2px) rotate(-45deg);
 }
 
 .project-carousel-arrow {
@@ -530,12 +531,13 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
 }
 
 .generic-list-card:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-2);
+  transform: translateX(2px);
 }
 
 .generic-list-content {
@@ -811,16 +813,18 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .case-card:hover {
   border-color: var(--color-border-strong);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
 }
 
 .case-card[data-expanded="true"] {
   border-color: var(--color-border-strong);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .case-summary {
@@ -965,7 +969,13 @@ a {
   cursor: pointer;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.case-expand-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+  background: var(--color-border);
 }
 
 .case-expand-btn:focus-visible {
@@ -1434,30 +1444,35 @@ a {
   justify-content: center;
   border-radius: var(--radius-lg);
   color: var(--color-text-muted);
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
 }
 
 .dock-icon:hover,
 .dock-icon.active {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--color-text);
+  transform: scale(1.05);
+}
+
+.dock-item:active .dock-icon {
+  transform: scale(0.95);
 }
 
 .dock-label {
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  padding: 4px 10px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   font-size: var(--text-meta);
   font-weight: 500;
   color: var(--color-text);
   pointer-events: none;
-  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* Legacy floating nav (hidden) — consolidated above */
@@ -2956,12 +2971,13 @@ a:focus-visible,
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   border: 1px solid var(--color-border);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
 }
 
 .proof-chip:hover {
   background: var(--color-border);
   color: var(--color-text);
+  transform: scale(1.02);
 }
 
 /* ── CTA Blocks ── */
@@ -2973,7 +2989,7 @@ a:focus-visible,
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
   text-decoration: none;
   color: inherit;
 }
@@ -2981,6 +2997,7 @@ a:focus-visible,
 .cta-block:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-2);
+  transform: translateY(-1px);
 }
 
 .cta-primary {
@@ -2993,7 +3010,8 @@ a:focus-visible,
 .cta-primary:hover {
   background: var(--color-text);
   border-color: var(--color-text);
-  opacity: 0.9;
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 /* ── Section Header Emphasis ── */
