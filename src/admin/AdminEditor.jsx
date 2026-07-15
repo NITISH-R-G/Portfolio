@@ -119,11 +119,13 @@ const SECTION_GROUPS = [
     id: 'core',
     label: 'Core',
     sections: [
+      { id: 'about', label: 'About' },
       { id: 'projects', label: 'Projects' },
       { id: 'experience', label: 'Experience' },
       { id: 'education', label: 'Education' },
       { id: 'skills', label: 'Skills' },
       { id: 'certifications', label: 'Certifications' },
+      { id: 'awards', label: 'Awards' },
       { id: 'contact', label: 'Contact' },
       { id: 'resume', label: 'Resume' },
     ]
@@ -149,7 +151,6 @@ const SECTION_GROUPS = [
       { id: 'designWork', label: 'Design' },
       { id: 'media', label: 'Media' },
       { id: 'testimonials', label: 'Testimonials' },
-      { id: 'awards', label: 'Awards' },
     ]
   },
   {

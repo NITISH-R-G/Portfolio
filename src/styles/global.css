@@ -239,7 +239,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-muted);
-  transition: border-color 0.2s, color 0.2s;
+  transition: border-color 0.14s ease, color 0.14s ease;
 }
 
 .social-icon:hover {
@@ -368,7 +368,7 @@ a {
 
 .project-scroll-content {
   flex: 1;
-  padding: 20px;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -463,7 +463,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease;
   opacity: 0;
 }
 
@@ -576,7 +576,7 @@ a {
 
 .generic-list-link {
   color: var(--color-text-muted);
-  transition: color 0.15s;
+  transition: color 0.14s ease;
   flex-shrink: 0;
   margin-top: 2px;
   display: inline-flex;
@@ -776,7 +776,7 @@ a {
   justify-content: center;
   font-size: 14px;
   line-height: 1;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.14s ease, border-color 0.14s ease;
 }
 
 .btn-remove-inline:hover {
@@ -792,7 +792,7 @@ a {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-meta);
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.14s ease, border-color 0.14s ease;
 }
 
 .btn-add-small:hover {
@@ -931,7 +931,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   min-width: 80px;
-  transition: border-color 0.15s;
+  transition: border-color 0.14s ease;
 }
 
 .metric-badge:hover {
@@ -1081,7 +1081,7 @@ a {
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.14s ease, border-color 0.14s ease;
 }
 
 .case-link:hover {
@@ -1102,7 +1102,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .experience-card:hover {
@@ -1158,7 +1158,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .education-card:hover {
@@ -1218,7 +1218,7 @@ a {
   font-size: var(--text-body);
   color: var(--color-text-muted);
   line-height: var(--leading-body);
-  transition: border-color 0.2s;
+  transition: border-color 0.14s ease;
 }
 
 .certification-item:hover {
@@ -1249,7 +1249,7 @@ a {
   align-items: center;
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
-  transition: background 0.2s;
+  transition: background 0.14s ease;
 }
 
 .contact-row:last-child {
@@ -1568,7 +1568,7 @@ a {
   border-radius: 50%;
   background: var(--color-text);
   opacity: 1;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.14s ease;
   z-index: 10000;
 }
 
@@ -1579,7 +1579,7 @@ a {
   border: 2px solid var(--color-text);
   box-sizing: border-box;
   opacity: 1;
-  transition: border-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.14s ease, transform 0.18s ease;
   z-index: 9999;
 }
 
@@ -1605,7 +1605,7 @@ a {
   white-space: nowrap;
   opacity: 0;
   transform: translate3d(-50%, -100%, 0) translateY(-8px);
-  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.14s ease, transform 0.18s ease;
   z-index: 10001;
 }
 
@@ -1921,7 +1921,7 @@ a:focus-visible,
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.14s ease;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -2014,7 +2014,7 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 400;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.14s ease, color 0.14s ease;
 }
 
 .admin-nav-item:hover {
@@ -2050,7 +2050,7 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
 }
 
 .btn-admin:focus-visible {
@@ -2121,7 +2121,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
 
 .field-input::placeholder,
@@ -2189,7 +2189,7 @@ a:focus-visible,
   border-radius: var(--radius-md);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.14s ease, border-color 0.14s ease;
   flex-shrink: 0;
 }
 
@@ -2206,7 +2206,7 @@ a:focus-visible,
   height: 14px;
   border-radius: 50%;
   background: var(--color-text-muted);
-  transition: transform 0.2s, background 0.2s;
+  transition: transform 0.18s ease, background 0.14s ease;
 }
 
 .toggle-track[data-checked="true"] .toggle-thumb {
@@ -2254,7 +2254,7 @@ a:focus-visible,
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.14s ease;
 }
 
 .image-preview-remove:hover {
@@ -2296,7 +2296,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
 .image-file-btn:hover {
@@ -2374,7 +2374,7 @@ a:focus-visible,
   padding: var(--space-4);
   margin-bottom: var(--space-3);
   background: var(--color-surface);
-  transition: border-color 0.15s;
+  transition: border-color 0.14s ease;
 }
 
 .item-card:hover {
@@ -2408,7 +2408,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.14s ease;
 }
 
 .btn-remove:hover {
@@ -2436,7 +2436,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.14s ease, border-color 0.14s ease;
 }
 
 .btn-move:hover:not(:disabled) {
@@ -2468,7 +2468,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
 .btn-add:hover {
@@ -2529,7 +2529,7 @@ a:focus-visible,
     z-index: 100;
     padding: var(--space-6) var(--space-4);
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    transition: transform 0.18s ease;
     max-height: 100vh;
     overflow-y: auto;
   }
@@ -2630,7 +2630,7 @@ a:focus-visible,
   text-align: left;
   font-family: var(--font-sans);
   color: var(--color-text);
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .cert-thumb:hover {
@@ -2737,7 +2737,7 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.14s ease, color 0.14s ease;
 }
 
 .cert-lightbox-close:hover {
@@ -2865,7 +2865,7 @@ a:focus-visible,
   cursor: pointer;
   padding: 0;
   background: var(--color-surface);
-  transition: border-color 0.15s, transform 0.15s;
+  transition: border-color 0.14s ease, transform 0.18s ease;
 }
 
 .cert-strip-thumb:hover {
@@ -2924,7 +2924,7 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
 .cert-lightbox-nav-btn:hover {
