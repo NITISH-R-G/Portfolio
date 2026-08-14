@@ -2,3 +2,7 @@ node_modules/
 dist/
 test-results/
 *.cjs
+.claude/settings.local.json
+src/data/generated/
+.env
+.env.local
