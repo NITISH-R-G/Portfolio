@@ -49,13 +49,43 @@ const DATE_FIELDS = new Set(['date', 'dates', 'expires', 'updatedAt', 'startDate
 const LIST_THRESHOLD = 0.75
 
 /**
+ * Which sections can license a claim about each collection.
+ *
+ * Used by evidence validity. A company name read from under an "Experience" heading is
+ * supported by its context; the same name read from a "Following" list is not, and the
+ * difference is invisible to any check that only asks whether evidence *exists*.
+ *
+ * @type {Record<string, RegExp>}
+ */
+const SECTION_LICENSE = {
+  experience: /experience|employment|work|positions?|career|roles?/i,
+  education: /education|academic|qualifications?|degrees?|schooling/i,
+  projects: /projects?|portfolio|work|selected/i,
+  publications: /publications?|papers?|research|articles?|preprints?/i,
+  certifications: /certifications?|certificates?|licen[cs]es?|credentials?/i,
+  achievements: /achievements?|awards?|honou?rs?|accomplishments?|recognition/i,
+  skills: /skills?|technologies|competenc|tools|stack|expertise/i,
+  talks: /talks?|speaking|presentations?|conferences?/i,
+  posts: /writing|posts?|articles?|blog|newsletter/i,
+  languages: /languages?/i,
+}
+
+/**
  * @typedef {object} FieldResult
  * @property {string} path
  * @property {'correct'|'wrong'|'missing'|'extra'} status
  * @property {'scalar'|'org'|'date'|'list'} kind
  * @property {boolean} evidenced
+ * @property {boolean} [supported]  Whether the evidence actually backs the value.
  * @property {unknown} [expected]
  * @property {unknown} [actual]
+ */
+
+/**
+ * @typedef {object} TrapResult
+ * @property {string} path
+ * @property {unknown} value
+ * @property {boolean} violated
  */
 
 /**
@@ -66,6 +96,7 @@ const LIST_THRESHOLD = 0.75
  * @property {number} ms
  * @property {FieldResult[]} fields
  * @property {{found: number, misplaced: number, total: number}} structure
+ * @property {TrapResult[]} traps
  */
 
 /**
@@ -93,11 +124,13 @@ export function scoreCase(testCase, extraction, meta = {}) {
 
     for (const [path, value] of wanted) {
       const has = got.has(path)
+      const span = evidence[`${group}|${path.slice(group.length + 1)}`]
       fields.push({
         path,
         status: !has ? 'missing' : same(value, got.get(path), leafOf(path)) ? 'correct' : 'wrong',
         kind: kindOf(leafOf(path), value),
-        evidenced: Boolean(evidence[`${group}|${path.slice(group.length + 1)}`]?.confidence),
+        evidenced: Boolean(span?.confidence),
+        supported: has ? supports(got.get(path), span, null) : undefined,
         expected: value,
         ...(has ? { actual: got.get(path) } : {}),
       })
@@ -138,14 +171,18 @@ export function scoreCase(testCase, extraction, meta = {}) {
       const subject = `${collection}/${key}`
       for (const [path, value] of flattenScalars(record, subject)) {
         const leaf = leafOf(path)
-        const actualValue = found ? valueAt(found, path.slice(subject.length + 1)) : undefined
+        const attribute = path.slice(subject.length + 1)
+        const actualValue = found ? valueAt(found, attribute) : undefined
         const has = actualValue !== undefined
+        const span = evidence[`${collection}/${dedupeKey(collection, found ?? record)}|${attribute}`]
+          ?? evidence[`${subject}|${attribute}`]
 
         fields.push({
           path,
           status: !has ? 'missing' : same(value, actualValue, leaf) ? 'correct' : 'wrong',
           kind: kindOf(leaf, value),
-          evidenced: Boolean(found?.source?.confidence ?? evidence[`${subject}|${path.slice(subject.length + 1)}`]?.confidence),
+          evidenced: Boolean(span?.confidence ?? found?.source?.confidence),
+          supported: has ? supports(actualValue, span ?? { confidence: found?.source?.confidence }, collection) : undefined,
           expected: value,
           ...(has ? { actual: actualValue } : {}),
         })
@@ -171,7 +208,98 @@ export function scoreCase(testCase, extraction, meta = {}) {
     ms: meta.ms ?? 0,
     fields,
     structure,
+    traps: scoreTraps(testCase.expected.forbidden, actual),
   }
+}
+
+/**
+ * Check the things that must *not* be concluded.
+ *
+ * The dangerous failure in this system is not a missing field. It is a page that mentions
+ * Google in a footer, Python in an article, or Cambridge in someone else's affiliation, and
+ * an extractor that turns any of those into a claim about the person. Recall rewards that
+ * behaviour and accuracy does not see it, because the invented value has no expected
+ * counterpart to be wrong about.
+ *
+ * So the corpus states them explicitly, and they are scored as their own metric.
+ *
+ * @param {Record<string, any>|undefined} forbidden
+ * @param {Record<string, any>} actual
+ * @returns {TrapResult[]}
+ */
+function scoreTraps(forbidden, actual) {
+  if (!forbidden) return []
+
+  /** @type {TrapResult[]} */
+  const results = []
+
+  for (const [group, spec] of Object.entries(forbidden)) {
+    if (Array.isArray(spec)) {
+      const records = Array.isArray(actual[group]) ? actual[group] : []
+      for (const banned of spec) {
+        // Violated when *any* extracted record matches every stated field. Stating only
+        // `{company: "Google"}` therefore bans the employer however the rest of the record
+        // came out, which is the claim that matters.
+        const violated = records.some((/** @type {any} */ record) =>
+          Object.entries(banned).every(([key, value]) => same(value, record[key], key)))
+        results.push({ path: `${group}[].${Object.keys(banned).join('+')}`, value: Object.values(banned).join(' / '), violated })
+      }
+      continue
+    }
+
+    for (const [path, value] of flattenScalars(spec, group)) {
+      const got = valueAt(actual, path)
+      results.push({ path, value, violated: got !== undefined && same(value, got, leafOf(path)) })
+    }
+  }
+
+  return results
+}
+
+/**
+ * Does this evidence actually back this value?
+ *
+ * A weaker check than entailment, and worth being precise about what it does and does not
+ * establish. It asks two things:
+ *
+ *   1. **Containment** — does the recorded span actually contain the value? Evidence that
+ *      does not mention what it supposedly supports is pointing at the wrong place.
+ *   2. **Licensing** — did the span come from a section that can support this kind of claim?
+ *      "Google" under *Experience* backs an employer; "Google" under *Following* does not,
+ *      and containment alone cannot tell them apart.
+ *
+ * What it cannot do is judge meaning: "worked with Google's API" sits under Experience and
+ * contains "Google", and this will accept it. Catching that needs a judge that reads the
+ * sentence, which is a Tier 3 question. This is the deterministic floor beneath it.
+ *
+ * Values from structured data are supported by construction — the page declared them in a
+ * typed field, and the declaration *is* the evidence.
+ *
+ * @param {unknown} value
+ * @param {{confidence?: number, text?: string, section?: string}|undefined} span
+ * @param {string|null} collection
+ * @returns {boolean}
+ */
+export function supports(value, span, collection) {
+  if (!span?.confidence) return false
+  if (span.confidence >= 1) return true
+
+  if (span.section && collection && SECTION_LICENSE[collection]) {
+    if (!SECTION_LICENSE[collection].test(span.section)) return false
+  }
+
+  // No span text is not a failure of support — plenty of legitimate signals (a URL matching
+  // a known platform) have no surrounding prose to quote. It is only unsupported when there
+  // *is* a span and the value is absent from it.
+  if (!span.text) return true
+
+  const haystack = loose(span.text)
+  const needles = Array.isArray(value) ? value : [value]
+  return needles.every((v) => {
+    if (v === null || v === undefined) return true
+    if (typeof v === 'object') return true
+    return haystack.includes(loose(v))
+  })
 }
 
 /**
@@ -210,8 +338,19 @@ export function aggregate(scores) {
   )
 
   const evidenced = count((f) => f.status === 'correct' && f.evidenced)
+  const supported = count((f) => f.status === 'correct' && f.supported)
   const failures = scores.filter((s) => s.failed).length
   const times = scores.map((s) => s.ms).sort((a, b) => a - b)
+
+  const traps = scores.flatMap((s) => s.traps)
+  const violations = traps.filter((t) => t.violated).length
+
+  // Pages whose content only exists after scripts run. Reported on their own because it is
+  // the single axis a static fetcher cannot improve on, and therefore the clearest statement
+  // of what a rendering layer would actually buy.
+  const js = scores.filter((s) => s.traits.includes('javascript'))
+  const jsFields = js.reduce((n, s) => n + s.fields.filter((f) => f.status === 'correct').length, 0)
+  const jsExpected = js.reduce((n, s) => n + s.fields.filter((f) => f.status !== 'extra').length, 0)
 
   return {
     cases: scores.length,
@@ -224,12 +363,51 @@ export function aggregate(scores) {
     structure: structure.found + structure.misplaced ? structure.found / (structure.found + structure.misplaced) : null,
     entities: byKind('org'),
     dates: byKind('date'),
-    evidence: correct ? evidenced / correct : null,
 
+    evidence: correct ? evidenced / correct : null,
+    // The stricter of the two: evidence that exists versus evidence that holds up.
+    validity: correct ? supported / correct : null,
+
+    // Of everything produced, how much was invented. The inverse of precision, reported
+    // separately because it is the number to argue about when choosing a provider.
+    inventionRate: produced ? extra / produced : null,
+    traps: { total: traps.length, violations, rate: traps.length ? 1 - violations / traps.length : null },
+
+    jsRecall: jsExpected ? jsFields / jsExpected : null,
     failureRate: scores.length ? failures / scores.length : null,
     medianMs: times.length ? times[Math.floor(times.length / 2)] : 0,
     totalMs: times.reduce((a, b) => a + b, 0),
   }
+}
+
+/**
+ * The bar a provider has to clear before recall, cost or latency are worth discussing.
+ *
+ * Ordered by how much damage the failure does, not by how much it costs to fix. Inventing
+ * someone's employment history is a different category of harm from missing a field they
+ * can add by hand, so no amount of recall buys its way past these.
+ */
+export const GATE = {
+  precision: 0.97,
+  evidence: 0.95,
+  validity: 0.95,
+  traps: 1,
+}
+
+/**
+ * Which gates a provider's summary fails.
+ *
+ * @param {ReturnType<typeof aggregate>} summary
+ * @returns {{metric: string, required: number, actual: number|null}[]}
+ */
+export function gateFailures(summary) {
+  return Object.entries(GATE)
+    .map(([metric, required]) => ({
+      metric,
+      required,
+      actual: metric === 'traps' ? summary.traps.rate : summary[metric],
+    }))
+    .filter(({ actual, required }) => actual !== null && actual < required)
 }
 
 /* -------------------------------------------------------------------------- */

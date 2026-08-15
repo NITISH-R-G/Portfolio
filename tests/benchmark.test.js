@@ -2,7 +2,7 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { loadCorpus } from '../benchmarks/corpus.js'
-import { scoreCase, aggregate, same, flattenScalars } from '../benchmarks/score.js'
+import { scoreCase, aggregate, same, flattenScalars, supports, gateFailures } from '../benchmarks/score.js'
 import { PROVIDERS } from '../benchmarks/providers.js'
 import { parseHtml } from '../src/core/extraction/html.js'
 import { readSignals } from '../src/core/extraction/signals.js'
@@ -21,11 +21,12 @@ import { normalizeSignals } from '../src/core/extraction/normalize.js'
  * deserves a sentence in the commit message.
  */
 const FLOOR = {
-  recall: 0.8,
-  accuracy: 0.9,
-  precision: 0.9,
+  recall: 0.85,
+  accuracy: 0.95,
+  precision: 0.97,
   structure: 1,
-  evidence: 1,
+  evidence: 0.95,
+  validity: 0.95,
 }
 
 /** Run the whole corpus through a provider, exactly as `npm run benchmark` does. */
@@ -89,6 +90,49 @@ describe('scoring', () => {
     assert.deepEqual([...flat.keys()], ['experience/acme.company'])
   })
 
+  test('evidence has to show the value it supposedly supports', () => {
+    const backs = { confidence: 0.7, section: 'Experience', text: 'Software Engineer at Google' }
+    const elsewhere = { confidence: 0.7, section: 'Experience', text: 'Rebuilt the settlement pipeline' }
+
+    assert.ok(supports('Google', backs, 'experience'))
+    assert.ok(!supports('Google', elsewhere, 'experience'), 'the span does not mention it')
+  })
+
+  test('evidence has to come from a section that licenses the claim', () => {
+    // The failure containment alone cannot catch: the word is right there, and it still does
+    // not mean this person worked at Google.
+    const following = { confidence: 0.7, section: 'Following', text: 'Follows Google on LinkedIn' }
+    assert.ok(!supports('Google', following, 'experience'))
+  })
+
+  test('structured data is its own evidence', () => {
+    assert.ok(supports('Google', { confidence: 1 }, 'experience'))
+  })
+
+  test('a value with no evidence at all is not supported', () => {
+    assert.ok(!supports('Google', undefined, 'experience'))
+    assert.ok(!supports('Google', {}, 'experience'))
+  })
+
+  test('a forbidden conclusion is scored as a violation', () => {
+    const testCase = {
+      slug: 't',
+      expected: {
+        url: 'https://x.test/',
+        profile: { identity: { name: 'A B' } },
+        forbidden: { experience: [{ company: 'Google' }] },
+      },
+    }
+
+    const clean = scoreCase(testCase, { profile: { identity: { name: 'A B' } } })
+    assert.equal(clean.traps[0].violated, false)
+
+    const violating = scoreCase(testCase, {
+      profile: { identity: { name: 'A B' }, experience: [{ company: 'Google LLC', role: 'Engineer' }] },
+    })
+    assert.equal(violating.traps[0].violated, true, 'a legal-suffix variant is the same claim')
+  })
+
   test('invented fields are counted against precision but not against recall', () => {
     const testCase = { slug: 't', expected: { url: 'https://x.test/', profile: { identity: { name: 'A B' } } } }
     const summary = aggregate([scoreCase(testCase, {
@@ -112,6 +156,22 @@ describe('the baseline provider against the corpus', () => {
         + 'Run `npm run benchmark -- --misses` to see which fields moved.',
       )
     }
+  })
+
+  test('survives every negative case', async () => {
+    // The one metric with no tolerance. A missing field is an inconvenience; concluding
+    // someone worked at Google because the footer thanked Google Cloud is a fabricated CV,
+    // and there is no recall figure that makes it acceptable.
+    const corpus = await loadCorpus()
+    const summary = await runProvider(PROVIDERS[0], corpus)
+
+    assert.ok(summary.traps.total >= 15, 'the corpus needs a real supply of negative cases')
+    assert.equal(summary.traps.violations, 0)
+  })
+
+  test('clears the gate that comes before recall', async () => {
+    const summary = await runProvider(PROVIDERS[0], await loadCorpus())
+    assert.deepEqual(gateFailures(summary), [])
   })
 
   test('reads nothing from a client-rendered page, and that is the honest answer', async () => {

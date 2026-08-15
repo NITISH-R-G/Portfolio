@@ -42,6 +42,9 @@ thing that says whether it is true.
 | **Entities** | Were "Google" and "Google LLC" understood to be one employer? |
 | **Dates** | Were ranges, precisions and "Present" read correctly? |
 | **Evidence** | Can each correct value be traced to where it came from? |
+| **Validity** | Does that evidence actually *support* the value? |
+| **Traps** | Did a passing mention get turned into a claim? |
+| **JS pages** | How much was recovered from client-rendered pages? |
 | **Failures** | How often was there no usable output at all? |
 | **Latency** | How long did it take? |
 
@@ -57,6 +60,39 @@ extraction is almost nothing.
 
 Rates are computed over *fields*, not over cases, so a page with forty facts weighs more than
 one with three.
+
+### Evidence validity
+
+Measuring whether evidence *exists* is not enough. This system's product is professional
+claims backed by evidence, so the evidence has to hold up:
+
+```
+Company = Google   ←  "Software Engineer at Google"        supported
+Company = Google   ←  "Follows Google on LinkedIn"         not supported
+Company = Google   ←  "Rebuilt the settlement pipeline"    not supported
+```
+
+Validity checks two things deterministically: **containment** (does the recorded span
+actually contain the value?) and **licensing** (did the span come from a section that can
+support this kind of claim — "Experience", not "Following"?). Values from structured data
+pass by construction; the page declared them in a typed field, and the declaration *is* the
+evidence.
+
+What it cannot do is judge meaning. *"Worked with Google's API"* sits under Experience and
+contains "Google", and this will accept it. Catching that needs a model that reads the
+sentence — a Tier 3 question. This is the deterministic floor beneath it, and it is worth
+having precisely because it is cheap enough to run on every commit.
+
+### The gate
+
+```
+precision ≥ 97%   ·   evidence ≥ 95%   ·   validity ≥ 95%   ·   traps = 100%
+```
+
+A provider that fails any of these does not get compared on recall, cost or latency. The
+ordering is deliberate: **inventing someone's experience is worse than missing a field they
+can add by hand.** Recall is an inconvenience budget; precision and traps are a trust budget,
+and the second does not refill.
 
 ## The corpus
 
@@ -84,6 +120,27 @@ Each case carries a `note` saying what it tests and `traits` naming the conditio
 exercises. `tests/benchmark.test.js` asserts the corpus still covers the traits that decide
 the architecture, so the corpus cannot quietly lose its hard cases.
 
+### Negative examples
+
+A fixture may declare `forbidden` — conclusions that must **not** be drawn:
+
+```json
+"forbidden": {
+  "experience": [{ "company": "Google" }, { "role": "Engineer" }],
+  "skills": [{ "name": "Python" }]
+}
+```
+
+These are scored as their own metric because neither recall nor accuracy can see them: an
+invented value has no expected counterpart to be wrong about, so it is invisible to accuracy,
+and recall actively *rewards* producing it. Stating only `{"company": "Google"}` bans that
+employer however the rest of the record came out.
+
+This is where extraction systems become dangerous. A page that mentions Google in a footer,
+Python in an article about migrating away from Python, or Cambridge in a co-author's
+affiliation will produce a plausible, confident, entirely fabricated CV — and the person it
+describes is the last to find out.
+
 ### What the current corpus covers
 
 | Case | What it tests |
@@ -95,6 +152,25 @@ the architecture, so the corpus cannot quietly lose its hard cases.
 | `org-variants` | One employer written three ways across two signals |
 | `og-only` | A page with no person on it. Punishes invention |
 | `spa-shell` | Client-rendered. The case a static fetcher structurally cannot handle |
+| `footer-mentions` | Credits, a nav item reading "Engineer", icon-only social links |
+| `article-mentions` | An article naming a dozen technologies the author does not claim |
+| `other-affiliations` | Co-authors' institutions, and journals reviewed for |
+| `client-logos` | Companies worked *with*, not *at* |
+
+### What it still needs
+
+Eleven cases validate the framework. Deciding between providers needs 30–50, and the gaps
+are known:
+
+- **Platform patterns** — GitHub-like, LinkedIn-like, Scholar-like, Devpost-like. These
+  should be **captured, not invented**: a hand-authored "GitHub-like" fixture tests an
+  author's memory of GitHub's markup, which is exactly the thing that has no bearing on how
+  extraction performs against the real page. Use `--snapshot`.
+- **Documents** — clean PDF, scanned PDF, DOCX, multi-column résumé. A different input path
+  from HTML, and the corpus loader would need to route non-HTML fixtures through
+  `ingestDocument`. Scanned PDF has no OCR behind it today, so that case would measure a
+  known zero.
+- **Structural hard cases** — deeply nested DOM, unusual typography, incomplete profiles.
 
 ## Providers
 
@@ -120,6 +196,23 @@ surfaces as a conflict — not a silent rewrite of someone's employment history.
 enforced structurally: `normalizeSignals` returns a fragment plus evidence, and `claims.js` is
 the only path into the canonical profile.
 
+## Where the baseline stands
+
+```
+Quality    Recall 88%   Accuracy 99%   Precision 98%   Structure 100%   Entities 85%   Dates 87%
+Trust      Evidence 100%   Validity 99%   Traps 100%   Invented 2%   JS pages 0%   Median 2ms
+```
+
+It passes the gate, which means recall, cost and latency are now the things worth comparing.
+
+The result worth noticing is **traps at 100% with 20 negative cases**. A deliberately
+conservative deterministic extractor does not hallucinate — it declines. That sets a
+genuinely demanding bar for anything with a model in the loop, and it is the number to watch
+when one is added.
+
+The one axis it cannot move is `JS pages: 0%`. That is not a bug to be fixed here; it is the
+measurement of what a rendering layer would actually buy.
+
 ## Reading the results
 
 The first run of this corpus scored 69% recall and 77% precision, and the misses were more
@@ -134,3 +227,10 @@ useful than the score:
 All five were real bugs in shared code — the last three in the résumé reader, where they had
 been affecting PDF and DOCX imports too. That is the benchmark paying for itself before a
 single provider was evaluated.
+
+Adding evidence validity found three more, all of the same shape: evidence that was *present*
+but did not show what it claimed to. A description backed by the job title line above it. A
+social URL backed by the words "GitHub". A paper's title backed by its author list. Every one
+of those reads as provenance while providing none — and unlike a missing span, it cannot be
+told apart from evidence that holds up. They are fixed; per-attribute spans are why validity
+is 99% rather than 92%.

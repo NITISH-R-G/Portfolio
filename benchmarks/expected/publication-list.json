@@ -5,7 +5,8 @@
   "profile": {
     "identity": {
       "name": "Hannah Whitfield",
-      "headline": "Associate Professor of Computational Biology, University of Edinburgh"
+      "headline": "Associate Professor of Computational Biology, University of Edinburgh",
+      "summary": "Computational biology. Protein structure prediction."
     },
     "socials": {
       "googleScholar": "https://scholar.google.com/citations?user=aB3dEfGhIjk",

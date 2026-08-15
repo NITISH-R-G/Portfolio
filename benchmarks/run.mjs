@@ -19,7 +19,7 @@
 import { writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { loadCorpus, FIXTURES } from './corpus.js'
-import { scoreCase, aggregate } from './score.js'
+import { scoreCase, aggregate, GATE, gateFailures } from './score.js'
 import { PROVIDERS, providerById } from './providers.js'
 import { normalizeSignals } from '../src/core/extraction/normalize.js'
 import { bold, dim, green, heading, ok, rule, say, warn, yellow } from '../scripts/lib/ui.mjs'
@@ -109,25 +109,52 @@ function report(corpus, providers, results) {
   heading('Extraction benchmark')
   say(dim(`  ${corpus.length} case${corpus.length === 1 ? '' : 's'} · ${providers.length} provider${providers.length === 1 ? '' : 's'} · frozen fixtures, no network`))
 
-  rule('Summary')
-  const columns = ['Recall', 'Accuracy', 'Precision', 'Structure', 'Entities', 'Dates', 'Evidence', 'Failed', 'Median']
-  say(`  ${'Provider'.padEnd(12)}${columns.map((c) => c.padStart(11)).join('')}`)
+  rule('Quality')
+  const quality = ['Recall', 'Accuracy', 'Precision', 'Structure', 'Entities', 'Dates']
+  say(`  ${'Provider'.padEnd(14)}${quality.map((c) => c.padStart(11)).join('')}`)
+  for (const provider of providers) {
+    const s = results[provider.id].summary
+    const cells = [pct(s.recall), pct(s.accuracy), pct(s.precision), pct(s.structure), pct(s.entities), pct(s.dates)]
+    say(`  ${bold(provider.name.padEnd(14))}${cells.map((c) => c.padStart(11)).join('')}`)
+  }
 
+  rule('Trust')
+  const trust = ['Evidence', 'Validity', 'Traps', 'Invented', 'JS pages', 'Failed', 'Median']
+  say(`  ${'Provider'.padEnd(14)}${trust.map((c) => c.padStart(11)).join('')}`)
   for (const provider of providers) {
     const s = results[provider.id].summary
     const cells = [
-      pct(s.recall), pct(s.accuracy), pct(s.precision), pct(s.structure),
-      pct(s.entities), pct(s.dates), pct(s.evidence),
-      pct(s.failureRate, true), `${Math.round(s.medianMs)}ms`,
+      pct(s.evidence), pct(s.validity), pct(s.traps.rate), pct(s.inventionRate, true),
+      pct(s.jsRecall), pct(s.failureRate, true), `${Math.round(s.medianMs)}ms`,
     ]
-    say(`  ${bold(provider.name.padEnd(12))}${cells.map((c) => c.padStart(11)).join('')}`)
+    say(`  ${bold(provider.name.padEnd(14))}${cells.map((c) => c.padStart(11)).join('')}`)
   }
 
   say('')
   say(dim('  Recall    — of everything on the page, how much was found'))
-  say(dim('  Accuracy  — of what was found, how much was right'))
   say(dim('  Precision — of what was produced, how much was real (invention is penalised)'))
-  say(dim('  Structure — records that landed in the right collection'))
+  say(dim('  Evidence  — correct values that carry a traceable source'))
+  say(dim('  Validity  — evidence that actually contains and licenses the value it backs'))
+  say(dim('  Traps     — negative cases survived: a footer mention that must not become a job'))
+
+  /* The gate ---------------------------------------------------------------- */
+
+  rule('Gate')
+  say(dim('  Inventing someone\'s experience is worse than missing a field, so these come first.'))
+  say(dim(`  precision ≥ ${GATE.precision * 100}%  ·  evidence ≥ ${GATE.evidence * 100}%  ·  validity ≥ ${GATE.validity * 100}%  ·  traps = ${GATE.traps * 100}%`))
+  say('')
+
+  for (const provider of providers) {
+    const failures = gateFailures(results[provider.id].summary)
+    if (!failures.length) {
+      ok(`${provider.name} — passes. Recall, cost and latency are now worth comparing.`)
+      continue
+    }
+    warn(`${provider.name} — fails ${failures.length === 1 ? 'a gate' : `${failures.length} gates`}:`)
+    for (const { metric, required, actual } of failures) {
+      say(`      ${metric.padEnd(10)} ${pct(actual)} ${dim(`needs ${Math.round(required * 100)}%`)}`)
+    }
+  }
 
   /* Per case ---------------------------------------------------------------- */
 
@@ -140,7 +167,16 @@ function report(corpus, providers, results) {
         const line = `  ${score.slug.padEnd(22)}${pct(s.recall).padStart(8)} recall ${pct(s.accuracy).padStart(8)} accurate${traits}`
         say(score.failed ? yellow(`${line}  (no output)`) : line)
 
+        for (const trap of score.traps.filter((t) => t.violated)) {
+          say(`      ${yellow('TRAP')}     ${trap.path}  concluded ${brief(trap.value)} from a passing mention`)
+        }
+
         if (flag('misses')) {
+          for (const field of score.fields) {
+            if (field.status === 'correct' && field.evidenced && !field.supported) {
+              say(`      ${yellow('unbacked')} ${field.path.replace(/^(identity|socials)\./, '')}  right value, evidence does not show it`)
+            }
+          }
           for (const field of score.fields) {
             if (field.status === 'correct') continue
             const label = field.path.replace(/^(identity|socials)\./, '')

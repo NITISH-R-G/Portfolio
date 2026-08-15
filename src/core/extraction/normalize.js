@@ -197,10 +197,24 @@ export function normalizeSignals(signals, context = {}) {
         continue
       }
 
+      // Where each of this record's values was read from, if the signal that produced it
+      // knew. Held off the record itself so it does not become a claimed attribute.
+      const spans = record.__spans ?? {}
+      delete record.__spans
+
       record.source = { connector: sourceId, ...(context.url ? { url: context.url } : {}), confidence: EXTRACTION_CONFIDENCE[tier] }
       bucket.push(record)
       tiers[tier] += 1
-      evidence[`${collection}/${key}|@exists`] = { confidence: EXTRACTION_CONFIDENCE[tier] }
+
+      // Evidence per attribute, not just per record. A reviewer checking whether the
+      // extractor was right about the *company* needs the span that named the company —
+      // being told only that the record as a whole came from somewhere is not checkable.
+      const confidence = EXTRACTION_CONFIDENCE[tier]
+      evidence[`${collection}/${key}|@exists`] = { confidence, ...(spans['*'] ?? {}) }
+      for (const attribute of Object.keys(record)) {
+        if (attribute === 'source' || attribute === 'id') continue
+        evidence[`${collection}/${key}|${attribute}`] = { confidence, ...(spans[attribute] ?? spans['*'] ?? {}) }
+      }
     }
   }
 
@@ -231,7 +245,10 @@ export function normalizeSignals(signals, context = {}) {
     }
     const detection = detectSource(link.href)
     if (detection.outcome !== 'matched') continue
-    set(`socials.${detection.connector}`, canonicalUrl(link.href, context.url), 'strong', { text: link.text })
+    // The href is the evidence, not the link text. Half these links are icons whose text is
+    // "GitHub" or nothing at all, and quoting that as the basis for the URL would be
+    // evidence that does not show the thing it supports.
+    set(`socials.${detection.connector}`, canonicalUrl(link.href, context.url), 'strong', { text: link.href })
   }
 
   /* 3. Meta — universal, shallow, and written for crawlers -------------------- */
@@ -272,7 +289,27 @@ export function normalizeSignals(signals, context = {}) {
 
     for (const [collection, records] of Object.entries(parsed.profile)) {
       if (collection === 'identity' || !Array.isArray(records)) continue
-      add(collection, records, 'moderate')
+      // The reader keys its spans by the record id it assigned. Matching on that here — the
+      // one place both ids are in scope — avoids re-deriving the key twice and having the
+      // two derivations drift, which is how evidence silently stops attaching.
+      add(collection, records.map((record) => {
+        const spans = record.id && collectSpans(parsed.evidence, `${collection}/${record.id}`)
+        return spans ? { ...record, __spans: spans } : record
+      }), 'moderate')
+    }
+
+    // The résumé reader already knows *which line* each value came from and *which heading*
+    // it sat under. Carrying that across is what makes evidence checkable rather than merely
+    // present: "extracted Google, from the line 'Software Engineer at Google', under
+    // Experience" can be verified, and "extracted Google" cannot.
+    for (const [key, span] of Object.entries(parsed.evidence ?? {})) {
+      const existing = evidence[key]
+      if (!existing || existing.text) continue
+      evidence[key] = {
+        ...existing,
+        ...(span.section ? { section: span.section } : {}),
+        ...(span.text ? { text: String(span.text).slice(0, 200) } : {}),
+      }
     }
 
     warnings.push(...parsed.warnings)
@@ -465,6 +502,37 @@ function microdataToObject(item) {
     out[key] = mapped.length === 1 ? mapped[0] : mapped
   }
   return out
+}
+
+/**
+ * Every span the reader recorded for a subject, keyed by attribute, plus a `*` fallback.
+ *
+ * Per-attribute rather than per-record because the reader now points each value at the line
+ * it actually came from — a description at the description line, a range at the date line —
+ * and collapsing them back to one span would undo exactly that, leaving a description
+ * "evidenced" by a line that does not contain it.
+ *
+ * @param {Record<string, any>|undefined} evidence
+ * @param {string} subject
+ * @returns {Record<string, {section?: string, text?: string}>|undefined}
+ */
+function collectSpans(evidence, subject) {
+  /** @type {Record<string, {section?: string, text?: string}>} */
+  const spans = {}
+
+  for (const [key, span] of Object.entries(evidence ?? {})) {
+    if (!key.startsWith(`${subject}|`)) continue
+    if (!span?.text && !span?.section) continue
+
+    const trimmed = {
+      ...(span.section ? { section: span.section } : {}),
+      ...(span.text ? { text: String(span.text).slice(0, 200) } : {}),
+    }
+    spans[key.slice(subject.length + 1)] = trimmed
+    spans['*'] ??= trimmed
+  }
+
+  return Object.keys(spans).length ? spans : undefined
 }
 
 /** @param {unknown} value @returns {string} */

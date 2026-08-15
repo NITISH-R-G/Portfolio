@@ -260,9 +260,18 @@ function parseEntries(section, context, evidence, collection) {
     entries.push(entry)
 
     const confidence = dateLine ? 'strong' : 'moderate'
+    const descriptionLine = block.slice(1).find((line) => !/^[-*•·]/.test(line.text) && !DATE_RANGE.test(line.text))
+
     for (const attribute of Object.keys(entry)) {
       if (attribute === 'id') continue
-      record(evidence, `${collection}/${entry.id}`, attribute, span(titleLine, context, confidence, section.title))
+      // Each attribute points at the line it actually came from. Stamping the title line on
+      // everything makes the evidence for a description quote text that does not contain it
+      // — which reads as provenance while providing none, and is worse than admitting there
+      // is no span, because it cannot be told apart from evidence that does hold up.
+      const from = attribute === 'description' ? descriptionLine ?? titleLine
+        : attribute === 'dates' ? dateLine ?? titleLine
+        : titleLine
+      record(evidence, `${collection}/${entry.id}`, attribute, span(from, context, confidence, section.title))
     }
   }
 
@@ -273,10 +282,17 @@ function parseProjects(section, context, evidence) {
   const projects = []
   for (const line of bulletsOf(section.lines)) {
     const linked = /\[([^\]]+)\]\(([^)]+)\)\s*[—–:-]?\s*(.*)/.exec(line.text)
-    const name = linked ? linked[1] : line.text.split(/\s+[—–:-]\s+/)[0].replace(/\*\*/g, '').trim()
+    const marked = !linked && line.head && line.rest?.length
+
+    const name = linked
+      ? linked[1]
+      : (marked ? line.head : line.text.split(/\s+[—–:-]\s+/)[0]).replace(/\*\*/g, '').replace(/^[—–:-]\s*/, '').trim()
     if (!name) continue
 
-    const description = linked ? linked[3] : line.text.split(/\s+[—–:-]\s+/).slice(1).join(' — ')
+    const description = linked
+      ? linked[3]
+      : (marked ? line.rest.join(' ') : line.text.split(/\s+[—–:-]\s+/).slice(1).join(' — '))
+        .replace(/^[—–:-]\s*/, '')
     const project = {
       id: slug(name),
       name,
@@ -317,8 +333,12 @@ function parseSkills(section, context, evidence) {
 function parseTitled(section, context, evidence, collection) {
   const field = collection === 'certifications' ? 'name' : 'title'
   return bulletsOf(section.lines).map((line) => {
-    const text = line.text.replace(/\*\*/g, '')
-    const [title, ...rest] = text.split(/\s+[—–]\s+|\s+\|\s+/)
+    // A marked first line is the title outright. Only when there is none does the title have
+    // to be recovered from punctuation — which is what turns a whole citation, authors and
+    // journal included, into the "title" of a paper.
+    const [title, ...rest] = line.head && line.rest?.length
+      ? [line.head.replace(/\*\*/g, ''), ...line.rest]
+      : line.text.replace(/\*\*/g, '').split(/\s+[—–]\s+|\s+\|\s+/)
     const entry = { id: slug(title), [field]: title.trim() }
 
     const remainder = rest.join(' — ')
@@ -435,10 +455,19 @@ function bulletsOf(lines) {
       if (line.boundary || !groups.length) groups.push([line])
       else groups[groups.length - 1].push(line)
     }
-    return groups.map((group) => ({
-      ...group[0],
-      text: group.map((line) => line.text.replace(/^[-*•·]\s*/, '')).join(' '),
-    }))
+    return groups.map((group) => {
+      const parts = group.map((line) => line.text.replace(/^[-*•·]\s*/, ''))
+      return {
+        ...group[0],
+        text: parts.join(' '),
+        // The entry's own first line, kept apart from the rest. Where a format marked the
+        // boundary it usually marked the title too — an `<em>` holding a paper's title, a
+        // `<strong>` holding a project's name — and a reader that only ever sees the joined
+        // string has to find that title again by guessing at punctuation.
+        head: parts[0],
+        rest: parts.slice(1),
+      }
+    })
   }
 
   const bullets = lines.filter((line) => /^[-*•·]/.test(line.text))
