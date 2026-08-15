@@ -113,7 +113,10 @@ describe('document ingestion', () => {
 
     assert.equal(experience[0].role, 'Software Engineering Intern')
     assert.equal(experience[0].company, 'Acme Corp', 'the separator is not part of the name')
-    assert.equal(experience[0].startDate, '2022')
+    // A range, not two loose fields: "2022 – Present" has to be able to say *ongoing*, and
+    // an absent `end` alone cannot distinguish a current role from one whose end was
+    // unreadable.
+    assert.deepEqual(experience[0].dates, { start: '2022', end: '2024' })
     assert.deepEqual(experience[0].highlights, ['Rebuilt the settlement pipeline.'])
 
     assert.equal(education[0].institution, 'University of London')

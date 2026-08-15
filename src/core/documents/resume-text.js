@@ -46,6 +46,11 @@ const NOISE = /^[\s|_=*~•·—–-]*$/
  * @property {number} [page]    1-indexed, when the format has pages.
  * @property {boolean} heading  Whether the format marked this as a heading.
  * @property {number} [level]   Heading level, when known.
+ * @property {boolean} [boundary]
+ *   Set only by formats that genuinely know where one entry ends and the next begins — an
+ *   HTML page whose author wrote each role as its own `<li>`, for example. PDF and DOCX
+ *   extraction cannot know this and never sets it, so they keep relying on the date-line
+ *   heuristic below.
  */
 
 /**
@@ -80,6 +85,17 @@ export function parseResumeLines(lines, context) {
     if (key) {
       current = { key, title: line.text.replace(/^#+\s*/, '').replace(/:$/, ''), lines: [] }
       sections.push(current)
+      continue
+    }
+    // A heading we do not recognise still *ends* the section above it. Letting its contents
+    // fall through to the previous section is how a page's "Links" list becomes three
+    // universities — a confidently wrong record, which is worse than the omission.
+    //
+    // Before any section has started, though, an unrecognised heading is the document's own
+    // title — `# Ada Lovelace` at the top of a résumé — and that is the name.
+    if (line.heading) {
+      if (current) current = null
+      else preamble.push(line)
       continue
     }
     if (current) current.lines.push(line)
@@ -227,16 +243,11 @@ function parseEntries(section, context, evidence, collection) {
           // confidence reflects that it is a reading rather than a certainty.
           role: parts[0],
           company: parts[1] ?? parts[0],
-          ...(dates ? { startDate: dates.start, endDate: dates.end } : {}),
+          ...(dates ? { dates } : {}),
           ...(description ? { description } : {}),
           ...(bullets.length ? { highlights: bullets } : {}),
         }
-      : {
-          institution: parts[0],
-          ...(parts[1] ? { degree: parts[1] } : {}),
-          ...(parts[2] ? { field: parts[2] } : {}),
-          ...(dates ? { startDate: dates.start, endDate: dates.end } : {}),
-        }
+      : educationEntry(parts, dates)
 
     // The id is assigned here rather than derived again later, so the record, its evidence
     // key and the resolver's subject key are guaranteed to agree. Deriving it twice is how
@@ -330,12 +341,52 @@ function parseTitled(section, context, evidence, collection) {
 
 const DATE_RANGE = /\b((?:19|20)\d{2}|[A-Z][a-z]{2,8}\.?\s+(?:19|20)\d{2}|\d{1,2}\/(?:19|20)\d{2})\s*(?:[—–\-−]{1,2}|\bto\b)\s*((?:19|20)\d{2}|[A-Z][a-z]{2,8}\.?\s+(?:19|20)\d{2}|\d{1,2}\/(?:19|20)\d{2}|present|current|now)\b/i
 
+/**
+ * Qualification names, for telling "PhD Structural Biology, University of Cambridge" from
+ * "University of Cambridge, PhD Structural Biology".
+ *
+ * Both orders are written constantly and neither is more correct, so the only honest way to
+ * tell them apart is to recognise one of the two parts. A degree name is the recognisable
+ * one — institutions are unbounded, qualifications are not.
+ */
+const DEGREE = /^(?:b\.?\s?(?:tech|sc|a|s|e|eng|com|ed)|m\.?\s?(?:tech|sc|a|s|eng|ba|phil|ed)|mba|ph\.?\s?d|d\.?\s?phil|doctorate|bachelors?|masters?|diploma|associates?|certificate|postgraduate|foundation)\b/i
+
+/**
+ * Build an education entry, putting each part where it belongs rather than where it appeared.
+ *
+ * @param {string[]} parts
+ * @param {import('../schema/types.js').DateRange|undefined} dates
+ */
+function educationEntry(parts, dates) {
+  let [first, second, third] = parts
+
+  // Only when it is unambiguous: if the first part names a qualification and the second does
+  // not, the writer used "Degree, Institution". If both or neither match, the conventional
+  // reading stands rather than a coin flip.
+  if (second && DEGREE.test(first) && !DEGREE.test(second)) {
+    [first, second] = [second, first]
+  }
+
+  return {
+    institution: first,
+    ...(second ? { degree: second } : {}),
+    ...(third ? { field: third } : {}),
+    ...(dates ? { dates } : {}),
+  }
+}
+
 /** @param {string} text */
 function parseDateRange(text) {
   const match = DATE_RANGE.exec(text)
   if (!match) return undefined
-  const end = /present|current|now/i.test(match[2]) ? undefined : match[2]
-  return { start: match[1], end }
+
+  // "Present" has to survive as a *flag*, not as an absent end date. Returning `end:
+  // undefined` alone is indistinguishable from a range whose end could not be read, and the
+  // two mean opposite things: one is a job someone still has, the other is a job whose end
+  // we failed to parse. Collapsing them is how "2022 – Present" ends up rendering as a role
+  // that simply stops.
+  const current = /present|current|now|ongoing|today/i.test(match[2])
+  return { start: match[1], end: current ? undefined : match[2], ...(current ? { current: true } : {}) }
 }
 
 /**
@@ -350,10 +401,14 @@ function splitIntoBlocks(lines) {
   let block = []
 
   for (const line of lines) {
-    const startsEntry = DATE_RANGE.test(line.text) || line.heading
+    const startsEntry = line.boundary || DATE_RANGE.test(line.text) || line.heading
     if (startsEntry && block.length) {
-      // A date on its own line belongs to the entry above it, not the one below.
-      const isBareDate = DATE_RANGE.test(line.text) && line.text.replace(DATE_RANGE, '').trim().length < 3
+      // A date on its own line belongs to the entry above it, not the one below — unless the
+      // format told us outright that a new entry starts here, in which case that knowledge
+      // beats the heuristic guessing at it.
+      const isBareDate = !line.boundary
+        && DATE_RANGE.test(line.text)
+        && line.text.replace(DATE_RANGE, '').trim().length < 3
       if (isBareDate) { block.push(line); continue }
       blocks.push(block)
       block = []
@@ -364,8 +419,28 @@ function splitIntoBlocks(lines) {
   return blocks
 }
 
-/** Bullet lines, or every line when the section uses none. */
+/**
+ * Bullet lines, or every line when the section uses none.
+ *
+ * When the format marked entry boundaries — an HTML page with one `<li>` per project — those
+ * win, and each entry's continuation lines are folded back into it. Without this, a project
+ * written as `<li><strong>walrus</strong> — a log library</li>` is read as two projects, one
+ * of them named "— a log library".
+ */
 function bulletsOf(lines) {
+  if (lines.some((line) => line.boundary)) {
+    /** @type {Line[][]} */
+    const groups = []
+    for (const line of lines) {
+      if (line.boundary || !groups.length) groups.push([line])
+      else groups[groups.length - 1].push(line)
+    }
+    return groups.map((group) => ({
+      ...group[0],
+      text: group.map((line) => line.text.replace(/^[-*•·]\s*/, '')).join(' '),
+    }))
+  }
+
   const bullets = lines.filter((line) => /^[-*•·]/.test(line.text))
   const source = bullets.length ? bullets : lines
   return source.map((line) => ({ ...line, text: line.text.replace(/^[-*•·]\s*/, '') }))

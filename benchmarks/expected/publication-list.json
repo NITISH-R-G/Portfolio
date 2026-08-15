@@ -1,0 +1,38 @@
+{
+  "url": "https://www.ed.ac.uk/people/hannah-whitfield",
+  "note": "An academic page: publications as prose citations in an ordered list, no structured data. Tests whether citation text survives extraction, and whether papers land in `publications` rather than being swept into `projects` or `posts` — the structural metric's main case.",
+  "traits": ["no-structured-data", "citations", "academic"],
+  "profile": {
+    "identity": {
+      "name": "Hannah Whitfield",
+      "headline": "Associate Professor of Computational Biology, University of Edinburgh"
+    },
+    "socials": {
+      "googleScholar": "https://scholar.google.com/citations?user=aB3dEfGhIjk",
+      "orcid": "https://orcid.org/0000-0003-4444-1234",
+      "github": "https://github.com/hwhitfield"
+    },
+    "publications": [
+      {
+        "title": "Structural priors improve low-homology fold prediction.",
+        "venue": "Nature Methods",
+        "date": { "iso": "2025-01-01", "precision": "year" }
+      },
+      {
+        "title": "A benchmark for cryptic pocket detection.",
+        "venue": "Bioinformatics",
+        "date": { "iso": "2023-01-01", "precision": "year" }
+      }
+    ],
+    "education": [
+      {
+        "institution": "University of Cambridge",
+        "degree": "PhD Structural Biology",
+        "dates": {
+          "start": { "iso": "2012-01-01", "precision": "year" },
+          "end": { "iso": "2016-01-01", "precision": "year" }
+        }
+      }
+    ]
+  }
+}

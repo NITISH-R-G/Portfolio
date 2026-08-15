@@ -15,7 +15,8 @@
     "doctor": "node scripts/doctor.mjs",
     "test": "node --test \"tests/*.test.js\"",
     "deploy:check": "npm run doctor && npm run build",
-    "example": "node scripts/example.mjs"
+    "example": "node scripts/example.mjs",
+    "benchmark": "node benchmarks/run.mjs"
   },
   "repository": {
     "type": "git",

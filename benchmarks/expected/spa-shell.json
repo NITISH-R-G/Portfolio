@@ -1,0 +1,25 @@
+{
+  "url": "https://dmitri.example.com/",
+  "note": "A client-rendered app that serves an empty shell. Everything a reader sees arrives from JavaScript this provider never runs. Included so the corpus reports honestly on the case a static fetcher structurally cannot handle — the baseline should score zero here, and a zero that is *expected* is different from a bug.",
+  "traits": ["javascript", "client-rendered"],
+  "profile": {
+    "identity": {
+      "name": "Dmitri Vasquez",
+      "headline": "Product Designer",
+      "location": "Montevideo, Uruguay"
+    },
+    "socials": {
+      "github": "https://github.com/dvasquez"
+    },
+    "experience": [
+      {
+        "company": "Cadence Studio",
+        "role": "Principal Designer",
+        "dates": {
+          "start": { "iso": "2020-02-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ]
+  }
+}
