@@ -1,0 +1,31 @@
+{
+  "url": "https://kboateng.example/",
+  "note": "A partially static page: identity and experience are in the HTML, but half the project list arrives after a timer. Static extraction should score well here and still be incomplete — which is the more common real-world shape than a fully client-rendered app, and a better test of whether rendering is worth its cost on ordinary pages.",
+  "traits": ["javascript", "partial-hydration", "load-more"],
+  "waitFor": { "selector": "[data-projects]", "timeoutMs": 10000 },
+  "profile": {
+    "identity": {
+      "name": "Kwame Boateng",
+      "headline": "Data Engineer"
+    },
+    "socials": {
+      "github": "https://github.com/kboateng"
+    },
+    "experience": [
+      {
+        "company": "Accra Analytics",
+        "role": "Data Engineer",
+        "dates": {
+          "start": { "iso": "2020-03-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ],
+    "projects": [
+      { "name": "parquet-tools", "description": "command line inspection for Parquet files." },
+      { "name": "dbt-lint", "description": "style checks for dbt models." },
+      { "name": "airflow-sentry", "description": "failure routing for Airflow DAGs." },
+      { "name": "schema-drift", "description": "detects breaking changes in warehouse tables." }
+    ]
+  }
+}

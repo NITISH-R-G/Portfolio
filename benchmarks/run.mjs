@@ -20,7 +20,8 @@ import { writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { loadCorpus, FIXTURES } from './corpus.js'
 import { scoreCase, aggregate, GATE, gateFailures } from './score.js'
-import { PROVIDERS, providerById } from './providers.js'
+import { PROVIDERS, providerById, available } from './providers.js'
+import { serveFixtures } from './serve.mjs'
 import { normalizeSignals } from '../src/core/extraction/normalize.js'
 import { bold, dim, green, heading, ok, rule, say, warn, yellow } from '../scripts/lib/ui.mjs'
 
@@ -55,59 +56,150 @@ async function run() {
     process.exit(1)
   }
 
-  /** @type {Record<string, {summary: any, scores: any[]}>} */
+  const concurrency = Number(value('concurrency') ?? 4)
+
+  /** @type {Record<string, {summary: any, scores: any[], cost: any, skipped?: string}>} */
   const results = {}
 
-  for (const provider of providers) {
-    /** @type {any[]} */
-    const scores = []
+  // Started only if a provider actually needs a URL. The built-in provider is handed the
+  // fixture bytes, so a run of it alone touches no socket at all.
+  const needsServer = providers.some((p) => p.capabilities.javascript)
+  const server = needsServer ? await serveFixtures() : null
 
-    for (const testCase of corpus) {
-      const started = performance.now()
-      let extraction = { profile: {}, evidence: {} }
-      let failed = false
-
-      try {
-        // The fixture *is* the fetch. Every provider sees identical bytes, so a difference
-        // in score is a difference in extraction and nothing else.
-        const signals = await provider.extract(
-          { html: testCase.html, url: testCase.expected.url, rendered: provider.capabilities.javascript },
-          { url: testCase.expected.url },
-        )
-        extraction = normalizeSignals(signals, { url: testCase.expected.url, sourceId: provider.id })
-        // Nothing at all is a failure; *little* is not. The distinction matters because the
-        // corpus deliberately contains a page with almost nothing on it, and an extractor
-        // that correctly declines to invent a person there is behaving perfectly — counting
-        // that as a failed page would penalise the restraint the case exists to reward.
-        failed = !hasAnyValue(extraction.profile)
-      } catch (err) {
-        failed = true
-        if (flag('detail')) warn(`${provider.id} / ${testCase.slug}: ${err.message}`)
+  try {
+    for (const provider of providers) {
+      const { ok: usable, detail } = await available(provider)
+      if (!usable) {
+        results[provider.id] = { summary: null, scores: [], cost: null, skipped: detail ?? 'unavailable' }
+        continue
       }
 
-      scores.push(scoreCase(testCase, extraction, { ms: performance.now() - started, failed }))
-    }
+      const cost = { coldStartMs: 0, concurrency: provider.capabilities.javascript ? concurrency : 1, renderMs: [] }
 
-    results[provider.id] = { summary: aggregate(scores), scores }
+      if (provider.setup) {
+        const started = performance.now()
+        await provider.setup()
+        cost.coldStartMs = performance.now() - started
+      }
+
+      try {
+        const wallStarted = performance.now()
+        const scores = await mapWithLimit(corpus, cost.concurrency, (testCase) =>
+          runCase(provider, testCase, server, cost))
+        cost.wallMs = performance.now() - wallStarted
+        results[provider.id] = { summary: aggregate(scores), scores, cost }
+      } finally {
+        if (provider.teardown) await provider.teardown()
+      }
+    }
+  } finally {
+    // In a finally so a thrown provider cannot leave a listening socket behind and hang the
+    // process on exit.
+    await server?.close()
   }
 
   if (flag('json')) {
     const path = join(process.cwd(), 'benchmarks', 'results', `${stamp()}.json`)
     await mkdir(join(process.cwd(), 'benchmarks', 'results'), { recursive: true })
-    await writeFile(path, JSON.stringify({ corpus: corpus.map((c) => c.slug), results }, null, 2))
+    await writeFile(path, JSON.stringify({ corpus: corpus.map((c) => c.slug), concurrency, results }, null, 2))
     ok(`Wrote ${path}`)
     return
   }
 
-  report(corpus, providers, results)
+  report(corpus, providers, results, { concurrency })
+}
+
+/**
+ * Score one page with one provider.
+ *
+ * @param {any} provider @param {any} testCase
+ * @param {{origin: string}|null} server @param {any} cost
+ */
+async function runCase(provider, testCase, server, cost) {
+  const started = performance.now()
+  let extraction = { profile: {}, evidence: {} }
+  let failed = false
+  let note
+
+  try {
+    // A rendering provider is given a real URL — the fixture, served locally — because
+    // navigation, status codes and script execution are the things being measured. Everyone
+    // else is handed the same bytes directly. Both see the identical page.
+    const fetched = provider.capabilities.javascript
+      ? await provider.fetch(`${server.origin}/${testCase.platform}/${testCase.slug}.html`, {
+          waitFor: testCase.expected.waitFor,
+        })
+      : { html: testCase.html, url: testCase.expected.url, rendered: false }
+
+    if (fetched.timings?.renderMs !== undefined) cost.renderMs.push(fetched.timings.renderMs)
+
+    if (fetched.failure) {
+      failed = true
+      note = fetched.failure
+    } else {
+      const signals = await provider.extract(fetched, { url: testCase.expected.url })
+      // Normalized against the fixture's *canonical* URL rather than the localhost address
+      // that served it, so relative links resolve to where they really point.
+      extraction = normalizeSignals(signals, { url: testCase.expected.url, sourceId: provider.id })
+      // Nothing at all is a failure; *little* is not. The corpus deliberately contains a page
+      // with almost nothing on it, and an extractor that declines to invent a person there is
+      // behaving perfectly — counting that as failed would penalise the restraint the case
+      // exists to reward.
+      failed = !hasAnyValue(extraction.profile)
+    }
+  } catch (err) {
+    failed = true
+    note = err?.message
+  }
+
+  const score = scoreCase(testCase, extraction, { ms: performance.now() - started, failed })
+  return note ? { ...score, note } : score
+}
+
+/**
+ * Run tasks with a bounded number in flight.
+ *
+ * Bounded rather than `Promise.all`: forty concurrent Chromium contexts is a machine that
+ * stops responding, and a latency figure measured under that kind of contention describes the
+ * contention rather than the renderer.
+ *
+ * @template T, R
+ * @param {T[]} items @param {number} limit @param {(item: T) => Promise<R>} run
+ * @returns {Promise<R[]>}
+ */
+async function mapWithLimit(items, limit, run) {
+  /** @type {R[]} */
+  const out = new Array(items.length)
+  let next = 0
+
+  const worker = async () => {
+    for (;;) {
+      const index = next++
+      if (index >= items.length) return
+      out[index] = await run(items[index])
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker))
+  return out
 }
 
 /**
  * @param {any[]} corpus @param {any[]} providers @param {Record<string, any>} results
  */
-function report(corpus, providers, results) {
+function report(corpus, providers, results, options = {}) {
   heading('Extraction benchmark')
-  say(dim(`  ${corpus.length} case${corpus.length === 1 ? '' : 's'} · ${providers.length} provider${providers.length === 1 ? '' : 's'} · frozen fixtures, no network`))
+  say(dim(`  ${corpus.length} case${corpus.length === 1 ? '' : 's'} · ${providers.length} provider${providers.length === 1 ? '' : 's'} · concurrency ${options.concurrency ?? 1} · frozen fixtures, no internet`))
+
+  for (const provider of providers.filter((p) => results[p.id].skipped)) {
+    warn(`${provider.name} skipped — ${results[provider.id].skipped}`)
+  }
+
+  providers = providers.filter((p) => !results[p.id].skipped)
+  if (!providers.length) {
+    say('')
+    return
+  }
 
   rule('Quality')
   const quality = ['Recall', 'Accuracy', 'Precision', 'Structure', 'Entities', 'Dates']
@@ -129,6 +221,29 @@ function report(corpus, providers, results) {
     ]
     say(`  ${bold(provider.name.padEnd(14))}${cells.map((c) => c.padStart(11)).join('')}`)
   }
+
+  rule('Cost')
+  const costs = ['Cold start', 'Median', 'p95', 'Render', 'Wall', 'Threads']
+  say(`  ${'Provider'.padEnd(14)}${costs.map((c) => c.padStart(12)).join('')}`)
+  for (const provider of providers) {
+    const { summary, cost } = results[provider.id]
+    // Median and p95 come from the *same* series — per-page total. Taking one from page
+    // totals and the other from render-only time produced a p95 below the median, which is
+    // the kind of number that quietly discredits a whole table.
+    const pages = [...(summary.allMs ?? [])].sort((a, b) => a - b)
+    const renders = [...(cost?.renderMs ?? [])].sort((a, b) => a - b)
+
+    say(`  ${bold(provider.name.padEnd(14))}${[
+      cost?.coldStartMs ? `${Math.round(cost.coldStartMs)}ms` : '—',
+      `${Math.round(percentile(pages, 0.5))}ms`,
+      `${Math.round(percentile(pages, 0.95))}ms`,
+      renders.length ? `${Math.round(percentile(renders, 0.5))}ms` : '—',
+      `${(cost?.wallMs ?? 0) / 1000 >= 0.05 ? `${((cost?.wallMs ?? 0) / 1000).toFixed(1)}s` : '<0.1s'}`,
+      String(cost?.concurrency ?? 1),
+    ].map((c) => c.padStart(12)).join('')}`)
+  }
+  say(dim('  Median and p95 are per page, end to end. Render is the readiness wait alone.'))
+  say(dim('  Wall is the whole run, so it reflects the concurrency in the last column.'))
 
   say('')
   say(dim('  Recall    — of everything on the page, how much was found'))
@@ -221,38 +336,82 @@ function report(corpus, providers, results) {
  * @param {string|undefined} url @param {string|undefined} as
  */
 async function snapshot(url, as) {
-  if (!url) {
-    warn('Usage: npm run benchmark -- --snapshot <url> [--as <platform>/<slug>]')
+  if (!url || !/^https?:\/\//i.test(url)) {
+    warn('Usage: npm run benchmark -- --snapshot <url> [--as <platform>/<slug>] [--render] [--screenshot]')
+    say(dim('  The URL is required and explicit. Nothing here runs during `npm test`, and no'))
+    say(dim('  benchmark run reaches the internet on its own.'))
     process.exit(1)
   }
 
   const target = as ?? `misc/${new URL(url).hostname.replace(/^www\./, '').replace(/[^a-z0-9]+/gi, '-')}`
   const [platform, slug] = target.split('/')
+  const render = flag('render')
 
   heading('Snapshot')
   say(dim(`  ${url}`))
+  say(dim(`  ${render ? 'Rendered in Chromium' : 'Static fetch'} — the bytes a ${render ? 'browser' : 'crawler'} would see.`))
 
-  const { baseline } = await import('../src/core/extraction/providers/baseline.js')
-  const fetched = await baseline.fetch(url, {})
+  const provider = render
+    ? (await import('../src/core/extraction/providers/playwright.js')).playwright
+    : (await import('../src/core/extraction/providers/builtin.js')).builtin
+
+  await mkdir(join(FIXTURES, platform), { recursive: true })
+  const path = join(FIXTURES, platform, `${slug}.html`)
+
+  let fetched
+  try {
+    fetched = await provider.fetch(url, {
+      ...(render && flag('screenshot') ? { screenshotPath: join(FIXTURES, platform, `${slug}.png`) } : {}),
+      ...(value('selector') ? { waitFor: { selector: value('selector') } } : {}),
+    })
+  } finally {
+    if (provider.teardown) await provider.teardown()
+  }
 
   if (fetched.failure) {
     warn(fetched.failure)
     process.exit(1)
   }
 
-  await mkdir(join(FIXTURES, platform), { recursive: true })
-  const path = join(FIXTURES, platform, `${slug}.html`)
   await writeFile(path, fetched.html)
 
-  ok(`Wrote ${path} (${(fetched.html.length / 1024).toFixed(1)} kB)`)
+  // Everything the page reported about itself at capture time. Without it a fixture is a
+  // wall of markup with no record of where it came from, what it answered, or how long it
+  // took — and six months later nobody can tell a stale fixture from a broken extractor.
+  const signals = await provider.extract(fetched, { url })
+  const meta = {
+    capturedFrom: url,
+    finalUrl: fetched.url,
+    status: fetched.status ?? null,
+    rendered: Boolean(fetched.rendered),
+    redirects: fetched.redirects ?? 0,
+    title: signals.title,
+    description: signals.meta?.description ?? signals.meta?.['og:description'] ?? null,
+    jsonLdBlocks: signals.jsonLd.length,
+    bytes: fetched.html.length,
+    timings: fetched.timings ?? {},
+  }
+  await writeFile(join(FIXTURES, platform, `${slug}.capture.json`), `${JSON.stringify(meta, null, 2)}\n`)
+
+  ok(`Wrote ${path} (${(fetched.html.length / 1024).toFixed(1)} kB, ${meta.jsonLdBlocks} JSON-LD block${meta.jsonLdBlocks === 1 ? '' : 's'})`)
   say('')
   say(`  Now write ${bold(`benchmarks/expected/${slug}.json`)} by reading the page as a person would.`)
   say(dim('  Do not generate it from extractor output — that anchors ground truth to current'))
   say(dim('  behaviour and turns the benchmark into a regression test.'))
   say('')
+  say(dim('  Captured pages are not committed automatically. A real person\'s profile becoming a'))
+  say(dim('  permanent fixture in a public repository is a decision, not a side effect — check'))
+  say(dim('  what is in the file, and that you are content for it to live there, before adding it.'))
+  say('')
 }
 
 /* -------------------------------------------------------------------------- */
+
+/** @param {number[]} sorted @param {number} p */
+function percentile(sorted, p) {
+  if (!sorted.length) return 0
+  return sorted[Math.min(sorted.length - 1, Math.ceil(p * sorted.length) - 1)]
+}
 
 /** @param {number|null} n @param {boolean} [invert] */
 function pct(n, invert = false) {

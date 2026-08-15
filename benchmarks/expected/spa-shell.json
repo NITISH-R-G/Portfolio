@@ -1,7 +1,7 @@
 {
   "url": "https://dmitri.example.com/",
-  "note": "A client-rendered app that serves an empty shell. Everything a reader sees arrives from JavaScript this provider never runs. Included so the corpus reports honestly on the case a static fetcher structurally cannot handle — the baseline should score zero here, and a zero that is *expected* is different from a bug.",
-  "traits": ["javascript", "client-rendered"],
+  "note": "A client-rendered app whose application bundle was never captured with it. Scores zero for both providers, and the two zeros mean different things: the static provider cannot run scripts, and the browser has no script to run — `/assets/index-4f9a2c.js` 404s, so `#root` stays empty however long Chromium waits. Kept deliberately, because it is the honest demonstration that a frozen snapshot of a single-page app is only as good as the assets frozen alongside it. The fix is to capture such pages post-render (`--snapshot --render`), not to loosen the ground truth. See `hydrated-profile` for the same shape captured completely.",
+  "traits": ["javascript", "client-rendered", "incomplete-capture"],
   "profile": {
     "identity": {
       "name": "Dmitri Vasquez",

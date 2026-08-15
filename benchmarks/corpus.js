@@ -66,6 +66,7 @@ export async function loadCorpus() {
 
   for (const platform of await subdirectories(FIXTURES)) {
     for (const file of await readdir(join(FIXTURES, platform))) {
+      // `.capture.json` sidecars and debugging screenshots live alongside the fixtures.
       if (!file.endsWith('.html')) continue
       const slug = file.replace(/\.html$/, '')
 

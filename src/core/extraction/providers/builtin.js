@@ -1,5 +1,5 @@
 /**
- * The baseline provider: one HTTP GET and a parser.
+ * The built-in provider: one HTTP GET and a parser.
  *
  * No browser, no service, no key, no per-page cost. It reads what the page already declares
  * about itself — JSON-LD, microdata, OpenGraph, headings, links — and nothing more.
@@ -17,7 +17,7 @@
  * client-side serves this provider an empty shell, and no amount of parsing recovers what
  * was never in the bytes. The benchmark's `javascript` metric is where that shows up.
  *
- * @module core/extraction/providers/baseline
+ * @module core/extraction/providers/builtin
  */
 
 import { createHttpClient } from '../../../connectors/http.js'
@@ -25,8 +25,8 @@ import { parseHtml } from '../html.js'
 import { readSignals } from '../signals.js'
 
 /** @type {import('../types.js').ExtractionProvider} */
-export const baseline = {
-  id: 'baseline',
+export const builtin = {
+  id: 'builtin',
   name: 'Built-in',
   summary: 'Reads the structured data a page already publishes. No browser, no service, no key.',
 
@@ -70,4 +70,4 @@ export const baseline = {
   },
 }
 
-export default baseline
+export default builtin

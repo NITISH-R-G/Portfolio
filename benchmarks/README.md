@@ -8,12 +8,18 @@ means. What matters is how much of a person's professional identity survives the
 web page to the claims the resolver publishes, and how much of what arrives is *right*.
 
 ```bash
-npm run benchmark                  # summary table
-npm run benchmark -- --detail      # per-case scores
-npm run benchmark -- --misses      # every field missed, wrong, or invented
-npm run benchmark -- --case <slug> # one page
-npm run benchmark -- --json        # machine-readable, for tracking over time
+npm run benchmark                        # every provider, summary tables
+npm run benchmark -- --detail            # per-case scores
+npm run benchmark -- --misses            # every field missed, wrong, or invented
+npm run benchmark -- --case <slug>       # one page
+npm run benchmark -- --provider builtin  # one provider
+npm run benchmark -- --concurrency 8     # pages in flight (rendering providers)
+npm run benchmark -- --json              # machine-readable, for tracking over time
 ```
+
+Fixtures are served from `127.0.0.1` for the duration of a run, so a rendering provider gets
+a real URL, a real status code and real script execution — without the benchmark ever leaving
+the machine. `npm test` reaches no network and starts no browser it cannot find.
 
 ## Why this exists before any provider was chosen
 
@@ -107,7 +113,19 @@ task rather than a design flaw.
 
 ```bash
 npm run benchmark -- --snapshot https://example.com/someone --as personal/someone
+npm run benchmark -- --snapshot https://example.com/someone --as personal/someone --render
 ```
+
+`--render` captures what Chromium produced rather than what the server sent, which is the only
+way to freeze a client-rendered page usefully. `--screenshot` writes an image beside it for
+debugging a capture that looks wrong. Either way a `.capture.json` sidecar records the final
+URL, status, title, JSON-LD block count, byte size and timings — so a stale fixture can later
+be told apart from a broken extractor.
+
+Capture is explicit and manual. It requires a URL, never runs during `npm test`, and no
+ordinary benchmark run reaches the internet. Captured pages are **not** committed
+automatically: a real person's profile becoming a permanent fixture in a public repository is
+a decision, not a side effect.
 
 Then write `expected/someone.json` by reading the page **as a person would**.
 
@@ -156,6 +174,10 @@ describes is the last to find out.
 | `article-mentions` | An article naming a dozen technologies the author does not claim |
 | `other-affiliations` | Co-authors' institutions, and journals reviewed for |
 | `client-logos` | Companies worked *with*, not *at* |
+| `hydrated-profile` | A whole profile rendered client-side. Nothing in the served HTML |
+| `deferred-projects` | Half the project list arrives after a timer |
+| `injected-jsonld` | Structured data written by the client, and a non-ASCII name |
+| `rendered-trap` | Widgets that appear only after render, and must not become claims |
 
 ### What it still needs
 
@@ -174,13 +196,35 @@ are known:
 
 ## Providers
 
-`providers.js` lists what is under test. Only `extract` is exercised — fetching is replaced by
-the frozen fixture, so every provider sees identical bytes and a score difference is a
-difference in extraction rather than in network luck.
+`src/core/extraction/providers/` holds them; importing its index registers them in escalation
+order, cheapest first.
 
-A provider whose value *is* its fetching (a headless renderer) therefore needs its fixtures
-captured post-render. That is the comparison worth making, and `--snapshot` writes whatever
-that provider's own fetch returned.
+| Provider | What it does |
+| --- | --- |
+| `builtin` | One HTTP GET and a parser. No browser, no service, no key. |
+| `playwright` | Renders in Chromium, then hands the DOM to **the same extractor**. |
+
+That last point is the design of the experiment. The Playwright provider does no parsing of
+its own — `structuredExtraction: false` — so any score difference between the two is
+attributable to rendering and to nothing else. A provider that rendered *and* parsed
+differently would make the comparison unreadable: a moved number could come from either half.
+
+Providers declaring `capabilities.javascript` are given a real URL from the local fixture
+server; the rest are handed the fixture bytes. Both see the same page, and both normalize
+against the fixture's canonical URL rather than the localhost address that served it — so
+relative links resolve where they really point.
+
+### Extraction is the fallback branch
+
+```
+URL
+ ├── a platform a connector already knows  →  the connector. Always.
+ └── anything else                         →  cheapest capable provider, escalating
+```
+
+`registry.js` states this once. Thirty connectors already know what to ask GitHub and ORCID
+for, and routing those through a browser would be slower, more fragile and less accurate than
+the API call it replaces. Having a browser must not turn into using it for everything.
 
 ## The rule extraction does not get to break
 
@@ -196,22 +240,35 @@ surfaces as a conflict — not a silent rewrite of someone's employment history.
 enforced structurally: `normalizeSignals` returns a fragment plus evidence, and `claims.js` is
 the only path into the canonical profile.
 
-## Where the baseline stands
+## Where the providers stand
+
+15 cases, 28 forbidden conclusions, one shared extractor.
 
 ```
-Quality    Recall 88%   Accuracy 99%   Precision 98%   Structure 100%   Entities 85%   Dates 87%
-Trust      Evidence 100%   Validity 99%   Traps 100%   Invented 2%   JS pages 0%   Median 2ms
+                Recall  Accuracy  Precision  Structure  Entities  Dates
+Built-in           78%       99%        98%       100%      76%    79%
+Playwright         91%      100%        99%       100%      88%    89%
+
+              Evidence  Validity  Traps  Invented  JS pages  Median    p95
+Built-in          100%       99%   100%        1%       32%     1ms    8ms
+Playwright        100%       99%   100%        1%       83%   673ms  1183ms
 ```
 
-It passes the gate, which means recall, cost and latency are now the things worth comparing.
+Both pass the gate. Rendering buys **+13 points of recall** and costs **roughly 600× the
+latency** — 1 ms against 673 ms per page, plus a one-time ~290 ms browser start.
 
-The result worth noticing is **traps at 100% with 20 negative cases**. A deliberately
-conservative deterministic extractor does not hallucinate — it declines. That sets a
-genuinely demanding bar for anything with a model in the loop, and it is the number to watch
-when one is added.
+Two results are worth more than the headline:
 
-The one axis it cannot move is `JS pages: 0%`. That is not a bug to be fixed here; it is the
-measurement of what a rendering layer would actually buy.
+**Traps hold at 100% through rendering.** This was not a given. A browser returns *more*
+information, which is also more opportunity to conclude something false — `rendered-trap`
+grows an integrations widget and a "people also viewed" rail that a static fetch never sees.
+The extractor declines both. Precision actually rose (98% → 99%), because the extra recall
+came from real content rather than from guessing harder.
+
+**The two zeros on `spa-shell` mean different things.** The static provider cannot run
+scripts; the browser has no script to run, because the fixture's bundle was never captured
+with it. A frozen snapshot of a single-page app is only as good as the assets frozen
+alongside it — which is what `--snapshot --render` exists for.
 
 ## Reading the results
 
@@ -234,3 +291,21 @@ social URL backed by the words "GitHub". A paper's title backed by its author li
 of those reads as provenance while providing none — and unlike a missing span, it cannot be
 told apart from evidence that holds up. They are fixed; per-attribute spans are why validity
 is 99% rather than 92%.
+
+Adding the browser found three more, and the first is the best bug this corpus has produced:
+
+- **`İ`.toLowerCase() is two characters.** The parser located a `<script>`'s closing tag by
+  searching a lower-cased copy of the document, then sliced the *original* at that index.
+  Turkish dotted capital İ folds to `i` plus a combining dot, so every index after it shifted
+  by one — and a page whose subject lived in İzmir silently lost its entire JSON-LD payload to
+  a stray `<`. Case folding is not length-preserving, and indices from a folded copy do not
+  belong to the original. Now searched with a case-insensitive regex on the original string.
+- **`looksLikeName` was ASCII-only.** `[A-Z][\w'’.-]*` rejects Yıldırım, Sørensen, Nyström and
+  Đorđević, so the reader skipped the real name and took the next line — usually a job title.
+  A name matcher that only recognises ASCII names does not fail politely; it confidently
+  misidentifies people. Now Unicode-aware.
+- **Sibling paragraphs were being fused.** A header's `<p>headline</p><p>location</p>` became
+  one string, so a headline came out as "Site Reliability Engineer Casablanca, Morocco".
+
+The first two were latent in the static path too. Rendering did not introduce them — it
+produced the pages that exposed them.

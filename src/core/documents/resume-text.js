@@ -496,7 +496,13 @@ function looksLikeName(text) {
   const words = stripped.split(/\s+/)
   if (words.length < 1 || words.length > 5) return false
   // Capitalised words, allowing initials and particles like "van".
-  return words.every((word) => /^[A-Z][\w'’.-]*$/.test(word) || /^(van|de|der|den|del|di|da|bin|al)$/i.test(word))
+  //
+  // Unicode-aware, and it has to be: `[A-Z][\w...]` rejects Yıldırım, Sørensen, Müller,
+  // Nyström and Đorđević, so the reader would skip the real name and take whatever line came
+  // next — usually a job title. A name matcher that only recognises ASCII names does not
+  // fail politely; it confidently misidentifies people.
+  return words.every((word) => /^[\p{Lu}\p{Lt}][\p{L}\p{M}\p{Nd}'’.-]*$/u.test(word)
+    || /^(van|de|der|den|del|di|da|bin|al)$/i.test(word))
 }
 
 /**

@@ -21,13 +21,21 @@ import { normalizeSignals } from '../src/core/extraction/normalize.js'
  * deserves a sentence in the commit message.
  */
 const FLOOR = {
-  recall: 0.85,
+  // Lowered from 0.85 when the corpus gained five fixtures whose content only exists after
+  // JavaScript runs. The built-in provider cannot read those by construction, so its
+  // corpus-wide recall fell without anything about it getting worse. Recording the reason
+  // here rather than quietly editing the number, because "the floor moved down" and "the
+  // extractor got worse" have to stay distinguishable.
+  recall: 0.75,
   accuracy: 0.95,
   precision: 0.97,
   structure: 1,
   evidence: 0.95,
   validity: 0.95,
 }
+
+/** The same floors, over the pages a static fetch can actually see. */
+const STATIC_FLOOR = { recall: 0.85 }
 
 /** Run the whole corpus through a provider, exactly as `npm run benchmark` does. */
 async function runProvider(provider, corpus) {
@@ -174,9 +182,22 @@ describe('the baseline provider against the corpus', () => {
     assert.deepEqual(gateFailures(summary), [])
   })
 
-  test('reads nothing from a client-rendered page, and that is the honest answer', async () => {
+  test('still meets its recall floor on the pages it can actually see', async () => {
+    // The corpus-wide figure now includes pages that are unreadable without a browser.
+    // Measuring the static provider only against static pages is what keeps a regression in
+    // the parser from hiding behind fixtures it was never going to read.
+    const corpus = (await loadCorpus()).filter((c) => !c.expected.traits?.includes('javascript'))
+    const summary = await runProvider(PROVIDERS[0], corpus)
+
+    assert.ok(
+      summary.recall >= STATIC_FLOOR.recall,
+      `static recall was ${(summary.recall * 100).toFixed(0)}%, below the ${STATIC_FLOOR.recall * 100}% floor`,
+    )
+  })
+
+  test('reads nothing from a fully client-rendered page, and that is the honest answer', async () => {
     const corpus = await loadCorpus()
-    const spa = corpus.find((c) => c.expected.traits?.includes('javascript'))
+    const spa = corpus.find((c) => c.slug === 'hydrated-profile')
     const signals = readSignals(parseHtml(spa.html))
     const { profile } = normalizeSignals(signals, { url: spa.expected.url })
 

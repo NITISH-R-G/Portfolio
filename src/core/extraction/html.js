@@ -206,15 +206,27 @@ function findTagEnd(html, from) {
   return -1
 }
 
-/** @param {string} html @param {string} tag @param {number} from */
+/**
+ * Where a raw-text element's closing tag begins.
+ *
+ * Searched with a case-insensitive regex on the original string rather than by lower-casing
+ * a copy, and that is not a style preference. **Case folding can change a string's length.**
+ * Turkish `İ` lower-cases to `i` plus a combining dot — two code units for one — so every
+ * index after it in the folded copy is shifted, and slicing the *original* at those indices
+ * cuts in the wrong place. The symptom is a stray `<` on the end of a JSON-LD payload and a
+ * page that silently loses its structured data, which is exactly what happened to a fixture
+ * whose subject was named Elif Yıldırım and lived in İzmir.
+ *
+ * Names are precisely where this bites, and precisely where it must not.
+ *
+ * @param {string} html @param {string} tag @param {number} from
+ */
 function indexOfClose(html, tag, from) {
-  const needle = `</${tag}`
-  const lower = html.toLowerCase()
-  const at = lower.indexOf(needle, from)
-  if (at === -1) return -1
-  // Guard against `</scriptish>` matching `</script`.
-  const after = lower[at + needle.length]
-  return after === '>' || after === undefined || /\s/.test(after) ? at : indexOfClose(html, tag, at + 1)
+  // Tag names come from the fixed RAW_TEXT set, so there is nothing to escape.
+  const pattern = new RegExp(`</${tag}(?=[\\s/>]|$)`, 'gi')
+  pattern.lastIndex = from
+  const match = pattern.exec(html)
+  return match ? match.index : -1
 }
 
 /**

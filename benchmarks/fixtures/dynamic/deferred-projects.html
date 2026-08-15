@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Kwame Boateng — Data Engineer</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Kwame Boateng",
+    "jobTitle": "Data Engineer",
+    "sameAs": ["https://github.com/kboateng"]
+  }
+  </script>
+</head>
+<body>
+  <h1>Kwame Boateng</h1>
+  <p>Data Engineer</p>
+
+  <section>
+    <h2>Experience</h2>
+    <ul>
+      <li><strong>Data Engineer, Accra Analytics</strong><span>Mar 2020 – Present</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Projects</h2>
+    <ul id="projects">
+      <li><strong>parquet-tools</strong> — command line inspection for Parquet files.</li>
+      <li><strong>dbt-lint</strong> — style checks for dbt models.</li>
+    </ul>
+    <button id="more" type="button">Load more</button>
+  </section>
+
+  <script>
+    // Two projects ship in the HTML; the rest arrive after the list scrolls into view. This
+    // is the ordinary "load more" pattern, and it is deliberately *automatic* rather than
+    // click-driven — a renderer that only ever loads a page should still see these, and one
+    // that has to guess which buttons to press is a different milestone.
+    (function () {
+      var rest = [
+        { name: 'airflow-sentry', description: 'failure routing for Airflow DAGs.' },
+        { name: 'schema-drift', description: 'detects breaking changes in warehouse tables.' }
+      ];
+
+      setTimeout(function () {
+        var list = document.getElementById('projects');
+        rest.forEach(function (project) {
+          var li = document.createElement('li');
+          li.innerHTML = '<strong>' + project.name + '</strong> — ' + project.description;
+          list.appendChild(li);
+        });
+        document.getElementById('more').remove();
+        document.body.setAttribute('data-projects', 'complete');
+      }, 120);
+    })();
+  </script>
+</body>
+</html>

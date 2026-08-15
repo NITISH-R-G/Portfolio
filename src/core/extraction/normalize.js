@@ -689,7 +689,7 @@ function outlineToLines(signals) {
     // List items first: a profile's Experience section is a list far more often than prose,
     // and one item per line is exactly the shape the reader wants.
     if (section.items.length) for (const item of section.items) push(item, false, 0, true)
-    else if (section.text) push(section.text, false, 0)
+    else if (section.lines || section.text) push(section.lines || section.text, false, 0)
   }
 
   return lines

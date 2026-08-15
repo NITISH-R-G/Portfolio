@@ -31,3 +31,8 @@ exports/
 # Benchmark runs (`npm run benchmark -- --json`). The fixtures and expected files are the
 # durable part and are committed; a run's output is reproducible from them.
 benchmarks/results/
+
+# Playwright screenshots and capture sidecars from `--snapshot --render`. The frozen HTML is
+# the fixture; these are debugging aids, and a screenshot of someone's profile is not something
+# to commit by reflex.
+benchmarks/fixtures/**/*.png

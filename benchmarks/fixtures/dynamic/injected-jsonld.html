@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Profile</title>
+  <meta name="description" content="Personal site">
+</head>
+<body>
+  <main id="app">
+    <h1 data-field="name">&nbsp;</h1>
+    <p data-field="headline">&nbsp;</p>
+  </main>
+
+  <script>
+    // Structured data written by the client, which several site generators and most CMS
+    // plugins now do. A static fetch sees an empty <h1> and a meta description that says
+    // nothing; the machine-readable description of the person only exists after render.
+    (function () {
+      var person = {
+        '@context': 'https://schema.org',
+        '@type': 'Person',
+        name: 'Elif Yıldırım',
+        jobTitle: 'Security Engineer',
+        description: 'Application security, mostly in the boring parts of the stack.',
+        address: { '@type': 'PostalAddress', addressLocality: 'İzmir', addressCountry: 'Türkiye' },
+        sameAs: ['https://github.com/eyildirim', 'https://stackoverflow.com/users/998877/eyildirim'],
+        worksFor: {
+          '@type': 'Organization',
+          name: 'Kule Security',
+          roleName: 'Security Engineer',
+          startDate: '2022-08'
+        }
+      };
+
+      var script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.textContent = JSON.stringify(person);
+      document.head.appendChild(script);
+
+      document.querySelector('[data-field="name"]').textContent = person.name;
+      document.querySelector('[data-field="headline"]').textContent = person.jobTitle;
+      document.documentElement.setAttribute('data-hydrated', 'true');
+    })();
+  </script>
+</body>
+</html>

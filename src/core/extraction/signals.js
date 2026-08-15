@@ -50,6 +50,7 @@ import { byTag, classId, find, findAll, linesOf, textOf } from './html.js'
  * @property {number} level                     1–6.
  * @property {string} heading
  * @property {string} text                      Content until the next heading of ≤ level.
+ * @property {string} lines                     The same, with block boundaries preserved.
  * @property {string[]} items                   `<li>` text within, which is where profiles
  *                                              put the things worth extracting.
  */
@@ -337,6 +338,11 @@ export function readOutline(root) {
       level: s.level,
       heading: s.heading,
       text: s.nodes.map((n) => textOf(n)).filter(Boolean).join(' ').trim(),
+      // The same content with its block boundaries intact. Collapsing a header's
+      // `<p>headline</p><p>location</p>` into one string fuses two facts into one — the
+      // headline comes out as "Site Reliability Engineer Casablanca, Morocco" — and no
+      // downstream reader can separate them again.
+      lines: s.nodes.map((n) => linesOf(n)).filter(Boolean).join('\n').trim(),
       items: s.nodes.flatMap((n) => findAll(n, byTag('li')).map(itemText)).filter(Boolean),
     }))
 }

@@ -33,7 +33,15 @@
  *   Whether this provider claims a URL. Absent means "anything" — the fallback position.
  * @property {(url: string, ctx: FetchContext) => Promise<FetchResult>} fetch
  * @property {(fetched: FetchResult, ctx: ExtractContext) => Promise<import('./signals.js').PageSignals>} extract
+ * @property {(options?: Record<string, unknown>) => Promise<unknown>} [setup]
+ *   Acquire whatever is expensive and shared — a browser process, a connection pool. Called
+ *   once before a batch, so per-page timings measure the work rather than the warm-up.
+ * @property {() => Promise<unknown>} [teardown]
+ *   Release it. Must not throw: a teardown failure has to not mask the result of the run.
  * @property {() => Promise<ProviderHealth>} [health]
+ *   Whether the provider can run *here*. A 150 MB browser binary lives outside the
+ *   repository, so having the code is not the same as being able to use it, and the
+ *   difference has to degrade to "skipped, and said so" rather than a stack trace.
  */
 
 /**
@@ -45,6 +53,12 @@
  *
  * @typedef {object} ProviderCapabilities
  * @property {boolean} javascript      Executes page scripts. False means static HTML only.
+ * @property {boolean} [javascriptRendering]  Same thing, named as the onboarding layer asks.
+ * @property {boolean} [dynamicContent]       Sees content that arrives after first paint.
+ * @property {boolean} [screenshots]          Can capture an image, for debugging a capture.
+ * @property {boolean} [structuredExtraction] Extracts to a schema itself, rather than
+ *                                            handing markup to the shared extractor. False
+ *                                            for everything here by design — see below.
  * @property {boolean} offline         Runs with no network and no third-party service.
  * @property {'none'|'optional'|'required'} authentication
  * @property {string[]} authEnv        Environment variables it reads.

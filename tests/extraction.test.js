@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 import { parseHtml, decodeEntities, textOf, linesOf, findAll, find, byTag } from '../src/core/extraction/html.js'
 import { readSignals, readJsonLd, readMicrodata, readMeta, readOutline, readLinks } from '../src/core/extraction/signals.js'
 import { normalizeSignals, canonicalOrg, titleName } from '../src/core/extraction/normalize.js'
-import { baseline } from '../src/core/extraction/providers/baseline.js'
+import { builtin } from '../src/core/extraction/providers/builtin.js'
 
-/** Parse, read signals, normalize — the whole baseline path in one call. */
+/** Parse, read signals, normalize — the whole built-in path in one call. */
 const extract = (html, url = 'https://example.test/') =>
   normalizeSignals(readSignals(parseHtml(html)), { url, sourceId: 'test' })
 
@@ -327,17 +327,17 @@ describe('normalization', () => {
 
 /* -------------------------------------------------------------------------- */
 
-describe('the baseline provider', () => {
+describe('the built-in provider', () => {
   test('declares what it cannot do', () => {
-    assert.equal(baseline.capabilities.javascript, false)
-    assert.equal(baseline.capabilities.cost, 'free')
-    assert.equal(baseline.capabilities.authentication, 'none')
+    assert.equal(builtin.capabilities.javascript, false)
+    assert.equal(builtin.capabilities.cost, 'free')
+    assert.equal(builtin.capabilities.authentication, 'none')
   })
 
   test('an unreachable page is reported, not thrown', () => {
     // Failure has to be a measurement: one dead URL must not abort a corpus run, and the
     // benchmark's failure-rate metric depends on this shape.
-    return baseline
+    return builtin
       .fetch('https://nowhere.invalid/', { fetch: async () => { throw new Error('ENOTFOUND') } })
       .then((result) => {
         assert.ok(result.failure)
@@ -346,7 +346,7 @@ describe('the baseline provider', () => {
   })
 
   test('extraction of an empty document yields empty signals rather than an error', async () => {
-    const signals = await baseline.extract({ html: '' })
+    const signals = await builtin.extract({ html: '' })
     assert.deepEqual(signals.jsonLd, [])
     assert.deepEqual(signals.links, [])
   })

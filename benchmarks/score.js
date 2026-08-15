@@ -377,6 +377,7 @@ export function aggregate(scores) {
     failureRate: scores.length ? failures / scores.length : null,
     medianMs: times.length ? times[Math.floor(times.length / 2)] : 0,
     totalMs: times.reduce((a, b) => a + b, 0),
+    allMs: times,
   }
 }
 

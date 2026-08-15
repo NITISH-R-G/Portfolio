@@ -1,0 +1,37 @@
+{
+  "url": "https://joanapires.example/",
+  "note": "The cost side of rendering. Two widgets appear only after scripts run: a list of integration partners, and a 'people also viewed' rail naming other engineers and their employers. A static fetch cannot be fooled by either, because it never sees them. This case exists so the browser's extra information is scored for the risk it carries, not only the recall it adds.",
+  "traits": ["javascript", "trap", "rendered-only-trap"],
+  "waitFor": { "selector": "[data-ready]", "timeoutMs": 10000 },
+  "profile": {
+    "identity": {
+      "name": "Joana Pires",
+      "headline": "Platform Engineer"
+    },
+    "experience": [
+      {
+        "company": "Vento",
+        "role": "Platform Engineer",
+        "dates": {
+          "start": { "iso": "2022-04-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ]
+  },
+  "forbidden": {
+    "experience": [
+      { "company": "Datadog" },
+      { "company": "Snowflake" },
+      { "company": "Stripe" },
+      { "company": "Twilio" },
+      { "company": "Spotify" },
+      { "company": "Revolut" },
+      { "role": "Staff Engineer" },
+      { "role": "Engineering Manager" }
+    ],
+    "identity": {
+      "name": "Miguel Sousa"
+    }
+  }
+}
