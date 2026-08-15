@@ -250,12 +250,18 @@ Built-in           78%       99%        98%       100%      76%    79%
 Playwright         91%      100%        99%       100%      88%    89%
 
               Evidence  Validity  Traps  Invented  JS pages  Median    p95
-Built-in          100%       99%   100%        1%       32%     1ms    8ms
-Playwright        100%       99%   100%        1%       83%   673ms  1183ms
+Built-in          100%       99%   100%        1%       32%     2ms   16ms
+Playwright        100%       99%   100%        1%       83%   401ms  570ms
 ```
 
-Both pass the gate. Rendering buys **+13 points of recall** and costs **roughly 600× the
-latency** — 1 ms against 673 ms per page, plus a one-time ~290 ms browser start.
+Both pass the gate. Rendering buys **+13 points of recall** and costs **roughly 200× the
+latency** — 2 ms against ~400 ms per page, plus a one-time ~90 ms browser start. The render
+wait itself is ~255 ms of that; the rest is context setup, navigation and content capture.
+
+Measured over the whole corpus at concurrency 4: 1.6 s wall against under 0.1 s. Figures are
+from `chrome-headless-shell`; the full browser's own headless mode, which the provider falls
+back to when the shell is not installed, is about 60% slower per page and identical in every
+quality metric — the same engine renders the page either way.
 
 Two results are worth more than the headline:
 

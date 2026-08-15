@@ -104,12 +104,13 @@ export const playwright = {
       args: ['--disable-dev-shm-usage'],
     }
 
-    // `npx playwright install chromium` fetches the full browser; headless mode by default
-    // wants a second, separate `chrome-headless-shell` binary. Asking for the channel we
-    // actually installed uses Chromium's own headless mode and keeps the install to one
-    // download — which matters when the instruction was explicitly "Chromium only".
-    const browser = await chromium.launch({ ...launch, channel: 'chromium' })
-      .catch(() => chromium.launch(launch))
+    // `npx playwright install chromium` fetches two binaries: the full browser, and a lighter
+    // `chrome-headless-shell` that the default headless launch prefers. Take the shell when
+    // it is there — it starts faster and carries less — and fall back to the full browser's
+    // own headless mode when only that was installed. Neither path is a behaviour change for
+    // extraction: the same engine renders the page either way.
+    const browser = await chromium.launch(launch)
+      .catch(() => chromium.launch({ ...launch, channel: 'chromium' }))
 
     playwright.session = { browser, coldStartMs: performance.now() - started, pages: 0 }
     return playwright.session
