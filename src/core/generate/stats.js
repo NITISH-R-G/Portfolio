@@ -26,6 +26,9 @@
 export function formatCount(value) {
   if (!Number.isFinite(value)) return '0'
   const abs = Math.abs(value)
+  // Billions are reachable for real: a widely-depended-on npm package passes a billion
+  // monthly downloads, and "6943.7M" is a number nobody can read at a glance.
+  if (abs >= 1_000_000_000) return `${trim(value / 1_000_000_000)}B`
   if (abs >= 1_000_000) return `${trim(value / 1_000_000)}M`
   if (abs >= 10_000) return `${trim(value / 1_000)}k`
   return value.toLocaleString('en-US')
@@ -55,12 +58,34 @@ export function deriveStats(profile) {
     entries.push({ ...entry, display: entry.display ?? formatCount(entry.value) })
   }
 
+  // A handful of figures cannot be recomputed from the records on the page — GitHub
+  // followers, a year's contribution count, Stack Overflow reputation. The connector that
+  // fetched them is the only authority, so those entries survive derivation. Anything a
+  // connector marked `derived` is dropped and recomputed here, so hiding a record always
+  // updates the totals.
+  const reported = (profile.stats?.entries ?? [])
+    .filter((e) => e.kind === 'fetched' || e.kind === 'stated')
+
   const projects = profile.projects ?? []
   const connectorsOf = (/** @type {{source?: {connector?: string}}[]} */ records) => {
     const set = new Set()
     for (const r of records) if (r.source?.connector) set.add(r.source.connector)
     return set.size ? [...set] : undefined
   }
+
+  /**
+   * Whether a figure taken verbatim from records was genuinely fetched, or typed by the
+   * portfolio's owner.
+   *
+   * Only a connector that really called an API stamps `fetchedAt`, so its presence is the
+   * signal. Getting this wrong would print "reported" beside a number no platform ever
+   * confirmed — the precise fabrication this project refuses to commit.
+   *
+   * @param {{source?: {fetchedAt?: string}}[]} records
+   * @returns {'fetched'|'stated'}
+   */
+  const reportedKind = (records) =>
+    records.some((r) => r.source?.fetchedAt) ? 'fetched' : 'stated'
 
   /* Code ------------------------------------------------------------------- */
 
@@ -100,12 +125,14 @@ export function deriveStats(profile) {
 
   const downloads = sum(packages.map((p) => p.downloads ?? 0))
   if (downloads > 0) {
-    const periods = new Set(packages.filter((p) => p.downloads).map((p) => p.downloadsPeriod ?? 'recent'))
+    const withDownloads = packages.filter((p) => p.downloads)
+    const periods = new Set(withDownloads.map((p) => p.downloadsPeriod ?? 'recent'))
     add({
       id: 'downloads',
       label: 'Package downloads',
       value: downloads,
-      kind: 'fetched',
+      // A registry reported these, unless the user typed them — see `reportedKind`.
+      kind: reportedKind(withDownloads),
       note: periods.size === 1 ? readablePeriod([...periods][0]) : undefined,
       connectors: connectorsOf(packages),
     })
@@ -126,8 +153,11 @@ export function deriveStats(profile) {
     })
   }
 
-  // The peak rating is reported by the platform, so it stays `fetched` and names its source
-  // rather than being presented as a cross-platform aggregate, which would be meaningless.
+  // A peak rating is one platform's number, not a cross-platform aggregate, so it names its
+  // source. Whether it counts as `fetched` or `stated` depends on how it got here: a
+  // connector that actually called an API stamps `fetchedAt`, and one that only accepted a
+  // typed figure does not. Reading that back is what stops a self-entered rating from being
+  // presented as though the platform had confirmed it.
   const best = competitive
     .filter((c) => Number.isFinite(c.maxRating ?? c.rating))
     .sort((a, b) => (b.maxRating ?? b.rating ?? 0) - (a.maxRating ?? a.rating ?? 0))[0]
@@ -136,7 +166,7 @@ export function deriveStats(profile) {
       id: 'peak-rating',
       label: 'Peak rating',
       value: best.maxRating ?? best.rating ?? 0,
-      kind: 'fetched',
+      kind: reportedKind([best]),
       note: best.platform,
       connectors: best.connector ? [best.connector] : undefined,
     })
@@ -172,6 +202,15 @@ export function deriveStats(profile) {
   add({ id: 'certifications', label: 'Certifications', value: (profile.certifications ?? []).length, kind: 'derived' })
   add({ id: 'hackathons', label: 'Hackathons', value: (profile.hackathons ?? []).length, kind: 'derived' })
   add({ id: 'talks', label: 'Talks given', value: (profile.talks ?? []).length, kind: 'derived' })
+
+  /* Connector-reported figures ----------------------------------------------- */
+
+  const derivedIds = new Set(entries.map((e) => e.id))
+  for (const entry of reported) {
+    if (!entry?.id || derivedIds.has(entry.id)) continue
+    derivedIds.add(entry.id)
+    add(entry)
+  }
 
   return entries
 }
@@ -223,9 +262,10 @@ function readablePeriod(period) {
  */
 export function headlineStats(entries, limit = 4) {
   const priority = [
-    'stars', 'problems-solved', 'citations', 'downloads', 'repositories',
-    'publications', 'peak-rating', 'packages', 'posts', 'models', 'contests',
-    'h-index', 'videos', 'forks', 'hackathons', 'certifications', 'languages-used', 'talks',
+    'stars', 'problems-solved', 'citations', 'contributions', 'downloads', 'repositories',
+    'publications', 'peak-rating', 'reputation', 'packages', 'followers', 'posts', 'models',
+    'contests', 'h-index', 'videos', 'forks', 'hackathons', 'certifications',
+    'languages-used', 'talks',
   ]
   const rank = new Map(priority.map((id, i) => [id, i]))
   return [...(entries ?? [])]

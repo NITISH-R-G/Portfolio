@@ -82,7 +82,7 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
   const hasTags = item.tags && item.tags.length > 0
 
   const title = item.title || item.name || item.company || 'Untitled'
-  const subtitle = item.role || item.venue || item.event || item.issuer || ''
+  const subtitle = item.subtitle || item.role || item.venue || item.event || item.issuer || ''
   const date = item.date || item.period || ''
 
   return (

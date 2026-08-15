@@ -1,9 +1,17 @@
-name: Deploy Portfolio to GitHub Pages
+name: Deploy portfolio
+
+# Works unmodified in any fork: nothing here hardcodes a repository name, a username or a
+# base path. The base path comes from `site.base` in portfolio.config.js, and the verify
+# step reads it back out of the same config rather than asserting a literal.
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
+  # A portfolio should not go stale because its owner stopped running `npm run import`.
+  # This refreshes the data weekly. Remove the block if you prefer to import by hand.
+  schedule:
+    - cron: "0 6 * * 1"
 
 permissions:
   contents: read
@@ -31,14 +39,58 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Vite app
+      - name: Run tests
+        run: npm test
+
+      # Every secret below is optional. A connector with no credential either runs on its
+      # public rate limit or reports itself unavailable — neither fails the build.
+      #
+      # GITHUB_TOKEN is provided by Actions automatically and needs no setup; it raises the
+      # GitHub API rate limit and unlocks pinned repositories and contribution totals.
+      # Add any others under Settings → Secrets and variables → Actions.
+      - name: Import profile data
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STACKEXCHANGE_KEY: ${{ secrets.STACKEXCHANGE_KEY }}
+          SEMANTIC_SCHOLAR_KEY: ${{ secrets.SEMANTIC_SCHOLAR_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: npm run import
+
+      - name: Check the configuration
+        run: npm run doctor
+
+      - name: Build
         run: npm run build
 
-      - name: Verify built output
+      - name: Verify the built output
         run: |
+          set -euo pipefail
           test -f dist/index.html
           test -d dist/assets
-          grep -q "/Portfolio/assets/" dist/index.html
+
+          # Read the configured base path rather than assuming one, then confirm the built
+          # HTML actually references assets under it. A mismatch here is the single most
+          # common cause of a blank deployed page, and it is silent without this check.
+          BASE=$(node -e "import('./scripts/lib/loadConfig.mjs').then(m => m.loadResolvedConfig()).then(r => console.log(r.config.site.base))")
+          echo "Configured base path: $BASE"
+
+          if ! grep -q "src=\"${BASE}assets/" dist/index.html; then
+            echo "::error::Built HTML does not reference assets under '$BASE'."
+            echo "Set site.base in portfolio.config.js to '/<your-repo-name>/' for a GitHub Pages project site."
+            exit 1
+          fi
+
+          # The SEO plugin bakes the real title into the HTML; a placeholder means it did
+          # not run and every shared link would unfurl as "Portfolio".
+          if grep -q "<title>Portfolio</title>" dist/index.html; then
+            echo "::error::index.html still has the placeholder title. Check identity.name in portfolio.config.js."
+            exit 1
+          fi
 
       - name: Upload built site
         uses: actions/upload-pages-artifact@v3

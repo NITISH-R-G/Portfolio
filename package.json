@@ -1,26 +1,45 @@
 {
-  "name": "nitish-portfolio",
+  "name": "portfolio-engine",
   "version": "1.0.0",
-  "description": "Portfolio of Nitish R.G. — Student Developer & Data Science Enthusiast",
+  "description": "Connect your profiles. Your portfolio builds itself. An open-source, data-driven portfolio generator for developers, researchers and builders.",
   "type": "module",
+  "license": "MIT",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "import": "node scripts/import.mjs",
+    "import:file": "node scripts/import-file.mjs",
+    "export": "node scripts/export.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "test": "node --test \"tests/*.test.js\"",
+    "deploy:check": "npm run doctor && npm run build",
+    "example": "node scripts/example.mjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NITISH-R-G/Portfolio.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "portfolio",
+    "portfolio-generator",
+    "developer-portfolio",
+    "resume",
+    "github",
+    "static-site",
+    "react",
+    "vite",
+    "open-source"
+  ],
   "bugs": {
     "url": "https://github.com/NITISH-R-G/Portfolio/issues"
   },
   "homepage": "https://github.com/NITISH-R-G/Portfolio#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "@playwright/test": "^1.61.1",
     "gsap": "^3.15.0",
     "lenis": "^1.3.25",
     "lucide-react": "^1.24.0",
@@ -30,7 +49,6 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",
-    "playwright": "^1.61.1",
     "vite": "^8.1.4"
   }
 }

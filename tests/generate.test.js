@@ -229,11 +229,50 @@ describe('stats', () => {
   test('marks platform-reported numbers as fetched and counted ones as derived', () => {
     const stats = deriveStats(profileOf({
       projects: [{ name: 'a', stars: 3 }],
-      competitive: [{ platform: 'Codeforces', maxRating: 1700, connector: 'codeforces' }],
+      competitive: [{
+        platform: 'Codeforces',
+        maxRating: 1700,
+        connector: 'codeforces',
+        source: { connector: 'codeforces', fetchedAt: '2026-01-01T00:00:00.000Z' },
+      }],
     }))
     assert.equal(stats.find((s) => s.id === 'stars').kind, 'derived')
     assert.equal(stats.find((s) => s.id === 'peak-rating').kind, 'fetched')
     assert.equal(stats.find((s) => s.id === 'peak-rating').note, 'Codeforces')
+  })
+
+  test('a rating from a connector that cannot fetch is labelled stated, not fetched', () => {
+    // CodeChef and HackerRank have no public API, so their numbers are typed by the user.
+    // The absence of `fetchedAt` is what distinguishes them, and presenting them as
+    // platform-confirmed would be the exact fabrication the project refuses to do.
+    const stats = deriveStats(profileOf({
+      competitive: [{
+        platform: 'CodeChef',
+        maxRating: 2100,
+        connector: 'codechef',
+        source: { connector: 'codechef', url: 'https://www.codechef.com/users/x' },
+      }],
+    }))
+    assert.equal(stats.find((s) => s.id === 'peak-rating').kind, 'stated')
+  })
+
+  test('keeps figures a connector reported that no record could reproduce', () => {
+    // Follower counts and contribution totals have nothing on the page to recompute them
+    // from, so derivation must preserve them rather than drop them.
+    const stats = deriveStats(profileOf({
+      projects: [{ name: 'a', stars: 3 }],
+      stats: {
+        entries: [
+          { id: 'contributions', label: 'Contributions', value: 1200, kind: 'fetched' },
+          { id: 'stars', label: 'Stars earned', value: 99999, kind: 'derived' },
+        ],
+      },
+    }))
+    assert.equal(stats.find((s) => s.id === 'contributions').value, 1200)
+    assert.equal(
+      stats.find((s) => s.id === 'stars').value, 3,
+      'a stale derived entry must not survive; it is recomputed from the records shown',
+    )
   })
 
   test('h-index matches the definition', () => {

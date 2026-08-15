@@ -133,9 +133,29 @@ export function canonicalizeSkill(raw) {
   if (/^[a-z0-9]+(-[a-z0-9]+)+$/.test(key)) {
     const spaced = key.replace(/-/g, ' ')
     if (CANONICAL[spaced]) return CANONICAL[spaced]
-    return spaced.replace(/\b[a-z]/g, (c) => c.toUpperCase())
+    return spaced.split(' ').map(titleCaseWord).join(' ')
   }
   return trimmed
+}
+
+/**
+ * Initialisms that a topic tag lower-cases and naive title-casing then mangles: GitHub
+ * topics are always lower-case, so "ai-agents" would otherwise render as "Ai Agents" —
+ * a visible tell that the label was machine-generated rather than written.
+ */
+const INITIALISMS = new Set([
+  'ai', 'ml', 'nlp', 'llm', 'llms', 'cv', 'api', 'apis', 'cli', 'gui', 'ui', 'ux',
+  'sql', 'nosql', 'css', 'html', 'json', 'xml', 'yaml', 'http', 'https', 'rest',
+  'grpc', 'graphql', 'sdk', 'orm', 'crud', 'jwt', 'oauth', 'ci', 'cd', 'aws', 'gcp',
+  'ios', 'os', 'db', 'etl', 'gpu', 'cpu', 'iot', 'ar', 'vr', 'xr', 'ocr', 'tts',
+  'stt', 'rag', 'cnn', 'rnn', 'gan', 'lstm', 'bert', 'gpt', 'mcp', 'p2p', 'ssr',
+  'spa', 'pwa', 'seo', 'dns', 'tcp', 'udp', 'ssh', 'tls', 'ssl', 'vpn', '3d', '2d',
+])
+
+/** @param {string} word */
+function titleCaseWord(word) {
+  if (INITIALISMS.has(word)) return word.toUpperCase()
+  return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
 /**
@@ -259,32 +279,71 @@ export function deriveSkills(profile, options = {}) {
     const existing = declared.get(key)
     declared.delete(key)
 
+    // A skill that a résumé *lists* and that GitHub repositories *demonstrate* is backed by
+    // two independent sources, which is a far stronger claim than either alone. Without
+    // this the declaring source is silently dropped at the moment the two agree — exactly
+    // the case worth showing.
+    if (existing?.source?.connector && !evidence.some((e) => e.connector === existing.source.connector)) {
+      evidence.push({
+        label: existing.source.document ? 'listed in your résumé' : 'listed by you',
+        connector: existing.source.connector,
+      })
+    }
+    for (const entry_ of existing?.evidence ?? []) {
+      if (!evidence.some((e) => e.connector === entry_.connector && e.label === entry_.label)) {
+        evidence.push(entry_)
+      }
+    }
+
     out.push({
       name: entry.name,
       category: existing?.category ?? categorizeSkill(entry.name),
       ...(existing?.proficiency !== undefined ? { proficiency: existing.proficiency } : {}),
+      ...(existing?.source ? { source: existing.source } : {}),
       evidence,
       weight: total,
+      // Remembered so the cap below can protect it. A skill the owner declared *and* has
+      // evidence for is the strongest kind there is; it must not be cut because a topic
+      // tag on three repositories happened to outweigh it.
+      declared: Boolean(existing),
     })
   }
 
   // Declared skills with no imported evidence still belong in the portfolio — the user
   // asserted them, and the absence of evidence is shown by the absence of evidence lines.
+  /** @type {SkillItem[]} */
+  const unevidenced = []
   for (const skill of declared.values()) {
-    out.push({
+    unevidenced.push({
       ...skill,
       category: skill.category ?? categorizeSkill(skill.name),
       weight: 0,
     })
   }
 
-  out.sort((a, b) => {
-    const diff = (b.weight ?? 0) - (a.weight ?? 0)
-    if (diff !== 0) return diff
-    return a.name.localeCompare(b.name)
-  })
+  const byWeight = (/** @type {SkillItem} */ a, /** @type {SkillItem} */ b) =>
+    (b.weight ?? 0) - (a.weight ?? 0) || a.name.localeCompare(b.name)
 
-  return out.slice(0, maxSkills)
+  out.sort(byWeight)
+  unevidenced.sort((a, b) => a.name.localeCompare(b.name))
+
+  // A skill the owner typed out by hand is never dropped to make room for one inferred
+  // from a repository topic. Ranking everything together by weight would do exactly that —
+  // a declared skill with no evidence weighs zero, and one with weak evidence weighs less
+  // than any popular tag — so the cap is applied to *derived* skills only. It exists to
+  // stop machine-inferred noise growing without bound, which is not a reason to discard
+  // something a person deliberately claimed about themselves.
+  const declaredSkills = [
+    ...out.filter((skill) => skill.declared),
+    ...unevidenced,
+  ].map(({ declared: _declared, ...skill }) => skill)
+
+  const derived = out
+    .filter((skill) => !skill.declared)
+    .map(({ declared: _declared, ...skill }) => skill)
+
+  const derivedBudget = Math.max(0, maxSkills - declaredSkills.length)
+  return [...derived.slice(0, derivedBudget), ...declaredSkills]
 }
 
 /**

@@ -150,9 +150,13 @@ export function generateSeo(profile, config) {
   const keywords = deriveKeywords(profile, seoConfig.keywords ?? [])
   if (keywords.length) meta.push({ name: 'keywords', content: keywords.join(', ') })
 
+  const privacy = config?.privacy ?? {}
   const structuredData = seoConfig.structuredData === false
     ? []
-    : buildStructuredData(profile, { name, headline, description, canonical, ogImage })
+    : buildStructuredData(profile, {
+        name, headline, description, canonical, ogImage,
+        includeEmail: privacy.hideEmail !== true && privacy.obfuscateEmail !== true,
+      })
 
   return {
     title,
@@ -206,7 +210,7 @@ export function deriveKeywords(profile, extra = []) {
  * when the profile actually contains publications.
  *
  * @param {Profile} profile
- * @param {{name: string, headline: string, description: string, canonical: string, ogImage: string}} ctx
+ * @param {{name: string, headline: string, description: string, canonical: string, ogImage: string, includeEmail?: boolean}} ctx
  * @returns {object[]}
  */
 export function buildStructuredData(profile, ctx) {
@@ -224,7 +228,13 @@ export function buildStructuredData(profile, ctx) {
   if (profile.identity.location) {
     person.address = { '@type': 'PostalAddress', addressLocality: profile.identity.location }
   }
-  if (profile.identity.contact?.email) person.email = `mailto:${profile.identity.contact.email}`
+  // Emitting the address here would undo `privacy.obfuscateEmail` entirely: JSON-LD is
+  // machine-readable plaintext, and a harvester reads it far more easily than the rendered
+  // page it was obfuscated in. Obfuscation that leaves the address in the head is theatre,
+  // so the privacy setting governs both.
+  if (ctx.includeEmail && profile.identity.contact?.email) {
+    person.email = `mailto:${profile.identity.contact.email}`
+  }
 
   const sameAs = Object.values(profile.socials ?? {}).filter((u) => /^https?:\/\//.test(u))
   if (sameAs.length) person.sameAs = sameAs

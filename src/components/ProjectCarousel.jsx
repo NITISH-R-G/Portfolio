@@ -3,65 +3,17 @@ import { motion } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import Icon from './Icon'
+import ProjectTile from './ProjectTile'
 
-const CARD_WIDTH = 300
-const CARD_HEIGHT = 380
-const GAP = 24
-
-const PLACEHOLDER_IMAGES = {
-  raven: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop',
-  clicky: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=400&fit=crop',
-  'intelli-credit': 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop',
-  roadsos: 'https://images.unsplash.com/photo-1449965408869-ebd3fee26574?w=600&h=400&fit=crop',
-  'discourse-rag': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop',
-  railatc: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&h=400&fit=crop',
-}
-
-function ProjectCard({ project, index, reducedMotion }) {
-  const imgSrc = project.coverImage || PLACEHOLDER_IMAGES[project.id] || PLACEHOLDER_IMAGES.raven
-
-  return (
-    <motion.a
-      href={project.link}
-      className="project-scroll-card"
-      whileHover={reducedMotion ? {} : { y: -6 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-    >
-      <div className="project-scroll-image-wrap">
-        <img
-          src={imgSrc}
-          alt={project.imageAlt || project.title}
-          className="project-scroll-image"
-          width="600"
-          height="400"
-          loading={index < 3 ? 'eager' : 'lazy'}
-          decoding="async"
-        />
-      </div>
-      <div className="project-scroll-content">
-        <div className="project-scroll-tag">
-          <Icon name={project.icon || 'FolderKanban'} size={14} />
-          <span>{project.tags?.[0] || 'Project'}</span>
-        </div>
-        <h3 className="project-scroll-title">{project.title}</h3>
-        <p className="project-scroll-desc">{project.description}</p>
-        <div className="project-scroll-footer">
-          <div className="project-scroll-tags">
-            {project.tags?.slice(0, 3).map((tag) => (
-              <span key={tag} className="project-scroll-chip">{tag}</span>
-            ))}
-          </div>
-          <div className="project-scroll-arrow">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </div>
-    </motion.a>
-  )
-}
-
+/**
+ * Horizontal scroll-snap carousel of project tiles.
+ *
+ * Unlike the original implementation, no per-project image is assumed to exist: a project
+ * with no `image` gets a generated gradient tile (`ProjectTile`) derived deterministically
+ * from its name, rather than a stock photo pulled in by id. See `ProjectTile.jsx`.
+ *
+ * @param {{projects: import('../core/schema/types.js').ProjectItem[]}} props
+ */
 export default function ProjectCarousel({ projects }) {
   const scrollRef = useRef(null)
   const reducedMotion = useReducedMotion()
@@ -81,7 +33,7 @@ export default function ProjectCarousel({ projects }) {
     el.addEventListener('scroll', updateScrollState, { passive: true })
     updateScrollState()
     return () => el.removeEventListener('scroll', updateScrollState)
-  }, [updateScrollState])
+  }, [updateScrollState, projects])
 
   const scroll = useCallback((dir) => {
     const el = scrollRef.current
@@ -119,8 +71,8 @@ export default function ProjectCarousel({ projects }) {
         role="list"
       >
         {projects.map((project, i) => (
-          <ProjectCard
-            key={project.id}
+          <ProjectTile
+            key={project.id || project.name}
             project={project}
             index={i}
             reducedMotion={reducedMotion}

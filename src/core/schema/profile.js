@@ -225,11 +225,61 @@ export function provenance(v) {
   const o = /** @type {Record<string, unknown>} */ (v)
   const connector = str(o.connector)
   if (!connector) return undefined
-  return {
+  return compact({
     connector,
-    ...(url(o.url) ? { url: url(o.url) } : {}),
-    ...(str(o.fetchedAt) ? { fetchedAt: str(o.fetchedAt) } : {}),
-  }
+    url: url(o.url),
+    fetchedAt: str(o.fetchedAt),
+    document: documentEvidence(o.document),
+    // Clamped rather than rejected: an extractor reporting 1.2 has a scaling bug, not a
+    // meaningless answer. Anything non-numeric is dropped, because a confidence that
+    // cannot be compared is worse than none — `validateIdentity` reports both cases.
+    confidence: confidenceOf(o.confidence),
+  })
+}
+
+/**
+ * Where in a document a value was found.
+ *
+ * Only fields the extractor actually knows survive. A Markdown résumé has headings but no
+ * pages, and inventing a page number to fill the shape would make the evidence a lie in
+ * exactly the place a person goes to check it.
+ *
+ * @param {unknown} v
+ * @returns {import('./types.js').DocumentEvidence|undefined}
+ */
+export function documentEvidence(v) {
+  if (!v || typeof v !== 'object') return undefined
+  const o = /** @type {Record<string, unknown>} */ (v)
+  const id = str(o.id)
+  if (!id) return undefined
+
+  const page = num(o.page)
+  const line = num(o.line)
+
+  return compact({
+    id,
+    versionId: str(o.versionId),
+    filename: str(o.filename),
+    page: page !== undefined && page > 0 ? Math.floor(page) : undefined,
+    section: str(o.section),
+    heading: str(o.heading),
+    // Truncated: evidence is for checking a value, not for storing the document twice.
+    text: truncateSpan(str(o.text)),
+    line: line !== undefined && line > 0 ? Math.floor(line) : undefined,
+  })
+}
+
+/** @param {unknown} v @returns {number|undefined} */
+function confidenceOf(v) {
+  const n = num(v)
+  if (n === undefined) return undefined
+  return Math.min(1, Math.max(0, n))
+}
+
+/** @param {string|undefined} text */
+function truncateSpan(text, max = 300) {
+  if (!text) return undefined
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
 }
 
 /**
@@ -259,6 +309,12 @@ export function slugify(...parts) {
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
+    // Transliterated before the strip below, which would otherwise reduce "C", "C++" and
+    // "C#" to the same key and silently merge three distinct skills into one. Only these
+    // two symbols actually distinguish real technology names, so only these are mapped.
+    .replace(/\+\+/g, 'pp')
+    .replace(/\+/g, 'p')
+    .replace(/#/g, 'sharp')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80) || 'item'
@@ -631,6 +687,70 @@ const NORMALIZERS = {
   languages: language,
 }
 
+/**
+ * The field each normalizer requires before it will accept a record, and the reason it
+ * does: a project with no name cannot be rendered, so dropping it is right.
+ *
+ * A *patch* is the exception. An override that changes only a job title is keyed by id and
+ * legitimately carries nothing else, and rejecting it would silently discard the user's
+ * edit — so `normalizeProfile(input, {partial: true})` supplies these temporarily, runs the
+ * normalizer for its coercion and safety checks, then removes what it supplied.
+ *
+ * @type {Record<string, string[]>}
+ */
+const IDENTIFYING_FIELDS = {
+  education: ['institution'],
+  experience: ['company'],
+  projects: ['name'],
+  skills: ['name'],
+  achievements: ['title'],
+  certifications: ['name'],
+  publications: ['title'],
+  posts: ['title'],
+  packages: ['name', 'registry'],
+  videos: ['title'],
+  models: ['name', 'kind'],
+  hackathons: ['name'],
+  talks: ['title'],
+  competitive: ['platform'],
+  languages: ['name'],
+}
+
+/** Distinctive enough that no real value collides with it. */
+const PLACEHOLDER = ' partial '
+
+/**
+ * Normalize a record that may be a partial patch.
+ *
+ * Runs the real normalizer — so a patch is subject to exactly the same URL sanitization and
+ * type coercion as imported data, which matters because overrides come from a JSON file and
+ * from localStorage — then strips the fields that were only supplied to get past its guard.
+ *
+ * @param {string} collection
+ * @param {Record<string, unknown>} record
+ * @returns {Record<string, unknown>|null}
+ */
+function normalizePartial(collection, record) {
+  const normalizer = NORMALIZERS[collection]
+  if (!normalizer) return null
+
+  const required = IDENTIFYING_FIELDS[collection] ?? []
+  const supplied = required.filter((field) => !str(record[field]))
+  if (!supplied.length) return normalizer(record)
+
+  // `models.kind` is an enum, so a sentinel would be rejected; a valid member gets it past
+  // the guard and is removed again below.
+  const stand = (field) => (field === 'kind' ? 'model' : PLACEHOLDER)
+  const padded = { ...record }
+  for (const field of supplied) padded[field] = stand(field)
+
+  const normalized = normalizer(padded)
+  if (!normalized) return null
+
+  for (const field of supplied) delete normalized[field]
+  return normalized
+}
+
 /** @param {unknown} v @param {readonly string[]} allowed */
 function enumOf(v, allowed) {
   const s = str(v)
@@ -655,7 +775,7 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
  * @param {unknown} input
  * @returns {Profile}
  */
-export function normalizeProfile(input) {
+export function normalizeProfile(input, options = {}) {
   const base = createEmptyProfile()
   if (!input || typeof input !== 'object') return base
   const o = /** @type {Record<string, unknown>} */ (input)
@@ -674,7 +794,12 @@ export function normalizeProfile(input) {
     for (const record of raw) {
       const asObject = allowsShorthand && typeof record === 'string' ? { name: record } : record
       if (!asObject || typeof asObject !== 'object') continue
-      const normalized = normalizer(/** @type {Record<string, unknown>} */ (asObject))
+      const source = /** @type {Record<string, unknown>} */ (asObject)
+      // In partial mode a record identified only by `id` is a patch, not a broken record,
+      // and must survive — otherwise a user's edit to one field is silently discarded.
+      const normalized = options.partial && str(source.id)
+        ? normalizePartial(key, source)
+        : normalizer(source)
       if (normalized) out.push(normalized)
     }
     // @ts-expect-error — collections are homogeneous by construction.
@@ -716,7 +841,7 @@ export function normalizeProfile(input) {
           value,
           display: str(e.display),
           note: str(e.note),
-          kind: enumOf(e.kind, ['fetched', 'derived']) ?? 'derived',
+          kind: enumOf(e.kind, ['fetched', 'derived', 'stated']) ?? 'derived',
           connectors: strArray(e.connectors),
         })]
       })

@@ -20,10 +20,55 @@
  * Where a piece of data came from. Attached to imported records so the UI can attribute
  * facts and so `npm run import` can replace a source's records without touching others.
  *
+ * Where a record came from.
+ *
+ * `connector` is the source id — a connector key like `"github"`, or a document id like
+ * `"resume-2026-08"`. The name is historical; it identifies whichever source produced the
+ * record, and every source type converges on this one shape rather than each inventing its
+ * own.
+ *
+ * Two fields carry the load for honesty:
+ *
+ * - **`fetchedAt`** is present only when a source genuinely called an API. Its absence is
+ *   what distinguishes a reported figure from one a person typed, and it drives the
+ *   "reported" / "self-reported" labels on the page.
+ * - **`confidence`** is present only when the extraction mechanism can genuinely produce
+ *   one. Text pulled out of a PDF is a probabilistic guess and may carry it; a number the
+ *   GitHub API returned is not a guess and must never carry it, because a confidence score
+ *   on exact data manufactures precision that does not exist.
+ *
  * @typedef {object} Provenance
- * @property {string} connector   Connector id, e.g. `"github"`.
+ * @property {string} connector   Source id — a connector key or a document id.
  * @property {string} [url]       Public URL the record was derived from.
- * @property {string} [fetchedAt] ISO 8601 timestamp of the fetch.
+ * @property {string} [fetchedAt] ISO 8601 timestamp of the fetch. API sources only.
+ * @property {DocumentEvidence} [document]
+ *   Present only for document-derived records: which document, and where in it.
+ * @property {number} [confidence]
+ *   0–1, and only from a mechanism that can genuinely produce one. See above.
+ */
+
+/**
+ * Where in a document a value was found.
+ *
+ * Enough for the UI to say "Source: Resume, page 1" and for a person to check whether the
+ * extractor read their résumé correctly — which matters because, unlike an API response,
+ * extraction can be wrong in ways only the author would notice.
+ *
+ * Every field beyond `id` is optional: a Markdown résumé has headings but no pages, a plain
+ * text file has neither, and an extractor should record what it actually knows rather than
+ * inventing a page number.
+ *
+ * @typedef {object} DocumentEvidence
+ * @property {string} id            The document's stable id, e.g. `"resume"`.
+ * @property {string} [versionId]   Which import of it — a content hash. A value can be
+ *                                  traced to the exact file it was read from, while the
+ *                                  `id` stays stable so decisions survive a new version.
+ * @property {string} [filename]
+ * @property {number} [page]        1-indexed.
+ * @property {string} [section]     The heading this value was found under.
+ * @property {string} [heading}     The specific sub-heading, where distinct from `section`.
+ * @property {string} [text]        The span the value was read from, for inspection.
+ * @property {number} [line]        1-indexed, for line-oriented formats.
  */
 
 /**
@@ -378,8 +423,14 @@
  * @property {number} value
  * @property {string} [display]
  * @property {string} [note]
- * @property {'fetched'|'derived'} kind   `fetched` = reported by a platform verbatim.
- *                                        `derived` = computed by this project from records.
+ * @property {'fetched'|'derived'|'stated'} kind
+ *   Where the number comes from, which the UI shows so a reader can weigh it:
+ *   `fetched` — a platform's API reported it verbatim.
+ *   `derived` — this project counted it from records that are on the page.
+ *   `stated`  — the portfolio's owner typed it, because the platform publishes no API.
+ *   The distinction is load-bearing: a self-reported figure is a claim, and labelling it
+ *   as though a platform had confirmed it would be exactly the fabrication this project
+ *   refuses to do.
  * @property {string[]} [connectors]      Which sources contributed.
  */
 

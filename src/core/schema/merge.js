@@ -150,9 +150,21 @@ export function mergeProfiles(...layers) {
     result.custom[name] = /** @type {any} */ ([...bucket.values()])
   }
 
-  // Stats are always recomputed downstream; carrying them through a merge would let a
-  // stale layer contribute a number that no longer has records behind it.
-  result.stats = { entries: [] }
+  // Derived stats are recomputed downstream, so carrying them through would let a stale
+  // layer contribute a number that no longer has records behind it. `fetched` and `stated`
+  // entries are the exception: a follower count, a year's contributions or a Scholar
+  // h-index have no records on the page to recompute them from, so whoever supplied them
+  // is the only authority and the entry survives with its kind intact.
+  /** @type {Map<string, import('./types.js').StatEntry>} */
+  const reportedStats = new Map()
+  for (const layer of normalized) {
+    for (const entry of layer.stats?.entries ?? []) {
+      if (entry.id && (entry.kind === 'fetched' || entry.kind === 'stated')) {
+        reportedStats.set(entry.id, entry)
+      }
+    }
+  }
+  result.stats = { entries: [...reportedStats.values()] }
 
   return result
 }
