@@ -127,6 +127,24 @@ export function canonicalOrg(name) {
 export function normalizeSignals(signals, context = {}) {
   const sourceId = context.sourceId ?? 'web'
 
+  /**
+   * How this extraction was performed, stamped onto every value it produces.
+   *
+   * Claim provenance already answers *who said this and when*. This answers *how we came to
+   * read it* — which provider fetched the page, whether scripts ran, and which signal on the
+   * page the value came from. The three together are what let a conflict screen say
+   * "GitHub's API reported this, your résumé says otherwise, and this third value was read
+   * out of rendered HTML by a heuristic" instead of listing three values and a shrug.
+   *
+   * It matters more with each tier added. A value a browser read from a heading and a value a
+   * model inferred from prose are not equally checkable, and once both can appear in the same
+   * conflict, the difference has to be visible.
+   */
+  const extraction = {
+    provider: context.provider ?? sourceId,
+    ...(context.rendered !== undefined ? { rendered: Boolean(context.rendered) } : {}),
+  }
+
   /** @type {Record<string, any>} */
   const profile = {}
   /** @type {Extraction['evidence']} */
@@ -145,7 +163,7 @@ export function normalizeSignals(signals, context = {}) {
    * @param {string} path   Dotted, relative to the profile root.
    * @param {unknown} value
    * @param {Tier} tier
-   * @param {{section?: string, text?: string}} [where]
+   * @param {{section?: string, text?: string, method?: string}} [where]
    */
   const set = (path, value, tier, where = {}) => {
     const clean = typeof value === 'string' ? value.trim() : value
@@ -169,6 +187,7 @@ export function normalizeSignals(signals, context = {}) {
       confidence: EXTRACTION_CONFIDENCE[tier],
       ...(where.section ? { section: where.section } : {}),
       ...(where.text ? { text: where.text.slice(0, 200) } : {}),
+      extraction: { ...extraction, ...(where.method ? { method: where.method } : {}) },
     }
   }
 
@@ -178,8 +197,9 @@ export function normalizeSignals(signals, context = {}) {
    * @param {string} collection
    * @param {Record<string, any>[]} records
    * @param {Tier} tier
+   * @param {string} [method]  Which signal on the page produced these.
    */
-  const add = (collection, records, tier) => {
+  const add = (collection, records, tier, method) => {
     if (!records.length) return
     const bucket = (profile[collection] ??= [])
 
@@ -202,7 +222,12 @@ export function normalizeSignals(signals, context = {}) {
       const spans = record.__spans ?? {}
       delete record.__spans
 
-      record.source = { connector: sourceId, ...(context.url ? { url: context.url } : {}), confidence: EXTRACTION_CONFIDENCE[tier] }
+      record.source = {
+        connector: sourceId,
+        ...(context.url ? { url: context.url } : {}),
+        confidence: EXTRACTION_CONFIDENCE[tier],
+        extraction: { ...extraction, ...(method ? { method } : {}) },
+      }
       bucket.push(record)
       tiers[tier] += 1
 
@@ -210,10 +235,11 @@ export function normalizeSignals(signals, context = {}) {
       // extractor was right about the *company* needs the span that named the company —
       // being told only that the record as a whole came from somewhere is not checkable.
       const confidence = EXTRACTION_CONFIDENCE[tier]
-      evidence[`${collection}/${key}|@exists`] = { confidence, ...(spans['*'] ?? {}) }
+      const how = { ...extraction, ...(method ? { method } : {}) }
+      evidence[`${collection}/${key}|@exists`] = { confidence, ...(spans['*'] ?? {}), extraction: how }
       for (const attribute of Object.keys(record)) {
         if (attribute === 'source' || attribute === 'id') continue
-        evidence[`${collection}/${key}|${attribute}`] = { confidence, ...(spans[attribute] ?? spans['*'] ?? {}) }
+        evidence[`${collection}/${key}|${attribute}`] = { confidence, ...(spans[attribute] ?? spans['*'] ?? {}), extraction: how }
       }
     }
   }
@@ -221,26 +247,27 @@ export function normalizeSignals(signals, context = {}) {
   /* 1. JSON-LD and microdata — the page's own declarations -------------------- */
 
   const structured = [
-    ...signals.jsonLd.map((node) => ({ node, tier: /** @type {Tier} */ ('exact') })),
-    ...signals.microdata.map((item) => ({ node: microdataToObject(item), tier: /** @type {Tier} */ ('exact') })),
+    ...signals.jsonLd.map((node) => ({ node, tier: /** @type {Tier} */ ('exact'), method: 'JSON-LD' })),
+    ...signals.microdata.map((item) => ({ node: microdataToObject(item), tier: /** @type {Tier} */ ('exact'), method: 'microdata' })),
   ]
 
-  const people = structured.filter(({ node }) => PERSON_TYPES.has(typeOf(node)))
-  const person = people.map(({ node }) => (typeOf(node) === 'ProfilePage' ? node.mainEntity ?? node : node))
-    .find((node) => typeOf(node) === 'Person')
+  const person = structured
+    .filter(({ node }) => PERSON_TYPES.has(typeOf(node)))
+    .map((entry) => ({ ...entry, node: typeOf(entry.node) === 'ProfilePage' ? entry.node.mainEntity ?? entry.node : entry.node }))
+    .find(({ node }) => typeOf(node) === 'Person')
 
-  if (person) readPerson(person, set, add, 'exact', context.url)
+  if (person) readPerson(person.node, set, add, 'exact', context.url, person.method)
 
-  for (const { node, tier } of structured) {
+  for (const { node, tier, method } of structured) {
     const collection = TYPE_COLLECTION[typeOf(node)]
-    if (collection) add(collection, [readWork(node, collection)].filter(Boolean), tier)
+    if (collection) add(collection, [readWork(node, collection)].filter(Boolean), tier, method)
   }
 
   /* 2. Links — deterministic platform recognition ---------------------------- */
 
   for (const link of signals.links) {
     if (link.href.startsWith('mailto:')) {
-      set('identity.contact.email', link.href.slice(7).split('?')[0], 'strong', { text: link.text })
+      set('identity.contact.email', link.href.slice(7).split('?')[0], 'strong', { text: link.text, method: 'mailto link' })
       continue
     }
     const detection = detectSource(link.href)
@@ -248,7 +275,7 @@ export function normalizeSignals(signals, context = {}) {
     // The href is the evidence, not the link text. Half these links are icons whose text is
     // "GitHub" or nothing at all, and quoting that as the basis for the URL would be
     // evidence that does not show the thing it supports.
-    set(`socials.${detection.connector}`, canonicalUrl(link.href, context.url), 'strong', { text: link.href })
+    set(`socials.${detection.connector}`, canonicalUrl(link.href, context.url), 'strong', { text: link.href, method: 'link URL' })
   }
 
   /* 3. Meta — universal, shallow, and written for crawlers -------------------- */
@@ -256,17 +283,17 @@ export function normalizeSignals(signals, context = {}) {
   const meta = signals.meta
   set('identity.name', meta['profile:first_name'] && meta['profile:last_name']
     ? `${meta['profile:first_name']} ${meta['profile:last_name']}`
-    : undefined, 'moderate')
+    : undefined, 'moderate', { method: 'OpenGraph' })
   // `og:title` is a page title, not a name — "Jane Doe — Portfolio" is typical. It is used
   // for a name only after the structured tiers had their chance, and only after the
   // decoration is stripped.
-  set('identity.name', titleName(meta['og:title'] ?? signals.title), 'weak')
-  set('identity.summary', meta['og:description'] ?? meta.description, 'moderate')
+  set('identity.name', titleName(meta['og:title'] ?? signals.title), 'weak', { method: 'page title' })
+  set('identity.summary', meta['og:description'] ?? meta.description, 'moderate', { method: 'meta description' })
   // Only once somebody has been identified. `og:image` is whatever the page wants in a link
   // preview — a logo, a hero shot, a screenshot — and on a page with no person on it,
   // calling that "their avatar" is inventing a subject to hang it on.
   if (profile.identity?.name) {
-    set('identity.avatar', absolute(meta['og:image'] ?? meta['twitter:image'], context.url), 'moderate')
+    set('identity.avatar', absolute(meta['og:image'] ?? meta['twitter:image'], context.url), 'moderate', { method: 'OpenGraph' })
   }
 
   /* 4. Outline — the résumé reader, pointed at a web page --------------------- */
@@ -281,9 +308,9 @@ export function normalizeSignals(signals, context = {}) {
 
     for (const [key, value] of Object.entries(parsed.profile.identity ?? {})) {
       if (typeof value === 'object' && value !== null) {
-        for (const [inner, innerValue] of Object.entries(value)) set(`identity.${key}.${inner}`, innerValue, 'moderate')
+        for (const [inner, innerValue] of Object.entries(value)) set(`identity.${key}.${inner}`, innerValue, 'moderate', { method: 'headings and lists' })
       } else {
-        set(`identity.${key}`, value, 'moderate')
+        set(`identity.${key}`, value, 'moderate', { method: 'headings and lists' })
       }
     }
 
@@ -295,7 +322,7 @@ export function normalizeSignals(signals, context = {}) {
       add(collection, records.map((record) => {
         const spans = record.id && collectSpans(parsed.evidence, `${collection}/${record.id}`)
         return spans ? { ...record, __spans: spans } : record
-      }), 'moderate')
+      }), 'moderate', 'headings and lists')
     }
 
     // The résumé reader already knows *which line* each value came from and *which heading*
@@ -341,33 +368,34 @@ export function normalizeSignals(signals, context = {}) {
  * @param {(collection: string, records: Record<string, any>[], tier: Tier) => void} add
  * @param {Tier} tier
  * @param {string} [base] The page's own URL, for resolving relative links.
+ * @param {string} [method] Which structured vocabulary this came from.
  */
-function readPerson(node, set, add, tier, base) {
-  set('identity.name', str(node.name) || [str(node.givenName), str(node.familyName)].filter(Boolean).join(' '), tier)
-  set('identity.headline', str(node.jobTitle) || str(node.hasOccupation?.name), tier)
-  set('identity.summary', str(node.description), tier)
-  set('identity.location', placeName(node.address ?? node.homeLocation ?? node.workLocation), tier)
+function readPerson(node, set, add, tier, base, method) {
+  set('identity.name', str(node.name) || [str(node.givenName), str(node.familyName)].filter(Boolean).join(' '), tier, { method })
+  set('identity.headline', str(node.jobTitle) || str(node.hasOccupation?.name), tier, { method })
+  set('identity.summary', str(node.description), tier, { method })
+  set('identity.location', placeName(node.address ?? node.homeLocation ?? node.workLocation), tier, { method })
   // Structured data routinely carries a site-relative image path. Left relative it is
   // useless to every consumer of the profile, which is not a detail the export or the
   // rendered page can recover later.
-  set('identity.avatar', absolute(str(node.image?.url ?? node.image ?? node.photo) || undefined, base), tier)
-  set('identity.pronouns', str(node.pronouns), tier)
-  set('identity.contact.email', str(node.email).replace(/^mailto:/, ''), tier)
-  set('identity.contact.website', str(node.url), tier)
+  set('identity.avatar', absolute(str(node.image?.url ?? node.image ?? node.photo) || undefined, base), tier, { method })
+  set('identity.pronouns', str(node.pronouns), tier, { method })
+  set('identity.contact.email', str(node.email).replace(/^mailto:/, ''), tier, { method })
+  set('identity.contact.website', str(node.url), tier, { method })
 
   // `sameAs` is the schema.org idiom for "my other profiles", and running it through the
   // same detector as page links means a platform recognised in one place is recognised in
   // both.
   for (const url of list(node.sameAs)) {
     const detection = detectSource(str(url))
-    if (detection.outcome === 'matched') set(`socials.${detection.connector}`, str(url), tier)
+    if (detection.outcome === 'matched') set(`socials.${detection.connector}`, str(url), tier, { method })
   }
 
-  add('experience', list(node.worksFor).map((org) => employment(org, node)).filter(Boolean), tier)
-  add('education', list(node.alumniOf).map(schooling).filter(Boolean), tier)
-  add('skills', list(node.knowsAbout).map((s) => (str(s) || str(s?.name) ? { name: str(s) || str(s.name) } : null)).filter(Boolean), tier)
-  add('achievements', list(node.award).map((a) => (str(a) ? { title: str(a) } : null)).filter(Boolean), tier)
-  add('languages', list(node.knowsLanguage).map((l) => (str(l) || str(l?.name) ? { name: str(l) || str(l.name) } : null)).filter(Boolean), tier)
+  add('experience', list(node.worksFor).map((org) => employment(org, node)).filter(Boolean), tier, method)
+  add('education', list(node.alumniOf).map(schooling).filter(Boolean), tier, method)
+  add('skills', list(node.knowsAbout).map((s) => (str(s) || str(s?.name) ? { name: str(s) || str(s.name) } : null)).filter(Boolean), tier, method)
+  add('achievements', list(node.award).map((a) => (str(a) ? { title: str(a) } : null)).filter(Boolean), tier, method)
+  add('languages', list(node.knowsLanguage).map((l) => (str(l) || str(l?.name) ? { name: str(l) || str(l.name) } : null)).filter(Boolean), tier, method)
 }
 
 /**

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { playwright } from '../src/core/extraction/providers/playwright.js'
 import { builtin } from '../src/core/extraction/providers/builtin.js'
-import { extractFrom } from '../src/core/extraction/pipeline.js'
+import { extractFrom, extractUrl } from '../src/core/extraction/pipeline.js'
 // Importing the provider index is what populates the registry.
 import { connectorFor, candidatesFor, providerById } from '../src/core/extraction/providers/index.js'
 import { serveFixtures } from '../benchmarks/serve.mjs'
@@ -149,6 +149,67 @@ describe('rendering the corpus', { skip }, () => {
       assert.equal(typeof result.timings[key], 'number', `${key} was not measured`)
     }
     assert.ok(result.timings.totalMs > 0)
+  })
+
+  test('escalation renders the shell and leaves the static page alone', async () => {
+    const shell = caseNamed('hydrated-profile')
+    const stat = caseNamed('semantic-only')
+
+    const escalated = await extractUrl(urlFor(shell), {
+      providers: [builtin, playwright],
+      url: shell.expected.url,
+      waitFor: shell.expected.waitFor,
+    })
+    const cheap = await extractUrl(urlFor(stat), {
+      providers: [builtin, playwright],
+      url: stat.expected.url,
+    })
+
+    assert.deepEqual(escalated.attempts.map((a) => a.provider), ['builtin', 'playwright'])
+    assert.equal(escalated.profile.identity.name, 'Soraya Haddad')
+
+    // The whole economic argument: an ordinary page must not pay for a browser it did not
+    // need. If this ever escalates, escalation has stopped being a saving.
+    assert.deepEqual(cheap.attempts.map((a) => a.provider), ['builtin'])
+    assert.equal(cheap.attempts[0].sufficient, true)
+  })
+
+  test('escalation never returns less than the cheap attempt', async () => {
+    // A render that times out or hits a wall can recover less than the static fetch did.
+    // Escalating into a worse answer would be a strange way to spend 400ms.
+    const testCase = caseNamed('semantic-only')
+    const broken = {
+      ...playwright,
+      id: 'broken',
+      fetch: async () => ({ html: '', url: testCase.expected.url, failure: 'rendering fell over' }),
+    }
+
+    const result = await extractUrl(urlFor(testCase), {
+      providers: [builtin, broken],
+      url: testCase.expected.url,
+    })
+
+    assert.equal(result.profile.identity.name, 'Priya Raghunathan')
+    assert.ok(result.profile.experience.length >= 3)
+  })
+
+  test('a URL a connector owns is refused, browser or not', async () => {
+    const result = await extractUrl('https://github.com/torvalds', { providers: [builtin, playwright] })
+    assert.equal(result.connector, 'github')
+    assert.deepEqual(result.attempts, [], 'nothing was fetched at all')
+  })
+
+  test('rendered values are stamped as rendered', async () => {
+    const testCase = caseNamed('injected-jsonld')
+    const { evidence } = await extractFrom(playwright, urlFor(testCase), {
+      url: testCase.expected.url,
+      waitFor: testCase.expected.waitFor,
+    })
+
+    const how = evidence['identity|name'].extraction
+    assert.equal(how.provider, 'playwright')
+    assert.equal(how.rendered, true)
+    assert.equal(how.method, 'JSON-LD', 'and which signal on the page it came from')
   })
 
   test('the browser is reused rather than relaunched per page', async () => {

@@ -230,11 +230,38 @@ export function provenance(v) {
     url: url(o.url),
     fetchedAt: str(o.fetchedAt),
     document: documentEvidence(o.document),
+    extraction: extractionProvenance(o.extraction),
     // Clamped rather than rejected: an extractor reporting 1.2 has a scaling bug, not a
     // meaningless answer. Anything non-numeric is dropped, because a confidence that
     // cannot be compared is worse than none — `validateIdentity` reports both cases.
     confidence: confidenceOf(o.confidence),
   })
+}
+
+/**
+ * How a value was read, as opposed to who said it.
+ *
+ * A separate axis from `document`, and increasingly load-bearing. Claim provenance answers
+ * *who asserted this and when*; this answers *by what mechanism did we come to believe it* —
+ * which provider fetched the page, whether scripts ran, which signal on the page supplied the
+ * value. Once a heading-derived reading and a model-inferred one can appear side by side in
+ * the same conflict, that difference is the thing a person needs in order to choose.
+ *
+ * Only fields an extractor genuinely knows survive, on the same principle as document
+ * evidence: a fabricated mechanism is worse than an absent one.
+ *
+ * @param {unknown} v
+ */
+function extractionProvenance(v) {
+  if (!v || typeof v !== 'object') return undefined
+  const o = /** @type {Record<string, unknown>} */ (v)
+  const out = compact({
+    provider: str(o.provider),
+    method: str(o.method),
+    model: str(o.model),
+    rendered: typeof o.rendered === 'boolean' ? o.rendered : undefined,
+  })
+  return out && Object.keys(out).length ? out : undefined
 }
 
 /**

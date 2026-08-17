@@ -178,6 +178,7 @@ describes is the last to find out.
 | `deferred-projects` | Half the project list arrives after a timer |
 | `injected-jsonld` | Structured data written by the client, and a non-ASCII name |
 | `rendered-trap` | Widgets that appear only after render, and must not become claims |
+| `international-names` | Đorđe, Łukasiewicz, Nguyễn, Sørensen, İzmir. A permanent guard |
 
 ### What it still needs
 
@@ -203,6 +204,14 @@ order, cheapest first.
 | --- | --- |
 | `builtin` | One HTTP GET and a parser. No browser, no service, no key. |
 | `playwright` | Renders in Chromium, then hands the DOM to **the same extractor**. |
+| `escalating` | A policy over the two: cheap first, browser only when needed. |
+
+`escalating` is scored as a peer deliberately. A routing rule claiming to deliver the
+browser's recall at close to the parser's cost has to prove it against the same corpus, the
+same ground truth and the same forbidden conclusions — otherwise "cheaper" is a quieter way of
+saying "worse". It is not registered as a provider, because putting a policy in
+`candidatesFor()` alongside its own members would give the escalation loop itself as one of
+the things to escalate to.
 
 That last point is the design of the experiment. The Playwright provider does no parsing of
 its own — `structuredExtraction: false` — so any score difference between the two is
@@ -242,26 +251,72 @@ the only path into the canonical profile.
 
 ## Where the providers stand
 
-15 cases, 28 forbidden conclusions, one shared extractor.
+16 cases, 31 forbidden conclusions, one shared extractor.
 
 ```
                 Recall  Accuracy  Precision  Structure  Entities  Dates
-Built-in           78%       99%        98%       100%      76%    79%
-Playwright         91%      100%        99%       100%      88%    89%
+Built-in           79%       99%        98%       100%      79%    81%
+Playwright         91%      100%        99%       100%      89%    90%
+Escalating         91%      100%        99%       100%      89%    90%
 
               Evidence  Validity  Traps  Invented  JS pages  Median    p95
-Built-in          100%       99%   100%        1%       32%     2ms   16ms
-Playwright        100%       99%   100%        1%       83%   401ms  570ms
+Built-in          100%       99%   100%        1%       32%     1ms    9ms
+Playwright        100%       99%   100%        1%       83%   481ms  626ms
+Escalating        100%       99%   100%        1%       83%   158ms  867ms
 ```
 
-Both pass the gate. Rendering buys **+13 points of recall** and costs **roughly 200× the
-latency** — 2 ms against ~400 ms per page, plus a one-time ~90 ms browser start. The render
-wait itself is ~255 ms of that; the rest is context setup, navigation and content capture.
+All three pass the gate. Rendering buys **+12 points of recall** and costs **roughly 200× the
+latency**. Escalating — render only when the cheap read visibly came up short — delivers
+**identical quality at a third of the median**, by rendering 7 of 16 pages instead of all 16.
 
-Measured over the whole corpus at concurrency 4: 1.6 s wall against under 0.1 s. Figures are
-from `chrome-headless-shell`; the full browser's own headless mode, which the provider falls
-back to when the shell is not installed, is about 60% slower per page and identical in every
-quality metric — the same engine renders the page either way.
+Figures are from `chrome-headless-shell`; the full browser's own headless mode, which the
+provider falls back to when the shell is absent, is about 60% slower per page and identical in
+every quality metric — the same engine renders the page either way.
+
+### Escalation
+
+```
+Built-in  →  assess  →  sufficient?  ──yes──►  done          ~1ms
+                            │
+                            no
+                            ▼
+                        Playwright                          ~480ms
+```
+
+`assess` decides from the extraction alone, without knowing the right answer. That rules out
+"did we find enough fields" — a genuinely sparse profile and a failed read produce the same
+count. What separates them is **evidence of a page we could not read**:
+
+- scripts present and almost no text — a shell waiting for its application
+- no name anywhere — a profile page whose subject cannot be identified
+- a heading that promised content the page did not deliver ("Experience", empty)
+- almost nothing extracted, and no structured data to explain the sparseness
+
+It leans conservative on purpose. A false *insufficient* costs 400 ms; a false *sufficient*
+publishes a profile missing half a career. On the current corpus 2 of the 7 escalations gained
+nothing — `og-only` has no person to find, and `article-mentions` is an article whose author
+sits in a nested JSON-LD node the reader does not yet follow. Both cost latency and neither
+cost accuracy, which is the right side to err on.
+
+### Extraction provenance
+
+Every value now records *how* it was read, not just how confidently:
+
+```
+Value        Python
+Source       https://example.com/profile
+Provider     playwright        (rendered: true)
+Method       JSON-LD
+Evidence     "Python, PyTorch, FastAPI"
+Confidence   exact
+```
+
+Claim provenance answers *who said this and when*. This answers *by what mechanism did we come
+to believe it*. The distinction gets more load-bearing with each tier: a value declared in
+structured data can be verified by looking, and one inferred from prose cannot. A conflict
+screen that cannot tell them apart is asking someone to choose between two identical-looking
+options. `ExtractionProvenance` carries a `model` field for exactly this reason — its presence
+is what will mark a value as inferred rather than located.
 
 Two results are worth more than the headline:
 

@@ -19,8 +19,14 @@
 import { register } from '../registry.js'
 import { builtin } from './builtin.js'
 import { playwright } from './playwright.js'
+import { escalating } from './escalating.js'
 
+/**
+ * Only the two real providers are registered. `escalating` is a *policy over* them, not a
+ * peer — registering it would put it in `candidatesFor()` alongside its own members and give
+ * the escalation loop itself as one of the things to escalate to.
+ */
 export const PROVIDERS = [builtin, playwright].map(register)
 
-export { builtin, playwright }
+export { builtin, playwright, escalating }
 export { providers, providerById, candidatesFor, connectorFor } from '../registry.js'

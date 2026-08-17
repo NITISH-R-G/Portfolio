@@ -43,8 +43,29 @@
  * @property {string} [fetchedAt] ISO 8601 timestamp of the fetch. API sources only.
  * @property {DocumentEvidence} [document]
  *   Present only for document-derived records: which document, and where in it.
+ * @property {ExtractionProvenance} [extraction]
+ *   Present only for extracted records: by what mechanism the value was read.
  * @property {number} [confidence]
  *   0–1, and only from a mechanism that can genuinely produce one. See above.
+ */
+
+/**
+ * How a value came to be read, as distinct from who asserted it.
+ *
+ * `connector` says a value came from the web; this says a browser rendered the page and the
+ * value was found in a JSON-LD block. The distinction matters because the mechanisms are not
+ * equally checkable — a value declared in structured data can be verified by looking, and one
+ * inferred from prose cannot — and a conflict screen that cannot tell them apart is asking a
+ * person to choose between two identical-looking options.
+ *
+ * @typedef {object} ExtractionProvenance
+ * @property {string} [provider]  Which provider fetched the page: `builtin`, `playwright`.
+ * @property {string} [method]    Which signal supplied it: `JSON-LD`, `microdata`,
+ *                                `link URL`, `meta description`, `headings and lists`.
+ * @property {boolean} [rendered] Whether the page's scripts ran before it was read.
+ * @property {string} [model]     For model-assisted extraction. Absent everywhere else, and
+ *                                its presence is what marks a value as inferred rather than
+ *                                located.
  */
 
 /**

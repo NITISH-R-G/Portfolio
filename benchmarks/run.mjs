@@ -23,6 +23,7 @@ import { scoreCase, aggregate, GATE, gateFailures } from './score.js'
 import { PROVIDERS, providerById, available } from './providers.js'
 import { serveFixtures } from './serve.mjs'
 import { normalizeSignals } from '../src/core/extraction/normalize.js'
+import { extractUrl } from '../src/core/extraction/pipeline.js'
 import { bold, dim, green, heading, ok, rule, say, warn, yellow } from '../scripts/lib/ui.mjs'
 
 const argv = process.argv.slice(2)
@@ -121,14 +122,30 @@ async function runCase(provider, testCase, server, cost) {
   let failed = false
   let note
 
+  const localUrl = `${server?.origin}/${testCase.platform}/${testCase.slug}.html`
+
   try {
+    if (provider.escalates) {
+      // The policy runs the real chain and reports which rung it stopped on, so the cost
+      // column reflects what escalation actually spent rather than what it might have.
+      const result = await extractUrl(localUrl, {
+        providers: provider.chain,
+        url: testCase.expected.url,
+        waitFor: testCase.expected.waitFor,
+      })
+      extraction = result
+      failed = !hasAnyValue(extraction.profile)
+      cost.escalated ??= []
+      cost.escalated.push({ slug: testCase.slug, attempts: result.attempts })
+      if (result.attempts?.some((a) => a.provider === 'playwright')) cost.rendered = (cost.rendered ?? 0) + 1
+      return finish()
+    }
+
     // A rendering provider is given a real URL — the fixture, served locally — because
     // navigation, status codes and script execution are the things being measured. Everyone
     // else is handed the same bytes directly. Both see the identical page.
     const fetched = provider.capabilities.javascript
-      ? await provider.fetch(`${server.origin}/${testCase.platform}/${testCase.slug}.html`, {
-          waitFor: testCase.expected.waitFor,
-        })
+      ? await provider.fetch(localUrl, { waitFor: testCase.expected.waitFor })
       : { html: testCase.html, url: testCase.expected.url, rendered: false }
 
     if (fetched.timings?.renderMs !== undefined) cost.renderMs.push(fetched.timings.renderMs)
@@ -140,7 +157,12 @@ async function runCase(provider, testCase, server, cost) {
       const signals = await provider.extract(fetched, { url: testCase.expected.url })
       // Normalized against the fixture's *canonical* URL rather than the localhost address
       // that served it, so relative links resolve to where they really point.
-      extraction = normalizeSignals(signals, { url: testCase.expected.url, sourceId: provider.id })
+      extraction = normalizeSignals(signals, {
+        url: testCase.expected.url,
+        sourceId: provider.id,
+        provider: provider.id,
+        rendered: Boolean(fetched.rendered),
+      })
       // Nothing at all is a failure; *little* is not. The corpus deliberately contains a page
       // with almost nothing on it, and an extractor that declines to invent a person there is
       // behaving perfectly — counting that as failed would penalise the restraint the case
@@ -152,8 +174,12 @@ async function runCase(provider, testCase, server, cost) {
     note = err?.message
   }
 
-  const score = scoreCase(testCase, extraction, { ms: performance.now() - started, failed })
-  return note ? { ...score, note } : score
+  return finish()
+
+  function finish() {
+    const score = scoreCase(testCase, extraction, { ms: performance.now() - started, failed })
+    return note ? { ...score, note } : score
+  }
 }
 
 /**
@@ -244,6 +270,19 @@ function report(corpus, providers, results, options = {}) {
   }
   say(dim('  Median and p95 are per page, end to end. Render is the readiness wait alone.'))
   say(dim('  Wall is the whole run, so it reflects the concurrency in the last column.'))
+
+  for (const provider of providers.filter((p) => results[p.id].cost?.escalated)) {
+    const { cost } = results[provider.id]
+    const rendered = cost.rendered ?? 0
+    say('')
+    say(`  ${bold(provider.name)} rendered ${rendered} of ${cost.escalated.length} pages.`)
+    for (const { slug, attempts } of cost.escalated) {
+      const escalated = attempts.find((a) => a.provider === 'playwright')
+      if (!escalated) continue
+      const why = attempts.find((a) => a.provider === 'builtin')?.reasons?.[0]
+      say(dim(`    ${slug.padEnd(22)} ${why ?? 'the cheap read fell short'}`))
+    }
+  }
 
   say('')
   say(dim('  Recall    — of everything on the page, how much was found'))

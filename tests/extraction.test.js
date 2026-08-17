@@ -5,6 +5,7 @@ import { parseHtml, decodeEntities, textOf, linesOf, findAll, find, byTag } from
 import { readSignals, readJsonLd, readMicrodata, readMeta, readOutline, readLinks } from '../src/core/extraction/signals.js'
 import { normalizeSignals, canonicalOrg, titleName } from '../src/core/extraction/normalize.js'
 import { builtin } from '../src/core/extraction/providers/builtin.js'
+import { assess } from '../src/core/extraction/assess.js'
 
 /** Parse, read signals, normalize — the whole built-in path in one call. */
 const extract = (html, url = 'https://example.test/') =>
@@ -326,6 +327,110 @@ describe('normalization', () => {
 })
 
 /* -------------------------------------------------------------------------- */
+
+describe('deciding whether a cheap read was good enough', () => {
+  const judge = (html, url = 'https://example.test/') => {
+    const signals = readSignals(parseHtml(html))
+    return assess(normalizeSignals(signals, { url, sourceId: 'test' }), signals)
+  }
+
+  test('a complete static profile is sufficient — no browser needed', () => {
+    const { sufficient } = judge(`
+      <html><body>
+        <h1>Amara Okonkwo</h1><p>Senior Engineer</p>
+        <p>${'Prose about a career that goes on for a while. '.repeat(8)}</p>
+        <h2>Experience</h2>
+        <ul><li><strong>Senior Engineer, Meridian</strong><span>Mar 2022 – Present</span></li></ul>
+      </body></html>
+    `)
+    assert.equal(sufficient, true)
+  })
+
+  test('a page of scripts and no words escalates', () => {
+    const { sufficient, reasons, signals } = judge(
+      '<html><body><div id="root"></div><script>window.x=1</script></body></html>',
+    )
+    assert.equal(sufficient, false)
+    assert.equal(signals.shell, true)
+    assert.ok(reasons.some((r) => /arrives after rendering/i.test(r)))
+  })
+
+  test('a heading with nothing under it escalates', () => {
+    // The partial-hydration case, and the one a "did we find enough fields" check cannot
+    // see: the page advertises an Experience section and delivered no experience.
+    const { sufficient, reasons } = judge(`
+      <html><body>
+        <h1>Kwame Boateng</h1><p>Data Engineer</p>
+        <p>${'Some genuine prose so this is not mistaken for an empty shell. '.repeat(6)}</p>
+        <h2>Experience</h2><ul id="roles"></ul>
+      </body></html>
+    `)
+    assert.equal(sufficient, false)
+    assert.ok(reasons.some((r) => /"Experience"/.test(r)))
+  })
+
+  test('structured data counts as read even when the page is otherwise thin', () => {
+    // JSON-LD scripts must not be mistaken for application code. A page that declares itself
+    // completely in one script tag has been read, not missed.
+    const { signals } = judge(`
+      <html><body>
+        <script type="application/ld+json">
+          {"@type":"Person","name":"A B","jobTitle":"Engineer","worksFor":{"@type":"Organization","name":"Acme"}}
+        </script>
+      </body></html>
+    `)
+    assert.equal(signals.scripts, 0, 'a JSON-LD block is data, not an application')
+  })
+
+  test('the doubtful case escalates rather than settling', () => {
+    // A false "insufficient" costs 400ms; a false "sufficient" publishes a profile missing
+    // half a career. The thresholds lean one way on purpose.
+    assert.equal(judge('<html><body><p>Hello</p></body></html>').sufficient, false)
+  })
+})
+
+describe('extraction provenance', () => {
+  test('every value records how it was read, not just how confidently', () => {
+    const { evidence } = normalizeSignals(
+      readSignals(parseHtml('<script type="application/ld+json">{"@type":"Person","name":"A B"}</script>')),
+      { url: 'https://x.test/', sourceId: 'test', provider: 'playwright', rendered: true },
+    )
+
+    const how = evidence['identity|name'].extraction
+    assert.equal(how.provider, 'playwright')
+    assert.equal(how.rendered, true)
+    assert.equal(how.method, 'JSON-LD')
+  })
+
+  test('the method names the signal, so two readings of one value are distinguishable', () => {
+    const { evidence } = normalizeSignals(
+      readSignals(parseHtml(`
+        <title>Casey Nolan</title>
+        <meta property="og:description" content="A summary.">
+        <a href="https://github.com/casey">gh</a>
+      `)),
+      { url: 'https://x.test/', sourceId: 'test', provider: 'builtin', rendered: false },
+    )
+
+    assert.equal(evidence['identity|name'].extraction.method, 'page title')
+    assert.equal(evidence['identity|summary'].extraction.method, 'meta description')
+    assert.equal(evidence['socials|github'].extraction.method, 'link URL')
+  })
+
+  test('records carry it too, so a conflict can explain where a job came from', () => {
+    const { profile } = normalizeSignals(
+      readSignals(parseHtml(`
+        <script type="application/ld+json">
+          {"@type":"Person","name":"A B","worksFor":{"@type":"Organization","name":"Acme"}}
+        </script>
+      `)),
+      { url: 'https://x.test/', sourceId: 'test', provider: 'builtin', rendered: false },
+    )
+
+    assert.equal(profile.experience[0].source.extraction.method, 'JSON-LD')
+    assert.equal(profile.experience[0].source.extraction.rendered, false)
+  })
+})
 
 describe('the built-in provider', () => {
   test('declares what it cannot do', () => {

@@ -36,6 +36,7 @@ import { byTag, classId, find, findAll, linesOf, textOf } from './html.js'
  * @property {string} title                     `<title>`, trimmed.
  * @property {string} text                      Whole-page text, whitespace-collapsed.
  * @property {string} lines                     Whole-page text with line structure kept.
+ * @property {number} scriptCount                Scripts on the page, JSON-LD included.
  * @property {string} [lang]
  */
 
@@ -79,6 +80,9 @@ export function readSignals(root) {
     title: textOf(find(root, byTag('title')) ?? { type: 'text', value: '', parent: null }),
     text: textOf(find(root, byTag('body')) ?? root),
     lines: linesOf(find(root, byTag('body')) ?? root),
+    // Counted here rather than re-parsed later. A page with scripts and no prose is a shell
+    // waiting for its application, and that is the one condition rendering reliably fixes.
+    scriptCount: findAll(root, byTag('script')).length,
     ...(html?.attrs.lang ? { lang: html.attrs.lang } : {}),
   }
 }

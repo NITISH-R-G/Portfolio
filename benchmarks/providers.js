@@ -20,8 +20,22 @@
  * @module benchmarks/providers
  */
 
-export { PROVIDERS, providerById } from '../src/core/extraction/providers/index.js'
-import { PROVIDERS } from '../src/core/extraction/providers/index.js'
+import { PROVIDERS as REAL, escalating } from '../src/core/extraction/providers/index.js'
+
+/**
+ * Under test: the two real providers, plus the escalation policy over them.
+ *
+ * The policy is scored as a peer deliberately. A routing rule that claims to deliver the
+ * browser's recall at close to the parser's cost has to prove it against the same corpus, the
+ * same ground truth and the same forbidden conclusions — otherwise "cheaper" is just a
+ * quieter way of saying "worse".
+ */
+export const PROVIDERS = [...REAL, escalating]
+
+/** @param {string} id */
+export function providerById(id) {
+  return PROVIDERS.find((p) => p.id === id)
+}
 
 /**
  * Whether a provider can actually run here.
