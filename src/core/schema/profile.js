@@ -260,6 +260,7 @@ function extractionProvenance(v) {
     method: str(o.method),
     model: str(o.model),
     rendered: typeof o.rendered === 'boolean' ? o.rendered : undefined,
+    inferred: typeof o.inferred === 'boolean' ? o.inferred : undefined,
   })
   return out && Object.keys(out).length ? out : undefined
 }

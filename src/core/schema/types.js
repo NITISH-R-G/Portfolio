@@ -63,9 +63,20 @@
  * @property {string} [method]    Which signal supplied it: `JSON-LD`, `microdata`,
  *                                `link URL`, `meta description`, `headings and lists`.
  * @property {boolean} [rendered] Whether the page's scripts ran before it was read.
- * @property {string} [model]     For model-assisted extraction. Absent everywhere else, and
- *                                its presence is what marks a value as inferred rather than
- *                                located.
+ * @property {boolean} [inferred]
+ *   Whether the value was **concluded** rather than **located**.
+ *
+ *   The most consequential bit in this object, and the reason it is explicit rather than
+ *   derived from the presence of `model`. A located value can be checked by looking at the
+ *   page: the text is there, and either it says what we claim or it does not. A concluded one
+ *   cannot — "worked with Google's API" read as employment at Google is not a value that
+ *   appears anywhere on the page, and no amount of quoting the span settles it.
+ *
+ *   Everything shipped today sets this to `false`. Nothing here reasons about meaning; it
+ *   reads JSON-LD fields, hrefs, headings and list items. When something does reason, this is
+ *   what has to distinguish its output — in the conflict UI, in the export, and in whatever
+ *   metric decides whether that reasoning earned its place.
+ * @property {string} [model]     For model-assisted extraction. Absent everywhere else.
  */
 
 /**

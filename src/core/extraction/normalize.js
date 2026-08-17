@@ -143,6 +143,14 @@ export function normalizeSignals(signals, context = {}) {
   const extraction = {
     provider: context.provider ?? sourceId,
     ...(context.rendered !== undefined ? { rendered: Boolean(context.rendered) } : {}),
+    // Was this value *located* or *concluded*?
+    //
+    // Everything this module produces is located: it was read out of a JSON-LD field, an
+    // anchor's href, a heading, a line of a list. Nothing here reasons about meaning, so the
+    // flag is false throughout — and stating it explicitly now, rather than leaving it absent
+    // and inferring later, is what makes the distinction legible the day something sets it
+    // true. An absent flag and a false one are the same to a reader; they must not be.
+    inferred: false,
   }
 
   /** @type {Record<string, any>} */

@@ -402,6 +402,28 @@ describe('extraction provenance', () => {
     assert.equal(how.method, 'JSON-LD')
   })
 
+  test('everything deterministic is located, never concluded', () => {
+    // The bit that will matter most once something reasons about meaning. A located value can
+    // be checked by looking at the page; a concluded one cannot, and the two must never be
+    // indistinguishable in a conflict.
+    const { profile, evidence } = normalizeSignals(
+      readSignals(parseHtml(`
+        <script type="application/ld+json">
+          {"@type":"Person","name":"A B","worksFor":{"@type":"Organization","name":"Acme"}}
+        </script>
+        <h2>Experience</h2><ul><li><strong>Engineer, Other Co</strong><span>2019 – 2021</span></li></ul>
+      `)),
+      { url: 'https://x.test/', sourceId: 'test', provider: 'builtin', rendered: false },
+    )
+
+    for (const [key, entry] of Object.entries(evidence)) {
+      assert.equal(entry.extraction.inferred, false, `${key} claimed to be inferred`)
+    }
+    for (const record of profile.experience) {
+      assert.equal(record.source.extraction.inferred, false)
+    }
+  })
+
   test('the method names the signal, so two readings of one value are distinguishable', () => {
     const { evidence } = normalizeSignals(
       readSignals(parseHtml(`
