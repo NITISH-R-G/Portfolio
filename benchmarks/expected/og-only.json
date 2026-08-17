@@ -1,0 +1,10 @@
+{
+  "url": "https://studiokalpana.example/",
+  "note": "A studio landing page with OpenGraph and nothing else — no person, no headings, no résumé structure. Almost nothing here is a professional-identity fact, and the correct behaviour is to extract almost nothing. This case exists to punish invention: an extractor that turns the nav menu into four job titles, or 'Home | Studio Kalpana' into a person's name, loses precision here and nowhere else.",
+  "traits": ["thin", "no-person", "precision-trap"],
+  "profile": {
+    "identity": {
+      "summary": "Independent design studio. Selected work, 2019—present."
+    }
+  }
+}

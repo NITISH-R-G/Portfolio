@@ -1,0 +1,37 @@
+{
+  "url": "https://marcusfeld.example.com/",
+  "note": "The same employer written three ways across two signals — 'Halcyon Robotics, Inc.' in JSON-LD, 'Halcyon Robotics' and 'Halcyon Robotics LLC' in the markup. Two genuinely distinct roles at one company must stay two records, and the JSON-LD role must merge with its markup twin rather than becoming a fourth. Gets this wrong and a person's career history doubles on every import.",
+  "traits": ["org-variants", "entity-resolution", "mixed-signals"],
+  "profile": {
+    "identity": {
+      "name": "Marcus Feld",
+      "headline": "Engineering Manager"
+    },
+    "experience": [
+      {
+        "company": "Halcyon Robotics, Inc.",
+        "role": "Engineering Manager",
+        "dates": {
+          "start": { "iso": "2023-04-01", "precision": "month" },
+          "current": true
+        }
+      },
+      {
+        "company": "Halcyon Robotics LLC",
+        "role": "Staff Engineer",
+        "dates": {
+          "start": { "iso": "2021-01-01", "precision": "month" },
+          "end": { "iso": "2023-03-01", "precision": "month" }
+        }
+      },
+      {
+        "company": "Bellweather Group",
+        "role": "Senior Engineer",
+        "dates": {
+          "start": { "iso": "2018-02-01", "precision": "month" },
+          "end": { "iso": "2020-12-01", "precision": "month" }
+        }
+      }
+    ]
+  }
+}

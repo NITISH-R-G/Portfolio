@@ -1,0 +1,55 @@
+{
+  "url": "https://djnikolic.example.rs/",
+  "note": "A permanent guard against the class of bug this corpus found twice. The subject's name arrives as numeric character references (Đorđe Nikolić); an employer carries a Ł; a publication title contains İ, whose lower-case form is two characters and once shifted every parser index after it, silently destroying a page's structured data. Collaborator names — İpek, Yıldırım, Nyström, Müller, O'Connor, D'Souza, Łukasz, Nguyễn — are prose, and must be read as text rather than becoming people. This is a global professional identity system; a name matcher that only recognises ASCII does not fail politely, it confidently misidentifies someone.",
+  "traits": ["non-ascii", "no-structured-data", "entities", "internationalization"],
+  "profile": {
+    "identity": {
+      "name": "Đorđe Nikolić",
+      "headline": "Compiler Engineer",
+      "location": "Novi Sad, Serbia"
+    },
+    "socials": {
+      "github": "https://github.com/djnikolic"
+    },
+    "experience": [
+      {
+        "company": "Łukasiewicz Research Network",
+        "role": "Compiler Engineer",
+        "dates": {
+          "start": { "iso": "2021-09-01", "precision": "month" },
+          "current": true
+        }
+      },
+      {
+        "company": "Nguyễn & Sørensen",
+        "role": "Software Engineer",
+        "dates": {
+          "start": { "iso": "2018-03-01", "precision": "month" },
+          "end": { "iso": "2021-08-01", "precision": "month" }
+        }
+      }
+    ],
+    "education": [
+      {
+        "institution": "Univerzitet u Novom Sadu",
+        "degree": "MSc Computer Science",
+        "dates": {
+          "start": { "iso": "2016-01-01", "precision": "year" },
+          "end": { "iso": "2018-01-01", "precision": "year" }
+        }
+      }
+    ],
+    "publications": [
+      { "title": "Register allocation under İzmir constraints" }
+    ]
+  },
+  "forbidden": {
+    "identity": {
+      "name": "İpek Yıldırım"
+    },
+    "experience": [
+      { "company": "Kristin Nyström" },
+      { "company": "Anneke Müller" }
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Why we moved off Python — Ines Baptista</title>
+  <meta property="og:type" content="article">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "Why we moved off Python",
+    "datePublished": "2026-02-11",
+    "url": "https://inesb.example/posts/off-python",
+    "author": { "@type": "Person", "name": "Ines Baptista", "jobTitle": "Technical Writer" }
+  }
+  </script>
+</head>
+<body>
+  <article>
+    <h1>Why we moved off Python</h1>
+    <p class="byline">By Ines Baptista · 11 February 2026</p>
+
+    <p>
+      For six years our data pipeline was Python end to end. We used Pandas for
+      transformation, Airflow for scheduling, and PyTorch for the ranking model. Kubernetes
+      held it together.
+    </p>
+
+    <h2>What changed</h2>
+    <p>
+      Rust and Go both came up. The team had experience with neither. Amazon's SDK made the
+      decision easier than expected, and Snowflake absorbed most of the transformation work
+      that Pandas had been doing.
+    </p>
+
+    <h2>What I would do differently</h2>
+    <p>
+      Less TypeScript in the tooling layer. More SQL. The Kafka migration could have waited
+      a year.
+    </p>
+  </article>
+
+  <aside>
+    <p>Ines writes about data infrastructure. Previously a technical writer at Halden Press.</p>
+    <a href="https://github.com/inesb">GitHub</a>
+  </aside>
+</body>
+</html>

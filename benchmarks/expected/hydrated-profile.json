@@ -1,0 +1,36 @@
+{
+  "url": "https://soraya.example.ma/",
+  "note": "A single-page app that renders its whole profile client-side. A static fetch receives a shell with no name in it; a browser receives a complete profile. This is the cleanest possible statement of what rendering buys, and the case the Tier 1 milestone exists to measure.",
+  "traits": ["javascript", "client-rendered", "hydration"],
+  "waitFor": { "selector": "[data-profile]", "timeoutMs": 10000 },
+  "profile": {
+    "identity": {
+      "name": "Soraya Haddad",
+      "headline": "Site Reliability Engineer",
+      "location": "Casablanca, Morocco",
+      "summary": "I keep pagers quiet. Mostly by deleting things."
+    },
+    "socials": {
+      "github": "https://github.com/shaddad",
+      "linkedin": "https://www.linkedin.com/in/soraya-haddad"
+    },
+    "experience": [
+      {
+        "company": "Argent Systems",
+        "role": "Staff SRE",
+        "dates": {
+          "start": { "iso": "2021-02-01", "precision": "month" },
+          "current": true
+        }
+      },
+      {
+        "company": "Tessera Cloud",
+        "role": "SRE",
+        "dates": {
+          "start": { "iso": "2017-06-01", "precision": "month" },
+          "end": { "iso": "2021-01-01", "precision": "month" }
+        }
+      }
+    ]
+  }
+}

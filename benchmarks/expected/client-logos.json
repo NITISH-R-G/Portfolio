@@ -1,0 +1,39 @@
+{
+  "url": "https://karim.studio/",
+  "note": "A consultant's client list. Spotify, Monzo, The Guardian and Patagonia are companies she worked *with*, not *at*, and the distinction is the entire difference between an accurate CV and a fabricated one. A testimonial attributed to a job title at a client company is the same trap wearing a name badge.",
+  "traits": ["trap", "no-structured-data", "clients-not-employers"],
+  "profile": {
+    "identity": {
+      "name": "Nadia Karim",
+      "headline": "Independent Design Consultant"
+    },
+    "experience": [
+      {
+        "company": "Karim Studio",
+        "role": "Founder",
+        "description": "Independent practice. Design systems and accessibility audits.",
+        "dates": {
+          "start": { "iso": "2019-01-01", "precision": "month" },
+          "current": true
+        }
+      },
+      {
+        "company": "Fieldnote",
+        "role": "Senior Designer",
+        "dates": {
+          "start": { "iso": "2015-03-01", "precision": "month" },
+          "end": { "iso": "2018-12-01", "precision": "month" }
+        }
+      }
+    ]
+  },
+  "forbidden": {
+    "experience": [
+      { "company": "Spotify" },
+      { "company": "Monzo" },
+      { "company": "The Guardian" },
+      { "company": "Patagonia" },
+      { "role": "Head of Product" }
+    ]
+  }
+}

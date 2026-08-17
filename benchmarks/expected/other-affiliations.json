@@ -1,0 +1,37 @@
+{
+  "url": "https://rmonteiro.example/",
+  "note": "Co-authors carry their own affiliations — Cambridge, RIKEN, ETH Zürich — and none of them are this person's education or employment. Reviewing for a journal is not working for it. This is the academic version of the footer trap, and it is harder: the institution names sit in exactly the kind of context an extractor is trained to trust.",
+  "traits": ["trap", "no-structured-data", "academic", "third-party-affiliations"],
+  "profile": {
+    "identity": {
+      "name": "Rafael Monteiro",
+      "headline": "Postdoctoral Researcher, Instituto Superior Técnico"
+    },
+    "education": [
+      {
+        "institution": "Universidade de Lisboa",
+        "degree": "PhD Applied Mathematics",
+        "dates": {
+          "start": { "iso": "2018-01-01", "precision": "year" },
+          "end": { "iso": "2023-01-01", "precision": "year" }
+        }
+      }
+    ],
+    "publications": [
+      { "title": "Spectral methods for delay equations", "date": { "iso": "2024-01-01", "precision": "year" } },
+      { "title": "Stability of periodic orbits under noise", "date": { "iso": "2022-01-01", "precision": "year" } }
+    ]
+  },
+  "forbidden": {
+    "education": [
+      { "institution": "University of Cambridge" },
+      { "institution": "ETH Zürich" },
+      { "institution": "RIKEN" }
+    ],
+    "experience": [
+      { "company": "University of Cambridge" },
+      { "company": "Nature Physics" },
+      { "company": "RIKEN" }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "url": "https://priya.example.in/",
+  "note": "A hand-built personal site with no structured data at all — headings, lists and a stylesheet. This is the modal case for personal portfolios, and the one that decides whether the baseline is viable on its own.",
+  "traits": ["no-structured-data", "semantic-html"],
+  "profile": {
+    "identity": {
+      "name": "Priya Raghunathan",
+      "headline": "Backend engineer, distributed systems",
+      "location": "Bengaluru, India",
+      "summary": "I work on storage engines and the unglamorous parts of databases. Ten years in, mostly on write paths. I write occasionally about consistency models.",
+      "contact": {
+        "email": "priya@example.in"
+      }
+    },
+    "socials": {
+      "github": "https://github.com/praghu",
+      "stackoverflow": "https://stackoverflow.com/users/1234567/praghu"
+    },
+    "experience": [
+      {
+        "company": "Kestrel Data",
+        "role": "Staff Engineer",
+        "description": "Led the rewrite of the write-ahead log. Cut p99 commit latency by 60%.",
+        "dates": {
+          "start": { "iso": "2021-06-01", "precision": "month" },
+          "current": true
+        }
+      },
+      {
+        "company": "Northwind Systems",
+        "role": "Senior Engineer",
+        "description": "Built the replication layer for a multi-region key-value store.",
+        "dates": {
+          "start": { "iso": "2017-08-01", "precision": "month" },
+          "end": { "iso": "2021-05-01", "precision": "month" }
+        }
+      },
+      {
+        "company": "Tessellate",
+        "role": "Engineer",
+        "dates": {
+          "start": { "iso": "2014-07-01", "precision": "month" },
+          "end": { "iso": "2017-07-01", "precision": "month" }
+        }
+      }
+    ],
+    "education": [
+      {
+        "institution": "National Institute of Technology Trichy",
+        "degree": "BTech Computer Science",
+        "dates": {
+          "start": { "iso": "2010-01-01", "precision": "year" },
+          "end": { "iso": "2014-01-01", "precision": "year" }
+        }
+      }
+    ],
+    "skills": [
+      { "name": "Go" },
+      { "name": "Rust" },
+      { "name": "PostgreSQL" },
+      { "name": "Kafka" },
+      { "name": "Kubernetes" },
+      { "name": "distributed consensus" }
+    ],
+    "projects": [
+      { "name": "walrus", "description": "a write-ahead log library for embedded databases." },
+      { "name": "consistency-notes", "description": "annotated reading list on consistency models." }
+    ]
+  }
+}

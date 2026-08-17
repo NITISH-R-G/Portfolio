@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Joana Pires — Platform Engineer</title>
+</head>
+<body>
+  <h1>Joana Pires</h1>
+  <p>Platform Engineer</p>
+
+  <section>
+    <h2>Experience</h2>
+    <ul>
+      <li><strong>Platform Engineer, Vento</strong><span>Apr 2022 – Present</span></li>
+    </ul>
+  </section>
+
+  <section id="integrations">
+    <h2>Integrations</h2>
+    <ul id="integration-list"></ul>
+  </section>
+
+  <aside id="recommendations"></aside>
+
+  <script>
+    // Everything a renderer adds to this page is a hazard. A widget of integration partners
+    // and a "people also viewed" rail are both invisible to a static fetch and both look, to
+    // a naive extractor, exactly like employment history.
+    //
+    // This is the cost side of rendering: a browser returns more information, and more
+    // information means more opportunities to conclude something false.
+    (function () {
+      var partners = ['Datadog', 'Snowflake', 'Stripe', 'Twilio'];
+      var list = document.getElementById('integration-list');
+      partners.forEach(function (name) {
+        var li = document.createElement('li');
+        li.textContent = name;
+        list.appendChild(li);
+      });
+
+      document.getElementById('recommendations').innerHTML =
+        '<h2>People also viewed</h2><ul>'
+        + '<li>Miguel Sousa — Staff Engineer at Spotify</li>'
+        + '<li>Ana Ferreira — Engineering Manager at Revolut</li>'
+        + '</ul>';
+
+      document.body.setAttribute('data-ready', 'true');
+    })();
+  </script>
+</body>
+</html>

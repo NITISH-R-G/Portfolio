@@ -1,66 +1,55 @@
-import { portfolioData, initializeTheme } from './data/portfolio'
 import { useEffect, useState, useCallback, useRef } from 'react'
-import Sidebar from './components/Sidebar'
-import MainContent from './components/MainContent'
+import { usePortfolio } from './hooks/usePortfolio'
+import PortfolioShell from './components/PortfolioShell'
 import Dock from './components/Dock'
+import TopNav from './components/TopNav'
 import UserCursor from './components/UserCursor'
 import { useLenis } from './hooks/useLenis'
 import { useScrollAnimation } from './hooks/useScrollAnimation'
 
 function App() {
-  const [activeSection, setActiveSection] = useState('intro')
+  const { sections, navigation, config } = usePortfolio()
+  const [activeSection, setActiveSection] = useState(navigation[0]?.id ?? '')
   const portfolioSurfaceRef = useRef(null)
-  useLenis()
+
+  useLenis({ enabled: config.animations.smoothScroll })
   useScrollAnimation()
-  
-  useEffect(() => {
-    initializeTheme(portfolioData.site.theme)
-  }, [])
-  
+
   const announceSection = useCallback((sectionId) => {
     const statusEl = document.getElementById('navigation-status')
-    if (statusEl) {
-      const labels = {
-        intro: 'Intro',
-        projects: 'Projects',
-        experience: 'Experience',
-        education: 'Education',
-        contact: 'Contact',
-        about: 'About',
-        skills: 'Skills'
-      }
-      statusEl.textContent = `Navigated to ${labels[sectionId] || sectionId} section`
-    }
-  }, [])
-  
+    const label = navigation.find((n) => n.id === sectionId)?.label ?? sectionId
+    if (statusEl) statusEl.textContent = `Navigated to ${label} section`
+  }, [navigation])
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id)
-          }
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActiveSection(entry.target.id)
         })
       },
-      { threshold: 0.4, rootMargin: '0px 0px -60% 0px' }
+      { threshold: 0.4, rootMargin: '0px 0px -60% 0px' },
     )
-    
-    const sections = document.querySelectorAll('.content-section')
-    sections.forEach(section => observer.observe(section))
-    
+
+    const observed = document.querySelectorAll('.content-section')
+    observed.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
-  }, [])
-  
+  }, [sections])
+
+  const navMode = config.layout.navigation
+
   return (
     <>
-      <UserCursor surfaceRef={portfolioSurfaceRef} />
+      {config.layout.customCursor && <UserCursor surfaceRef={portfolioSurfaceRef} />}
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <div ref={portfolioSurfaceRef} className="portfolio-surface">
+      <div ref={portfolioSurfaceRef} className={`portfolio-surface shell-${config.layout.shell}`}>
+        {navMode === 'top' && (
+          <TopNav navigation={navigation} activeSection={activeSection} onNavigate={announceSection} />
+        )}
         <div className="page-wrapper">
-          <Sidebar />
-          <MainContent />
-          <Dock activeSection={activeSection} onNavigate={announceSection} />
+          <PortfolioShell sections={sections} shell={config.layout.shell} />
         </div>
+        {navMode === 'dock' && <Dock activeSection={activeSection} onNavigate={announceSection} />}
       </div>
       <div id="navigation-status" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
     </>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loading…</title>
+</head>
+<body>
+  <div id="root"></div>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+
+  <script type="application/json" id="__DATA__">
+    {
+      "name": "Soraya Haddad",
+      "headline": "Site Reliability Engineer",
+      "location": "Casablanca, Morocco",
+      "summary": "I keep pagers quiet. Mostly by deleting things.",
+      "roles": [
+        { "role": "Staff SRE", "company": "Argent Systems", "dates": "Feb 2021 – Present" },
+        { "role": "SRE", "company": "Tessera Cloud", "dates": "Jun 2017 – Jan 2021" }
+      ],
+      "links": {
+        "github": "https://github.com/shaddad",
+        "linkedin": "https://www.linkedin.com/in/soraya-haddad"
+      }
+    }
+  </script>
+
+  <script>
+    // A single-page app that renders its entire profile client-side. Nothing a static fetch
+    // receives contains the person's name — the shell above is the whole document.
+    (function () {
+      var data = JSON.parse(document.getElementById('__DATA__').textContent);
+      var root = document.getElementById('root');
+
+      document.title = data.name + ' — ' + data.headline;
+
+      var html = ''
+        + '<header><h1>' + data.name + '</h1>'
+        + '<p>' + data.headline + '</p>'
+        + '<p>' + data.location + '</p></header>'
+        + '<section><h2>About</h2><p>' + data.summary + '</p></section>'
+        + '<section><h2>Experience</h2><ul>';
+
+      data.roles.forEach(function (role) {
+        html += '<li><strong>' + role.role + ', ' + role.company + '</strong>'
+          + '<span>' + role.dates + '</span></li>';
+      });
+
+      html += '</ul></section><section><h2>Links</h2><ul>'
+        + '<li><a href="' + data.links.github + '">GitHub</a></li>'
+        + '<li><a href="' + data.links.linkedin + '">LinkedIn</a></li>'
+        + '</ul></section>';
+
+      root.innerHTML = html;
+      root.setAttribute('data-profile', 'ready');
+    })();
+  </script>
+</body>
+</html>

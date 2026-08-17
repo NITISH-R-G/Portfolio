@@ -1,0 +1,38 @@
+{
+  "url": "https://teodora.example/",
+  "note": "Company names in a footer and a 'Uses' section, a nav item literally reading 'Engineer', and social links that are icons with no text. One real job. Everything else on this page is a passing mention, and an extractor that reads employment from a credits line is the failure mode that makes this whole system unsafe to trust.",
+  "traits": ["trap", "no-structured-data", "passing-mentions", "icon-links"],
+  "profile": {
+    "identity": {
+      "name": "Teodora Ilić",
+      "headline": "Frontend Developer"
+    },
+    "socials": {
+      "github": "https://github.com/tilic",
+      "linkedin": "https://www.linkedin.com/in/teodora-ilic"
+    },
+    "experience": [
+      {
+        "company": "Lumen Interactive",
+        "role": "Frontend Developer",
+        "dates": {
+          "start": { "iso": "2022-09-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ]
+  },
+  "forbidden": {
+    "experience": [
+      { "company": "Google" },
+      { "company": "Google Cloud" },
+      { "company": "Microsoft" },
+      { "company": "Netlify" },
+      { "company": "Algolia" },
+      { "role": "Engineer" }
+    ],
+    "identity": {
+      "headline": "Engineer"
+    }
+  }
+}

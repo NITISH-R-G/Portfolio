@@ -2,12 +2,16 @@ import { useEffect, useRef } from 'react'
 import Lenis from 'lenis'
 import { useReducedMotion } from './useReducedMotion'
 
-export function useLenis() {
+/**
+ * @param {{enabled?: boolean}} [options]  `enabled: false` (from `animations.smoothScroll`)
+ *   opts out of scroll hijacking entirely, independent of reduced-motion.
+ */
+export function useLenis({ enabled = true } = {}) {
   const lenisRef = useRef(null)
   const reducedMotion = useReducedMotion()
-  
+
   useEffect(() => {
-    if (reducedMotion) return
+    if (reducedMotion || !enabled) return
     
     const lenis = new Lenis({
       duration: 1.2,
@@ -26,7 +30,7 @@ export function useLenis() {
     return () => {
       lenis.destroy()
     }
-  }, [reducedMotion])
-  
+  }, [reducedMotion, enabled])
+
   return lenisRef
 }

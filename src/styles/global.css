@@ -192,6 +192,44 @@ a {
   background: var(--color-surface-2);
 }
 
+/*
+ * Evidence mode. The evidence is rendered as visible text rather than a tooltip, because a
+ * `title` attribute is invisible on touch, unreachable by keyboard, and unreliably
+ * announced — evidence nobody can see is not evidence.
+ */
+.skill-tag-evidenced {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  line-height: 1.3;
+}
+
+.skill-tag-evidenced .skill-name {
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+.skill-evidence {
+  font-size: 0.85em;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Which sources back a skill. Shown only when more than one agrees, so it reads as
+ * corroboration rather than as a label on every tag.
+ */
+.skill-sources {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-faint);
+  font-size: 0.75em;
+  letter-spacing: var(--tracking-label);
+  opacity: 0.85;
+}
+
 /* Languages */
 .languages-list {
   display: flex;

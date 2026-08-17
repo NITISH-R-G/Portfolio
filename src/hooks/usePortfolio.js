@@ -1,70 +1,37 @@
-import { useState, useMemo } from 'react'
-import { portfolioData as defaults } from '../data/portfolio'
+import { useMemo } from 'react'
+import { loadPortfolio } from '../core/load.js'
 
-const STORAGE_KEY = 'portfolio-draft'
-
-function loadDraft() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return null
-    return JSON.parse(saved)
-  } catch {
-    return null
-  }
-}
-
-function deepMerge(target, source) {
-  const result = { ...target }
-  for (const key of Object.keys(source)) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(result[key] || {}, source[key])
-    } else {
-      result[key] = source[key]
-    }
-  }
-  return result
-}
-
-function normalizeSkills(skills) {
-  if (!skills || typeof skills !== 'object') return skills
-  if (Array.isArray(skills.categories)) return skills
-  if (Array.isArray(skills.items)) {
-    return { enabled: skills.enabled !== false, categories: [{ name: 'General', items: skills.items }] }
-  }
-  return skills
-}
-
+/**
+ * Runs the full build pipeline (config resolution → merge → override → rank → derive →
+ * theme → SEO) — memoized at the module level in `core/load.js`, so every component calling
+ * this hook shares one computed result, and `main.jsx` can apply the theme before the first
+ * paint using the exact same object React renders from. No component reads
+ * `portfolio.config.js` or the data files directly, which is what keeps the pipeline
+ * swappable (a future SSR entry point or a CLI preview can call `buildPortfolio` the same
+ * way without touching a component).
+ *
+ * @returns {import('../core/generate/build.js').BuiltPortfolio}
+ */
 export function usePortfolio() {
-  const data = useMemo(() => {
-    const draft = loadDraft()
-    if (!draft) return defaults
-    const merged = deepMerge(defaults, draft)
-    merged.skills = normalizeSkills(merged.skills)
-    return merged
-  }, [])
-  return data
+  return useMemo(() => loadPortfolio(), [])
 }
 
+/** @returns {import('../core/themes/apply.js').ResolvedTheme} */
 export function useTheme() {
-  return usePortfolio().site.theme
+  return usePortfolio().theme
 }
 
-export function useMotion() {
-  return usePortfolio().site.motion
+/** @returns {import('../core/schema/types.js').Identity} */
+export function useIdentity() {
+  return usePortfolio().profile.identity
 }
 
-export function useProfile() {
-  return usePortfolio().profile
-}
-
+/** @returns {{id: string, label: string, icon: string}[]} */
 export function useNavigation() {
-  return usePortfolio().navigation.filter(item => item.enabled !== false)
+  return usePortfolio().navigation
 }
 
+/** @returns {import('../core/generate/sections.js').ResolvedSection[]} */
 export function useSections() {
   return usePortfolio().sections
-}
-
-export function useContact() {
-  return usePortfolio().contact
 }

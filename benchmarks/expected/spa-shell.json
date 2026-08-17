@@ -1,0 +1,25 @@
+{
+  "url": "https://dmitri.example.com/",
+  "note": "A client-rendered app whose application bundle was never captured with it. Scores zero for both providers, and the two zeros mean different things: the static provider cannot run scripts, and the browser has no script to run — `/assets/index-4f9a2c.js` 404s, so `#root` stays empty however long Chromium waits. Kept deliberately, because it is the honest demonstration that a frozen snapshot of a single-page app is only as good as the assets frozen alongside it. The fix is to capture such pages post-render (`--snapshot --render`), not to loosen the ground truth. See `hydrated-profile` for the same shape captured completely.",
+  "traits": ["javascript", "client-rendered", "incomplete-capture"],
+  "profile": {
+    "identity": {
+      "name": "Dmitri Vasquez",
+      "headline": "Product Designer",
+      "location": "Montevideo, Uruguay"
+    },
+    "socials": {
+      "github": "https://github.com/dvasquez"
+    },
+    "experience": [
+      {
+        "company": "Cadence Studio",
+        "role": "Principal Designer",
+        "dates": {
+          "start": { "iso": "2020-02-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ]
+  }
+}

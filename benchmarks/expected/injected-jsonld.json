@@ -1,0 +1,28 @@
+{
+  "url": "https://elif.example.tr/",
+  "note": "JSON-LD written by the client rather than served with the document — increasingly common, since most CMS plugins and site generators inject it. The strongest signal the extractor has is invisible to a static fetch. Also carries non-ASCII characters (Yıldırım, İzmir) through a render, where a mangled name would be a different bug from a missing one.",
+  "traits": ["javascript", "client-rendered", "json-ld", "non-ascii"],
+  "waitFor": { "selector": "[data-hydrated]", "timeoutMs": 10000 },
+  "profile": {
+    "identity": {
+      "name": "Elif Yıldırım",
+      "headline": "Security Engineer",
+      "summary": "Application security, mostly in the boring parts of the stack.",
+      "location": "İzmir, Türkiye"
+    },
+    "socials": {
+      "github": "https://github.com/eyildirim",
+      "stackoverflow": "https://stackoverflow.com/users/998877/eyildirim"
+    },
+    "experience": [
+      {
+        "company": "Kule Security",
+        "role": "Security Engineer",
+        "dates": {
+          "start": { "iso": "2022-08-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ]
+  }
+}

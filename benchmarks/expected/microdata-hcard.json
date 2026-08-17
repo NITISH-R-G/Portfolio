@@ -1,0 +1,42 @@
+{
+  "url": "https://lena.example.dk/",
+  "note": "schema.org expressed as microdata rather than JSON-LD. Same vocabulary, entirely different parsing path — nested itemscopes, values in attributes rather than text, and an entity-encoded name. Catches the class of bug where an extractor supports 'schema.org' but really only supports one serialization of it.",
+  "traits": ["microdata", "structured", "entities"],
+  "profile": {
+    "identity": {
+      "name": "Lena Sørensen",
+      "headline": "Research Software Engineer",
+      "summary": "I maintain scientific software that other people's grants depend on.",
+      "location": "Copenhagen, Denmark",
+      "avatar": "https://lena.example.dk/u/lena.png",
+      "contact": {
+        "email": "lena@example.dk"
+      }
+    },
+    "socials": {
+      "github": "https://github.com/lsorensen",
+      "orcid": "https://orcid.org/0000-0001-5109-3700"
+    },
+    "experience": [
+      {
+        "company": "Niels Bohr Institute",
+        "role": "Research Software Engineer",
+        "dates": {
+          "start": { "iso": "2019-01-01", "precision": "month" },
+          "current": true
+        }
+      }
+    ],
+    "education": [
+      {
+        "institution": "Danmarks Tekniske Universitet",
+        "degree": "PhD Computational Physics"
+      }
+    ],
+    "skills": [
+      { "name": "Fortran" },
+      { "name": "C++" },
+      { "name": "Numerical Methods" }
+    ]
+  }
+}

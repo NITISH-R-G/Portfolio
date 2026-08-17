@@ -1,0 +1,35 @@
+{
+  "url": "https://inesb.example/posts/off-python",
+  "note": "An article, not a profile. It names a dozen technologies and several companies, none of which are claims about the author — the piece is literally about moving *away* from Python. The author node in JSON-LD is real and should be read; the article body is prose about a system, and mining it for skills would give this writer a machine-learning stack she has never used.",
+  "traits": ["trap", "json-ld", "article", "technology-mentions"],
+  "profile": {
+    "identity": {
+      "name": "Ines Baptista",
+      "headline": "Technical Writer"
+    },
+    "socials": {
+      "github": "https://github.com/inesb"
+    },
+    "posts": [
+      {
+        "title": "Why we moved off Python",
+        "url": "https://inesb.example/posts/off-python",
+        "date": { "iso": "2026-02-11", "precision": "day" }
+      }
+    ]
+  },
+  "forbidden": {
+    "skills": [
+      { "name": "Python" },
+      { "name": "PyTorch" },
+      { "name": "Kubernetes" },
+      { "name": "Rust" },
+      { "name": "Kafka" },
+      { "name": "TypeScript" }
+    ],
+    "experience": [
+      { "company": "Amazon" },
+      { "company": "Snowflake" }
+    ]
+  }
+}
