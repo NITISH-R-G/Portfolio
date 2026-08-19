@@ -13,7 +13,7 @@
     "import:file": "node scripts/import-file.mjs",
     "export": "node scripts/export.mjs",
     "doctor": "node scripts/doctor.mjs",
-    "test": "node --test \"tests/*.test.js\"",
+    "test": "node --test",
     "deploy:check": "npm run doctor && npm run build",
     "example": "node scripts/example.mjs",
     "benchmark": "node benchmarks/run.mjs"
