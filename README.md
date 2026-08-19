@@ -214,10 +214,71 @@ strand your data. [Read the spec →](docs/standard.md)
 npm run import:file -- resume.json          # JSON Resume
 npm run import:file -- profile.yaml         # YAML
 npm run import:file -- resume.md            # a Markdown résumé
+npm run import:file -- resume.pdf           # PDF or DOCX
 npm run import:file -- linkedin-export.zip  # your own LinkedIn data export
 ```
 
-Merged into `src/data/manual.json`, never overwriting what is already there.
+A document is a source like any connector, with its own identity and confidence tiers
+rather than a one-time text dump:
+
+- **Content-hash versions.** Re-importing an edited résumé creates a new version of the
+  same document; an unchanged file is recognised as unchanged rather than re-added. Only
+  the active version contributes claims, and superseded ones stay on disk for provenance.
+- **Named confidence, not invented decimals.** `exact` (the file carried structured data),
+  `strong` (a dated role line under an Experience heading), `moderate` (a heading or list
+  read loosely), `weak` (segmented out of prose) — comparable across a PDF, a DOCX and a
+  Markdown résumé, because they share one reader.
+- **Evidence with a page and a span.** A value extracted from a document can say "page 1,
+  under Experience," so a person can check whether the extractor read it correctly — which
+  matters because, unlike an API response, extraction can be wrong in ways only the author
+  would notice.
+
+Merged into `src/data/manual.json` alongside connector data, never overwriting what is
+already there, and resolved through the identical claims → conflicts → canonical profile
+pipeline every other source uses. **[docs/identity.md](docs/identity.md#documents-as-sources)**
+
+---
+
+## Reading the web: an extraction benchmark, not a scraper
+
+For a URL nothing above already knows how to read — a personal site, a lab page, a
+portfolio nobody has written a connector for — this project answers one question
+experimentally rather than assuming an answer: *how much of a professional profile can be
+recovered, and how sure can it be?*
+
+```bash
+npm run benchmark              # every provider, scored on frozen fixtures
+npm run benchmark -- --misses  # every field missed, wrong, or invented
+```
+
+Two escalation tiers exist today, cheapest first:
+
+| Tier | What it does | Cost |
+| --- | --- | --- |
+| **Built-in** | JSON-LD, microdata, OpenGraph, headings, links. No browser, no key. | ~1 ms |
+| **Playwright** | Renders the page in Chromium, then reads it with *the same* extractor. | ~400 ms |
+
+A URL is escalated to the browser only when the cheap read shows signs of failure — scripts
+with almost no text, a heading with nothing under it — not on every page. Someone connecting
+thirty sources should pay milliseconds for the ones that are ordinary HTML.
+
+**Nine metrics, never blended into one score**, because the ways extraction fails are not
+interchangeable — finding half the facts and getting them right is a different failure from
+finding everything and inventing a third of it:
+
+```
+recall · accuracy · precision · structure · entity resolution · dates
+evidence · evidence validity · forbidden-conclusion traps
+```
+
+The last one is the hard gate. The corpus includes pages built specifically to test whether
+a footer credit, an unrelated article, a co-author's affiliation, or a client logo gets
+turned into an unsupported claim — "worked with Google's API" must never become "employed
+by Google." **Every extracted value competes as a claim and can lose to what you typed
+yourself** — nothing here writes the canonical profile directly.
+
+Deterministic today; the benchmark itself, not a chosen vendor, is what will decide whether
+a further tier is worth its cost. **[benchmarks/README.md](benchmarks/README.md)**
 
 ---
 
@@ -253,7 +314,8 @@ and every asset 404s with nothing in the console to explain it.
 | `npm run export` | Résumé, profile README and machine-readable exports |
 | `npm run example -- list` | Try a sample profile |
 | `npm run build` | Static site into `dist/` |
-| `npm test` | 233 tests over the data pipeline |
+| `npm test` | 400+ tests over the pipeline, documents and extraction |
+| `npm run benchmark` | Score extraction against a frozen corpus — [details](benchmarks/README.md) |
 
 ---
 
@@ -281,6 +343,8 @@ src/
   core/
     schema/              the normalized Profile shape, merging, validation
     identity/            claims → conflicts → canonical profile + evidence
+    documents/           résumé/PDF/DOCX ingestion, content-hash versioning
+    extraction/          reading a URL nothing else knows: built-in + Playwright, escalation
     standard/            the portable, versioned document
     config/              defaults and resolution
     generate/            ranking, skill derivation, stats, section selection, SEO
@@ -289,6 +353,7 @@ src/
   components/            reusable UI
   admin/                 the local builder
 scripts/                 setup, import, export, doctor, examples
+benchmarks/              frozen-corpus extraction benchmark, scored on nine metrics
 examples/                eleven sample profiles
 ```
 
@@ -345,7 +410,7 @@ import script all read the registry, so none of them need changing.
   it out of the JSON-LD, where a harvester would read it most easily of all.
 - Analytics are off by default, and there is no third-party script to turn on.
 
-**[docs/privacy.md](docs/privacy.md)**
+**[docs/privacy.md](docs/privacy.md)** · Found a security issue? **[SECURITY.md](SECURITY.md)**
 
 ---
 
@@ -358,35 +423,51 @@ import script all read the registry, so none of them need changing.
 [Configuration](docs/configuration.md) ·
 [Connectors](docs/connectors.md) ·
 [Adding a connector](docs/adding-a-connector.md) ·
+[Extraction benchmark](benchmarks/README.md) ·
 [Data schema](docs/data-schema.md) ·
 [Themes](docs/themes.md) ·
 [Customization](docs/customization.md) ·
 [Deployment](docs/deployment.md) ·
 [Privacy](docs/privacy.md) ·
+[Security](SECURITY.md) ·
 [Troubleshooting](docs/troubleshooting.md) ·
 [Architecture](docs/architecture.md) ·
-[Contributing](CONTRIBUTING.md)
+[Contributing](CONTRIBUTING.md) ·
+[Code of Conduct](CODE_OF_CONDUCT.md)
 
 ---
 
 ## Roadmap
 
-The canonical profile is deliberately the centre of the architecture rather than a step in
-it, because everything below is a *consumer* of the same object:
+### Built
 
+- **Canonical identity** — claims, conflicts, evidence, resolution. [docs/identity.md](docs/identity.md)
+- **Document ingestion** — résumé/PDF/DOCX, content-hash versioning, named confidence tiers.
+- **Extraction, Tier 0 and Tier 1** — a dependency-free reader plus a browser-rendering
+  fallback, escalating only when the cheap read falls short, scored on a nine-metric
+  benchmark. [benchmarks/README.md](benchmarks/README.md)
+
+### Not built — explicitly deferred, not implemented under a different name
+
+- **Semantic extraction (Tier 2)** — a constrained model interpreting text a deterministic
+  reader locates but cannot disambiguate (which part of a citation is the title; "worked
+  *with* Google" versus "worked *at* Google"). Gated on holding the same forbidden-conclusion
+  guarantee the deterministic tiers already meet — recall that increases invented claims is
+  not an improvement here.
 - **Role variants** — one identity, many presentations. An AI/ML portfolio and a full-stack
   portfolio as views that reorder and emphasise, never copies. Change your GitHub URL once
   and every view updates.
-- **Résumé ingestion** — a `document` layer feeding the same resolver, so an extracted job
-  title can legitimately conflict with LinkedIn and be resolved once.
 - **Retrieval-backed chat** — answering "what has he built with PyTorch?" by traversing
   skills → evidence → projects, rather than embedding portfolio prose and hoping. The
   canonical profile is the database; the model only phrases the answer.
-- **An agent interface** — exposing the profile, sections and themes as tools, so a coding
-  agent can extend a portfolio through a defined surface rather than by guessing at files.
+- **An agent interface (MCP or similar)** — exposing the profile, sections and themes as
+  tools, so a coding agent can extend a portfolio through a defined surface rather than by
+  guessing at files.
 - More connectors, more themes, and a static render for zero-JavaScript readers.
 
-None of those are built. The layer they all depend on is, and its seams are named in
+The layer everything above depends on is built: resolution returns an evidence graph, the
+standard carries it, and every source type — API, feed, document, extracted URL, manual —
+converges on the same claim model. Its seams are named in
 [docs/identity.md](docs/identity.md#where-this-is-going).
 
 Contributions welcome, particularly connectors. If a platform has a public API and is not
@@ -401,4 +482,4 @@ repository belongs to [Nitish R.G.](https://github.com/NITISH-R-G) and is a *con
 instance* of the engine, not a special case in the code — `portfolio.config.js` is the only
 file that knows who it is about.
 
-MIT licensed.
+[MIT licensed](LICENSE).
