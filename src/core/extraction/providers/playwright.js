@@ -245,9 +245,16 @@ export const playwright = {
 
   async health() {
     try {
+      const { existsSync } = await import('node:fs')
       const { chromium } = await import('playwright')
+      // `executablePath()` returns a path unconditionally — it computes where the binary
+      // *would* live, and does not check whether it is actually there. Treating that string
+      // as truthy is exactly the bug that let this provider report itself healthy on a CI
+      // runner that had never downloaded a browser: `setup()` then called `chromium.launch()`
+      // and threw, and nothing had skipped to protect the run. The existence check is the
+      // whole point of asking.
       const path = chromium.executablePath()
-      return path
+      return path && existsSync(path)
         ? { state: 'ok', detail: 'Chromium is installed.' }
         : { state: 'unavailable', detail: 'Run `npx playwright install chromium`.' }
     } catch {
