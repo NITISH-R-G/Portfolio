@@ -16,7 +16,8 @@
     "test": "node --test",
     "deploy:check": "npm run doctor && npm run build",
     "example": "node scripts/example.mjs",
-    "benchmark": "node benchmarks/run.mjs"
+    "benchmark": "node benchmarks/run.mjs",
+    "test:agent": "npm test --workspace @portfolio-engine/agent"
   },
   "repository": {
     "type": "git",
@@ -52,5 +53,8 @@
     "@vitejs/plugin-react": "^6.0.3",
     "playwright": "^1.62.1",
     "vite": "^8.1.4"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }
