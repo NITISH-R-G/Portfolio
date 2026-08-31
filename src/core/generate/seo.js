@@ -11,6 +11,7 @@
 
 import { absoluteBaseUrl } from '../config/resolve.js'
 import { formatDate } from '../schema/date.js'
+import { manifestLinkTag, MANIFEST_FILENAME } from '../standard/discovery.js'
 
 /** @typedef {import('../schema/types.js').Profile} Profile */
 
@@ -309,6 +310,12 @@ export function renderHead({ title, canonical, meta, structuredData }) {
   }
 
   if (canonical) lines.push(`<link rel="canonical" href="${escapeHtml(canonical)}">`)
+
+  // Autodiscovery for the machine-readable manifest. Base-relative on purpose: it resolves
+  // against whatever the document's own URL is, so it stays correct at a domain root, under a
+  // GitHub Pages project path, or anywhere else a fork happens to be mounted — none of which
+  // this file can know at render time. See `core/standard/discovery.js`.
+  lines.push(manifestLinkTag(`./${MANIFEST_FILENAME}`))
 
   for (const node of structuredData) {
     lines.push(

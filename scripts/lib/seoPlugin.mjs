@@ -8,13 +8,15 @@
  * readers never see.
  *
  * So the same `generateSeo` output is injected into `index.html` during the build, and the
- * runtime replacement becomes a no-op that keeps `npm run dev` accurate. The sitemap and
- * robots.txt are emitted from the same data.
+ * runtime replacement becomes a no-op that keeps `npm run dev` accurate. The sitemap,
+ * robots.txt and the public agent manifest are emitted from the same data.
  *
  * @module scripts/lib/seoPlugin
  */
 
 import { generateSitemap, generateRobots } from '../../src/core/generate/seo.js'
+import { toPublicManifest } from '../../src/core/standard/public.js'
+import { MANIFEST_FILENAME } from '../../src/core/standard/discovery.js'
 import { loadBuiltPortfolio, PATHS, relative, fs, path } from './portfolio.mjs'
 
 /**
@@ -76,7 +78,30 @@ export function portfolioSeo() {
      */
     generateBundle() {
       if (!isBuild || !built) return
-      const { config, seo } = built
+      const { config, profile, seo } = built
+
+      /* The public manifest ------------------------------------------------- */
+
+      // Emitted even when SEO/sitemap generation is switched off, and even without
+      // `site.url`: those settings govern how *search engines* see the page, and the manifest
+      // is for agents reading a portfolio someone handed them directly. A person who turned
+      // off sitemaps did not thereby ask for their portfolio to be unreadable by tools.
+      if (config.agent?.manifest !== false) {
+        const manifest = toPublicManifest(profile, {
+          config,
+          canonical: seo?.canonical,
+          generatedAt: new Date().toISOString(),
+        })
+        this.emitFile({
+          type: 'asset',
+          fileName: MANIFEST_FILENAME,
+          source: `${JSON.stringify(manifest, null, 2)}\n`,
+        })
+        console.log(`  ${relative(path.join(PATHS.dist, MANIFEST_FILENAME))} generated (public manifest)`)
+      }
+
+      /* Sitemap and robots --------------------------------------------------- */
+
       if (config.seo?.enabled === false || config.seo?.sitemap === false) return
       if (!config.site.url) return
 
