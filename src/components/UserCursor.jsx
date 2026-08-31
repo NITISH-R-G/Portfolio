@@ -125,6 +125,12 @@ export default function UserCursor({ surfaceRef }) {
     return current + diff * stiffness * damping
   }
 
+  // Below this, the spring is close enough to its target that another frame of interpolation
+  // is not visually distinguishable from rounding — a reasonable settle threshold for a
+  // 16px arrow.
+  const SETTLE_EPSILON = 0.05
+  const loopingRef = useRef(false)
+
   const updatePositions = () => {
     if (!enabledRef.current) return
 
@@ -154,6 +160,25 @@ export default function UserCursor({ surfaceRef }) {
       arrowRef.current.style.transform = `translate3d(${arrowPosRef.current.x}px, ${arrowPosRef.current.y}px, 0) scale(${scale})`
     }
 
+    // The loop was previously unconditional — a rAF callback running 60 times a second for
+    // the entire time the tab is open, including the long stretches where the cursor is
+    // sitting still and every one of those frames recomputes an already-converged spring to
+    // the same value. Stopping once the arrow has caught up to the pointer, and letting
+    // `handlePointerMove` restart the loop on the next real movement, is the same amount of
+    // motion with none of the idle cost.
+    const settled = Math.abs(arrowPosRef.current.x - mx) < SETTLE_EPSILON
+      && Math.abs(arrowPosRef.current.y - my) < SETTLE_EPSILON
+    if (settled) {
+      loopingRef.current = false
+      return
+    }
+
+    rafRef.current = requestAnimationFrame(updatePositions)
+  }
+
+  const ensureLooping = () => {
+    if (loopingRef.current || !enabledRef.current) return
+    loopingRef.current = true
     rafRef.current = requestAnimationFrame(updatePositions)
   }
 
@@ -198,6 +223,10 @@ body.custom-cursor-active.custom-cursor-visible .portfolio-surface :where(*) {
 
     mouseRef.current.x = e.clientX
     mouseRef.current.y = e.clientY
+    // Restarts the follow loop if it had settled to a stop. Runs even outside the tracked
+    // surface (opacity 0) so the arrow keeps converging on the real pointer position and
+    // never has to visibly snap into place when the pointer re-enters.
+    ensureLooping()
 
     if (!isInsideSurfaceRef.current) return
 
@@ -239,9 +268,10 @@ body.custom-cursor-active.custom-cursor-visible .portfolio-surface :where(*) {
       arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       prevMouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-      rafRef.current = requestAnimationFrame(updatePositions)
+      ensureLooping()
     } else if (!shouldEnable && enabledRef.current) {
       enabledRef.current = false
+      loopingRef.current = false
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       removeElements()
       removeStyle()
@@ -258,7 +288,7 @@ body.custom-cursor-active.custom-cursor-visible .portfolio-surface :where(*) {
       arrowPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       mouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       prevMouseRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-      rafRef.current = requestAnimationFrame(updatePositions)
+      ensureLooping()
 
       const surface = surfaceRef?.current
       if (surface) {
@@ -275,6 +305,7 @@ body.custom-cursor-active.custom-cursor-visible .portfolio-surface :where(*) {
 
     return () => {
       enabledRef.current = false
+      loopingRef.current = false
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       const surface = surfaceRef?.current
       if (surface) {

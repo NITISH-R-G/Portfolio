@@ -31,11 +31,19 @@ export default function Dock({ activeSection, onNavigate }) {
     [magnification]
   )
 
-  const heightRow = useTransform(
-    useMotionValue(isPanelHovered ? 1 : 0),
-    [0, 1],
-    [PANEL_HEIGHT, maxHeight]
-  )
+  // `useMotionValue(initial)` only reads `initial` on the very first render — it's memoized
+  // like a ref, exactly so a MotionValue survives re-renders without being recreated. Passing
+  // `isPanelHovered ? 1 : 0` inline looked like it tracked the state, but every render after
+  // mount silently ignored the new argument: the source value was frozen at whatever
+  // `isPanelHovered` happened to be on first paint, so the dock's hover-to-magnify height
+  // never actually responded to hovering. The fix is the pattern the API exists for — create
+  // the value once, then `.set()` it when the state it represents changes.
+  const hoverProgress = useMotionValue(0)
+  useEffect(() => {
+    hoverProgress.set(isPanelHovered ? 1 : 0)
+  }, [isPanelHovered, hoverProgress])
+
+  const heightRow = useTransform(hoverProgress, [0, 1], [PANEL_HEIGHT, maxHeight])
   const height = useSpring(heightRow, spring)
 
   return (

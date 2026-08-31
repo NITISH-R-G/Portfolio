@@ -40,6 +40,40 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  /* ── Motion tokens ──────────────────────────────────────────────
+     One coherent scale instead of ~90 hardcoded transition literals.
+     Values come from two places, and each is named honestly:
+
+     1. Durations/easings transitions.dev documents for a matching UI
+        job (dropdown/panel open-close asymmetry, entrance reveal,
+        tooltip intent-delay, stagger) are adopted at their documented
+        value — matched by what the motion DOES, never by which raw
+        number happens to be closest. `--motion-ease-smooth` below is
+        exactly transitions.dev's `--ease-smooth-out`, adopted because
+        this project already used it (as `[0.22, 1, 0.36, 1]`) for the
+        same job — page/section entrance — in most places; the
+        remaining `[0.16, 1, 0.3, 1]` outliers converge onto it.
+     2. transitions.dev's scale is built for discrete components —
+        modal, dropdown, badge, tooltip. Most of this project's
+        transitions are continuous hover-feedback on plain elements
+        (a card's border lighting up, a chip's background shifting),
+        a job the catalogue has no row for. Forcing those onto
+        `--duration-quick` (150ms) because it is numerically close
+        would be exactly the mistake transitions-polish's own doctrine
+        warns against — matching on usage, never on the nearest
+        number. So `--motion-hover` / `--motion-hover-fast` are this
+        project's own tokens, set to the values ~90 existing hover
+        transitions already overwhelmingly agreed on (0.14s / 0.18s)
+        before this pass — extracting a working consensus, not
+        inventing one. */
+  --motion-hover: 0.14s;        /* color/background/border hover feedback */
+  --motion-hover-fast: 0.18s;   /* + transform/box-shadow hover feedback (lift, glow) */
+  --motion-open: 250ms;         /* dropdown/panel/modal open — transitions.dev --duration-fast */
+  --motion-close: 150ms;        /* dropdown/modal close — transitions.dev --duration-quick */
+  --motion-tooltip-delay: 80ms; /* intent-filtering delay before a tooltip/hint appears */
+  --motion-stagger: 40ms;       /* per-item stagger offset, small groups */
+  --motion-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1); /* entrance reveal, open/close, resize */
 }
 
 * {
@@ -183,7 +217,7 @@ a {
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 100%;
-  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease, background var(--motion-hover) ease;
 }
 
 .skill-tag:hover {
@@ -277,7 +311,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-muted);
-  transition: border-color 0.14s ease, color 0.14s ease;
+  transition: border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .social-icon:hover {
@@ -367,7 +401,7 @@ a {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease, transform var(--motion-hover-fast) ease;
 }
 
 .project-scroll-card:hover {
@@ -397,6 +431,9 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Intentional exception: 500ms, not a hover token. A slower image zoom is a legitimate
+     emphasis moment (transitions.dev's --duration-very-slow is the same 500ms for exactly
+     that usage), distinct from the quick color/border feedback the hover tokens cover. */
   transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -475,7 +512,7 @@ a {
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   flex-shrink: 0;
-  transition: background 0.14s ease, color 0.14s ease, transform 0.18s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
 }
 
 .project-scroll-card:hover .project-scroll-arrow {
@@ -501,7 +538,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease, opacity var(--motion-hover) ease;
   opacity: 0;
 }
 
@@ -569,7 +606,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+  transition: border-color var(--motion-hover) ease, background var(--motion-hover) ease, transform var(--motion-hover) ease;
 }
 
 .generic-list-card:hover {
@@ -614,7 +651,7 @@ a {
 
 .generic-list-link {
   color: var(--color-text-muted);
-  transition: color 0.14s ease;
+  transition: color var(--motion-hover) ease;
   flex-shrink: 0;
   margin-top: 2px;
   display: inline-flex;
@@ -814,7 +851,7 @@ a {
   justify-content: center;
   font-size: 14px;
   line-height: 1;
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .btn-remove-inline:hover {
@@ -830,7 +867,7 @@ a {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-meta);
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .btn-add-small:hover {
@@ -851,7 +888,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease, transform var(--motion-hover-fast) ease;
 }
 
 .case-card:hover {
@@ -969,7 +1006,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   min-width: 80px;
-  transition: border-color 0.14s ease;
+  transition: border-color var(--motion-hover) ease;
 }
 
 .metric-badge:hover {
@@ -1007,7 +1044,7 @@ a {
   cursor: pointer;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
-  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease, background var(--motion-hover) ease;
 }
 
 .case-expand-btn:hover {
@@ -1027,18 +1064,53 @@ a {
   background: var(--color-border);
 }
 
+/* Accordion, transitions.dev's grid-rows pattern (see 21-accordion.md): the track
+   (.case-details) animates 0fr -> 1fr, so the height itself is never measured or driven by
+   JS — the browser's layout engine interpolates it.
+
+   Three levels deep, not two, and the reason is worth stating because it is easy to get
+   subtly wrong: `overflow: hidden` on a grid item zeroes out its *content-derived* minimum
+   size, but padding is part of the box itself, not content — it survives overflow clipping
+   and keeps the collapsed track pinned to (padding + border) tall instead of ~0. Verified
+   directly: with padding on `.case-details-inner` (the clipping item), collapsed measured
+   37px, matching that element's own padding-top + padding-bottom + its border exactly.
+   Moving padding one level further in, onto `.case-details-content` — a plain block with no
+   box-model contribution of its own to the clipping item's minimum size — collapses fully. */
 .case-details {
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion-close) var(--motion-ease-smooth);
+}
+
+.case-details[data-expanded="true"] {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--motion-open) var(--motion-ease-smooth);
 }
 
 .case-details-inner {
-  padding: 0 var(--space-5) var(--space-5);
-  border-top: 1px solid var(--color-border);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity var(--motion-close) var(--motion-ease-smooth);
+}
+
+.case-details[data-expanded="true"] .case-details-inner {
+  opacity: 1;
+  transition: opacity var(--motion-open) var(--motion-ease-smooth);
+}
+
+.case-details-content {
   padding-top: var(--space-4);
+  padding-right: var(--space-5);
+  padding-bottom: var(--space-5);
+  padding-left: var(--space-5);
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
+/* No dedicated reduced-motion override needed here — the project already zeroes every
+   transition-duration globally (see "Reduced Motion" below). Content still opens instantly
+   on click either way; only the animated interpolation is removed. */
 
 .case-detail-field {
   display: flex;
@@ -1119,7 +1191,7 @@ a {
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .case-link:hover {
@@ -1140,7 +1212,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease;
 }
 
 .experience-card:hover {
@@ -1196,7 +1268,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease;
 }
 
 .education-card:hover {
@@ -1256,7 +1328,7 @@ a {
   font-size: var(--text-body);
   color: var(--color-text-muted);
   line-height: var(--leading-body);
-  transition: border-color 0.14s ease;
+  transition: border-color var(--motion-hover) ease;
 }
 
 .certification-item:hover {
@@ -1287,7 +1359,7 @@ a {
   align-items: center;
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
 }
 
 .contact-row:last-child {
@@ -1482,7 +1554,7 @@ a {
   justify-content: center;
   border-radius: var(--radius-lg);
   color: var(--color-text-muted);
-  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease, transform var(--motion-hover) ease;
 }
 
 .dock-icon:hover,
@@ -1606,7 +1678,7 @@ a {
   border-radius: 50%;
   background: var(--color-text);
   opacity: 1;
-  transition: opacity 0.14s ease;
+  transition: opacity var(--motion-hover) ease;
   z-index: 10000;
 }
 
@@ -1617,7 +1689,7 @@ a {
   border: 2px solid var(--color-text);
   box-sizing: border-box;
   opacity: 1;
-  transition: border-color 0.14s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
   z-index: 9999;
 }
 
@@ -1643,7 +1715,7 @@ a {
   white-space: nowrap;
   opacity: 0;
   transform: translate3d(-50%, -100%, 0) translateY(-8px);
-  transition: opacity 0.14s ease, transform 0.18s ease;
+  transition: opacity var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
   z-index: 10001;
 }
 
@@ -1815,8 +1887,11 @@ a:focus-visible,
     padding: var(--space-4);
   }
 
-  .case-details-inner {
-    padding: 0 var(--space-4) var(--space-4);
+  .case-details-content {
+    padding-top: 0;
+    padding-right: var(--space-4);
+    padding-bottom: var(--space-4);
+    padding-left: var(--space-4);
   }
 
   .generic-list-card {
@@ -1881,20 +1956,25 @@ a:focus-visible,
 /* Accessibility - Skip Link */
 .skip-link {
   position: absolute;
-  top: -100%;
+  /* transform, not top: `top` is a layout property, so animating it forces a reflow on
+     every frame of the transition. A translateY does the identical visual move on the
+     compositor only. Fires once per keyboard session, so this was never the lag source —
+     fixed anyway because "animate transform/opacity, not layout properties" should hold
+     everywhere, not just where it happens to be measurable. */
+  top: var(--space-4);
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(-150%);
   padding: var(--space-3) var(--space-6);
   background: var(--color-text);
   color: var(--color-bg);
   font-weight: 600;
   border-radius: var(--radius-lg);
   z-index: 10000;
-  transition: top 0.2s ease;
+  transition: transform var(--motion-hover-fast) var(--motion-ease-smooth);
 }
 
 .skip-link:focus {
-  top: var(--space-4);
+  transform: translateX(-50%) translateY(0);
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
@@ -1959,7 +2039,7 @@ a:focus-visible,
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -2052,7 +2132,7 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 400;
   cursor: pointer;
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .admin-nav-item:hover {
@@ -2088,7 +2168,7 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease, box-shadow var(--motion-hover) ease;
 }
 
 .btn-admin:focus-visible {
@@ -2159,7 +2239,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   outline: none;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  transition: border-color var(--motion-hover) ease, box-shadow var(--motion-hover) ease;
 }
 
 .field-input::placeholder,
@@ -2227,7 +2307,7 @@ a:focus-visible,
   border-radius: var(--radius-md);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease;
   flex-shrink: 0;
 }
 
@@ -2244,7 +2324,7 @@ a:focus-visible,
   height: 14px;
   border-radius: 50%;
   background: var(--color-text-muted);
-  transition: transform 0.18s ease, background 0.14s ease;
+  transition: transform var(--motion-hover-fast) ease, background var(--motion-hover) ease;
 }
 
 .toggle-track[data-checked="true"] .toggle-thumb {
@@ -2292,7 +2372,7 @@ a:focus-visible,
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
 }
 
 .image-preview-remove:hover {
@@ -2334,7 +2414,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .image-file-btn:hover {
@@ -2412,7 +2492,7 @@ a:focus-visible,
   padding: var(--space-4);
   margin-bottom: var(--space-3);
   background: var(--color-surface);
-  transition: border-color 0.14s ease;
+  transition: border-color var(--motion-hover) ease;
 }
 
 .item-card:hover {
@@ -2446,7 +2526,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
 }
 
 .btn-remove:hover {
@@ -2474,7 +2554,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .btn-move:hover:not(:disabled) {
@@ -2506,7 +2586,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .btn-add:hover {
@@ -2567,7 +2647,7 @@ a:focus-visible,
     z-index: 100;
     padding: var(--space-6) var(--space-4);
     transform: translateX(-100%);
-    transition: transform 0.18s ease;
+    transition: transform var(--motion-hover-fast) ease;
     max-height: 100vh;
     overflow-y: auto;
   }
@@ -2668,7 +2748,7 @@ a:focus-visible,
   text-align: left;
   font-family: var(--font-sans);
   color: var(--color-text);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease, transform var(--motion-hover-fast) ease;
 }
 
 .cert-thumb:hover {
@@ -2775,7 +2855,7 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .cert-lightbox-close:hover {
@@ -2903,7 +2983,7 @@ a:focus-visible,
   cursor: pointer;
   padding: 0;
   background: var(--color-surface);
-  transition: border-color 0.14s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
 }
 
 .cert-strip-thumb:hover {
@@ -2962,7 +3042,7 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .cert-lightbox-nav-btn:hover {
@@ -3009,7 +3089,7 @@ a:focus-visible,
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   border: 1px solid var(--color-border);
-  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease, transform var(--motion-hover) ease;
 }
 
 .proof-chip:hover {
@@ -3027,7 +3107,7 @@ a:focus-visible,
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+  transition: border-color var(--motion-hover) ease, background var(--motion-hover) ease, transform var(--motion-hover) ease;
   text-decoration: none;
   color: inherit;
 }

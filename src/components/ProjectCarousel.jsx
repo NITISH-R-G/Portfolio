@@ -30,9 +30,26 @@ export default function ProjectCarousel({ projects }) {
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    el.addEventListener('scroll', updateScrollState, { passive: true })
+
+    // Native `scroll` fires far faster than once a frame during momentum scrolling or a
+    // trackpad drag — often dozens of times between two paints. Each firing was reading
+    // scrollWidth/clientWidth (layout reads) and calling two setState updates, so a single
+    // finger-drag across the carousel could queue many re-renders' worth of work for a value
+    // that only actually needs to be current once per frame. Gating with a rAF flag collapses
+    // any run of scroll events between two paints into a single read + at most one update.
+    let scheduled = false
+    const onScroll = () => {
+      if (scheduled) return
+      scheduled = true
+      requestAnimationFrame(() => {
+        scheduled = false
+        updateScrollState()
+      })
+    }
+
+    el.addEventListener('scroll', onScroll, { passive: true })
     updateScrollState()
-    return () => el.removeEventListener('scroll', updateScrollState)
+    return () => el.removeEventListener('scroll', onScroll)
   }, [updateScrollState, projects])
 
   const scroll = useCallback((dir) => {
