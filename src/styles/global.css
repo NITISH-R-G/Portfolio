@@ -140,6 +140,79 @@ a {
   text-decoration: none;
 }
 
+/* ── Search ────────────────────────────────────────────────────────────────
+   The one piece of chrome that sits above the whole portfolio, because it is the
+   thing a visitor is least likely to guess exists and most likely to want. Sticky
+   rather than fixed: it stays reachable while scrolling without being lifted onto
+   its own compositor layer over the entire page, which is what makes a fixed bar
+   with a blur expensive on long documents. */
+.search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .search-bar { background: var(--color-bg); }
+}
+
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: min(560px, 100%);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  cursor: pointer;
+  transition: border-color var(--motion-hover) ease, color var(--motion-hover) ease,
+    background var(--motion-hover) ease;
+}
+
+.search-trigger:hover,
+.search-trigger:focus-visible {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+}
+
+.search-trigger:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.search-trigger-label {
+  flex: 1;
+  text-align: left;
+}
+
+.search-trigger-kbd,
+.search-legend kbd,
+.search-close kbd {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  padding: 2px 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-faint);
+  background: var(--color-bg);
+}
+
+/* ⌘ on Apple platforms, Ctrl everywhere else. Set from JS would mean a hydration
+   mismatch; a content property keyed off a body class avoids rendering the wrong
+   one first and correcting it. */
+.search-trigger-mod::before { content: 'Ctrl '; }
+body.is-apple .search-trigger-mod::before { content: '⌘'; }
+
 /* Page Layout — Editorial resume shell */
 .page-wrapper {
   display: grid;
@@ -3188,3 +3261,331 @@ a:focus-visible,
   color: var(--color-text-faint);
   padding: var(--space-1) var(--space-2);
 }
+
+/* ── Search dialog ─────────────────────────────────────────────────────────
+   A modal over the page. Kept to transform/opacity only, and mounted lazily, so
+   opening it costs one composite rather than a layout pass over the document
+   behind it. */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(var(--space-4), 8vh, 96px) var(--space-4) var(--space-4);
+  background: rgba(0, 0, 0, 0.72);
+  animation: search-overlay-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+@keyframes search-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.search-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(70vh, 640px);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: search-dialog-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+@keyframes search-dialog-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The beam wrapper must not introduce its own box — it wraps the field and
+   inherits its radius, so the beam traces the control rather than a rectangle
+   floating around it. */
+.search-field-shell { padding: var(--space-3); }
+.search-beam { display: block; border-radius: var(--radius-md); }
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+}
+
+.search-input::placeholder { color: var(--color-text-faint); }
+/* The browser's own clear affordance duplicates Esc and sits under the close control. */
+.search-input::-webkit-search-cancel-button { display: none; }
+
+.search-close {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.search-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-3);
+  /* Momentum scrolling inside a modal must not chain to the page behind it. */
+  overscroll-behavior: contain;
+}
+
+.search-message {
+  padding: var(--space-4) var(--space-3);
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+  line-height: var(--leading-body);
+}
+
+.search-message-error { color: var(--color-text-muted); }
+
+.search-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.search-examples button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
+}
+
+.search-examples button:hover,
+.search-examples button:focus-visible {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.search-group { padding-top: var(--space-2); }
+
+.search-group-label {
+  position: sticky;
+  top: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.search-results { list-style: none; padding: 0; }
+
+.search-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease;
+}
+
+.search-result.is-active,
+.search-result:focus-visible {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  outline: none;
+}
+
+.search-result-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.search-result-title {
+  font-size: var(--text-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.search-result-subtitle,
+.search-result-meta {
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+}
+
+.search-result-meta {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  max-width: 45%;
+}
+
+.search-why strong { color: var(--color-text-muted); font-weight: 500; }
+/* Concept-expanded matches read as a weaker signal than a term the reader typed,
+   because they are one. */
+.search-why-related { font-style: italic; opacity: 0.8; }
+
+.search-evidence,
+.search-source {
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.search-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+}
+
+.search-legend { display: flex; align-items: center; gap: var(--space-1); }
+
+.search-manifest-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-faint);
+  transition: color var(--motion-hover) ease;
+}
+
+.search-manifest-link:hover { color: var(--color-text); }
+
+/* ── Copy menu ─────────────────────────────────────────────────────────────
+   Quiet until wanted: one control that opens two options, rather than two
+   buttons competing with the content on every card. */
+.copy-menu { position: relative; display: inline-flex; }
+
+.copy-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-2);
+  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  cursor: pointer;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease,
+    background var(--motion-hover) ease;
+}
+
+.copy-menu-trigger:hover,
+.copy-menu-trigger:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.copy-menu-trigger.is-copied { color: var(--color-text); border-color: var(--color-border-strong); }
+.copy-menu-trigger:disabled { cursor: progress; }
+
+.copy-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: 260px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: copy-menu-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+.copy-menu-right .copy-menu-panel { right: 0; }
+.copy-menu-left .copy-menu-panel { left: 0; }
+
+@keyframes copy-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.copy-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
+}
+
+.copy-menu-item:hover,
+.copy-menu-item:focus-visible {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  outline: none;
+}
+
+.copy-menu-item span { display: flex; flex-direction: column; gap: 1px; }
+.copy-menu-item strong { font-weight: 500; }
+.copy-menu-item em { font-style: normal; color: var(--color-text-faint); }
+
+@media (max-width: 768px) {
+  .search-bar { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+  /* Icon only: the full label pushed the row 11px past the viewport at 375px. The
+     button keeps its accessible name via aria-label. */
+  .search-bar .copy-menu-label { display: none; }
+  /* A keyboard shortcut hint is meaningless on a touch device. */
+  .search-trigger-kbd { display: none; }
+  .search-overlay { padding: var(--space-3); align-items: stretch; }
+  .search-dialog { max-height: none; height: 100%; }
+  .search-result { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .search-result-meta { max-width: 100%; justify-content: flex-start; }
+  .copy-menu-panel { max-width: min(280px, calc(100vw - var(--space-6))); }
+}
+
+/* Card actions row — expand toggle and copy control share a line. */
+.case-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.search-bar .copy-menu-trigger { flex-shrink: 0; }

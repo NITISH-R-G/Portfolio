@@ -23,6 +23,14 @@ if (typeof document !== 'undefined' && built.seo?.title && document.title !== bu
   document.title = built.seo.title
 }
 
+// Which modifier the search shortcut hint should show. Set as a class before first paint
+// rather than rendered from JS in the component, so the label never appears as "Ctrl" and
+// then corrects itself to "⌘" a frame later on a Mac.
+if (typeof navigator !== 'undefined' && typeof document !== 'undefined') {
+  const platform = navigator.userAgentData?.platform ?? navigator.platform ?? ''
+  if (/mac|iphone|ipad|ipod/i.test(platform)) document.body.classList.add('is-apple')
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />

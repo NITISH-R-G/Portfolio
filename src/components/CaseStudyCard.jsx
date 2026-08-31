@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useId } from 'react'
 import Icon from './Icon'
+import CopyMenu from './CopyMenu'
 import { track, AnalyticsEvents } from '../lib/analytics'
 
 function hasValue(val) {
@@ -120,22 +121,27 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
           </div>
         )}
 
-        {/* Expand toggle */}
-        {hasCaseStudy && (
-          <button
-            className="case-expand-btn"
-            onClick={() => {
-              const next = !expanded
-              setExpanded(next)
-              track(next ? AnalyticsEvents.CASE_STUDY_EXPAND : AnalyticsEvents.CASE_STUDY_COLLAPSE, { title })
-            }}
-            aria-expanded={expanded}
-            aria-controls={detailsId}
-          >
-            {expanded ? 'Show less' : 'View details'}
-            <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
-          </button>
-        )}
+        {/* Actions. The copy control sits with the expand toggle rather than floating over
+            the card, so it is discoverable in the place a reader is already looking for
+            things to do, without competing with the content above it. */}
+        <div className="case-actions">
+          {hasCaseStudy && (
+            <button
+              className="case-expand-btn"
+              onClick={() => {
+                const next = !expanded
+                setExpanded(next)
+                track(next ? AnalyticsEvents.CASE_STUDY_EXPAND : AnalyticsEvents.CASE_STUDY_COLLAPSE, { title })
+              }}
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+            >
+              {expanded ? 'Show less' : 'View details'}
+              <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
+            </button>
+          )}
+          <CopyMenu entity={item} type={type} label="Copy" align="left" />
+        </div>
       </div>
 
       {/* Expanded Details — a CSS grid-rows accordion (transitions.dev's pattern), not a
