@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
+import LiquidSurface, { LiquidPiece } from './LiquidSurface'
 
 /**
  * Copy → Markdown | Prompt.
@@ -89,40 +90,56 @@ export default function CopyMenu({ entity, type, profile, config, person, source
 
   return (
     <div className={`copy-menu copy-menu-${align}`} ref={rootRef}>
-      <button
-        ref={buttonRef}
-        type="button"
-        className={`copy-menu-trigger${state === 'copied' ? ' is-copied' : ''}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        // The visible text is hidden on narrow screens to keep the control from overflowing,
-        // so the button needs a name that does not depend on it.
-        aria-label={label}
-        disabled={busy}
+      {/* Liquid only while the menu is open: the panel is extruded from the trigger, and the
+          goo bridges the 4px between them so the two read as one control changing shape
+          rather than a card appearing over a button. Closed, this is a plain div and the
+          library is never loaded. */}
+      <LiquidSurface
+        active={open}
+        className={`copy-menu-liquid copy-menu-liquid-${align}`}
+        // The panel hangs ~110px below the group box, so the filter region has to reach it.
+        filterPadding={150}
+        shadow="0 12px 32px rgba(0, 0, 0, 0.5)"
       >
-        <Icon name={state === 'copied' ? 'Check' : state === 'failed' ? 'AlertTriangle' : 'Copy'} size={13} />
-        <span className="copy-menu-label">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Failed' : label}</span>
-      </button>
+        <LiquidPiece className="copy-menu-trigger-piece">
+          <button
+            ref={buttonRef}
+            type="button"
+            className={`copy-menu-trigger${state === 'copied' ? ' is-copied' : ''}`}
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-haspopup="menu"
+            // The visible text is hidden on narrow screens to keep the control from
+            // overflowing, so the button needs a name that does not depend on it.
+            aria-label={label}
+            disabled={busy}
+          >
+            <Icon name={state === 'copied' ? 'Check' : state === 'failed' ? 'AlertTriangle' : 'Copy'} size={13} />
+            <span className="copy-menu-label">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Failed' : label}</span>
+          </button>
+        </LiquidPiece>
 
-      {open && (
-        <div className="copy-menu-panel" role="menu">
-          <button type="button" role="menuitem" className="copy-menu-item" onClick={() => copy('markdown')}>
-            <Icon name="FileText" size={14} />
-            <span>
-              <strong>Markdown</strong>
-              <em>Clean text for a doc or email</em>
-            </span>
-          </button>
-          <button type="button" role="menuitem" className="copy-menu-item" onClick={() => copy('prompt')}>
-            <Icon name="Sparkles" size={14} />
-            <span>
-              <strong>Prompt</strong>
-              <em>Grounded context for ChatGPT, Claude or Gemini</em>
-            </span>
-          </button>
-        </div>
-      )}
+        {open && (
+          <LiquidPiece observe className="copy-menu-panel-piece">
+            <div className="copy-menu-panel" role="menu">
+              <button type="button" role="menuitem" className="copy-menu-item" onClick={() => copy('markdown')}>
+                <Icon name="FileText" size={14} />
+                <span>
+                  <strong>Markdown</strong>
+                  <em>Clean text for a doc or email</em>
+                </span>
+              </button>
+              <button type="button" role="menuitem" className="copy-menu-item" onClick={() => copy('prompt')}>
+                <Icon name="Sparkles" size={14} />
+                <span>
+                  <strong>Prompt</strong>
+                  <em>Grounded context for ChatGPT, Claude or Gemini</em>
+                </span>
+              </button>
+            </div>
+          </LiquidPiece>
+        )}
+      </LiquidSurface>
 
       {/* Announced to screen readers, which see no colour change and no icon swap. */}
       <span className="sr-only" role="status" aria-live="polite">

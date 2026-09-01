@@ -3540,6 +3540,65 @@ a:focus-visible,
   to { opacity: 1; transform: none; }
 }
 
+/* Liquid copy menu ---------------------------------------------------------
+   While the menu is open, the merged silhouette *is* the surface: the trigger
+   and panel drop their own background, border and shadow so what the eye sees
+   is one liquid mass necking between them, not two boxes with goo behind.
+   Everything here is scoped to `.is-liquid`, which only exists while open and
+   never under reduced motion — the closed and reduced-motion paths render the
+   original treatment untouched. */
+/* `display: contents` when inert, so the wrapper adds no box and the closed menu lays out
+   byte-for-byte as it did before this feature existed.
+
+   When liquid, the group needs a real box to host its SVG filter — but it must NOT become a
+   positioned containing block. The panel is absolutely positioned with `top: calc(100% + …)`
+   against `.copy-menu`; giving this wrapper `position: relative` re-anchored it here instead,
+   which stretched the 4px gap to 14px and pushed the right edge 4px out of alignment. Static
+   positioning keeps the panel anchored where its own CSS expects. */
+/* `display: contents` when inert, so the wrapper adds no box and the closed menu lays out
+   byte-for-byte as it did before this feature existed.
+
+   When liquid the group needs a real box to host its SVG filter, and it is `flex` rather than
+   `block` for a specific reason: the library renders each item as an `inline-block`, which
+   sits on a text baseline and leaves ~11px of descender leading beneath it. That inflated the
+   group to 35px against a 23px trigger, and since the panel is positioned with
+   `top: calc(100% + …)`, the 4px gap silently became 14px — too wide for the goo to bridge,
+   which is the entire effect. Flex removes the baseline, so the group's box is the trigger's
+   box and the panel lands where its own CSS says.
+
+   The library sets `position: relative; isolation: isolate` inline on this element, so it is
+   the panel's containing block whether or not we want it to be — matching its height to the
+   trigger's is what makes that harmless. */
+.liquid-surface { display: contents; }
+.liquid-surface.is-liquid { display: flex; }
+
+.copy-menu-liquid.is-liquid .copy-menu-trigger,
+.copy-menu-liquid.is-liquid .copy-menu-panel {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Keep the trigger the same size it is without the effect.
+
+   In the search bar the copy menu is a stretched flex item, so the trigger fills its full
+   height (36px). Wrapping it in a liquid piece made the *piece* the flex item and the button
+   collapsed to its content height (24px), leaving the label riding 6px high inside a 36px
+   liquid blob.
+
+   `!important` is load-bearing rather than lazy: the library writes `display: inline-block`
+   as an inline style on the item wrapper, which beats any stylesheet rule. Left a block
+   container, it does not stretch its child. This is the one declaration that has to win.
+
+   `height: 100%` was tried first and is wrong — the wrapper's height is not definite at that
+   point, so the percentage resolved to zero and collapsed the button entirely. */
+.copy-menu-liquid.is-liquid .copy-menu-trigger-piece { display: flex !important; align-self: stretch; }
+.copy-menu-liquid.is-liquid .copy-menu-trigger { display: flex; flex: 1 1 auto; align-self: stretch; }
+
+/* The panel positions against `.copy-menu`, not against whatever wrapper the
+   liquid group introduces, so the menu lands in the same place on both paths. */
+.copy-menu-panel-piece { position: static; }
+
 .copy-menu-item {
   display: flex;
   align-items: flex-start;
