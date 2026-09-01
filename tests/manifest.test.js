@@ -135,3 +135,51 @@ describe('discovery', () => {
     assert.deepEqual(manifestCandidates('not a url'), [])
   })
 })
+
+let resultsToMarkdownSync
+describe('search cannot reach what the manifest withholds', () => {
+  test('a private field is absent from the index, results and copied output', async () => {
+    // The regression this exists to prevent: search is wired to the richer internal `profile`
+    // instead of the public manifest, and a phone number or a suppressed email becomes
+    // findable by typing it — with the page still showing none of it.
+    const { PortfolioAgent, resultsToMarkdown, resultsToPrompt } = await import('@portfolio-engine/agent')
+    resultsToMarkdownSync = resultsToMarkdown
+
+    const secrets = ['+44 7700 900000', 'ada@example.com']
+    const manifest = toPublicManifest(profile(), { config: { privacy: { obfuscateEmail: true } } })
+    const agent = PortfolioAgent.fromManifest(manifest, { strict: false })
+
+    for (const secret of secrets) {
+      assert.ok(!JSON.stringify(manifest).includes(secret), `${secret} reached the manifest`)
+
+      // Searching for it directly must surface nothing containing it, whatever ranking returns.
+      const direct = agent.search(secret, { limit: 10 })
+      assert.ok(!JSON.stringify(direct).includes(secret), `${secret} reached a search result`)
+
+      // And it must not appear in copied output for an ordinary query either. Deliberately a
+      // *different* query than the secret: `resultsToMarkdown` echoes the question back, so
+      // searching the secret and finding it in the "Question:" line would prove nothing about
+      // the portfolio boundary — that string is the user's own keystrokes, not a record.
+      const ordinary = agent.search('engineer', { limit: 10 })
+      assert.ok(!resultsToMarkdown(ordinary, { query: 'engineer' }).includes(secret), `${secret} reached copied Markdown`)
+      assert.ok(!resultsToPrompt(ordinary, { query: 'engineer' }).includes(secret), `${secret} reached a copied prompt`)
+    }
+  })
+
+  test('copied output echoes the question, and only the question, from user input', () => {
+    // Documenting the behaviour the test above deliberately excludes: the question is included
+    // because a result set is uninterpretable without it. It is the searcher's own text, so it
+    // carries no portfolio data — but anyone pasting the result elsewhere is also pasting what
+    // they typed, which is worth stating rather than leaving implicit.
+    const markdown = resultsToMarkdownSync([], { query: 'anything typed here' })
+    assert.match(markdown, /anything typed here/)
+  })
+
+  test('the whole index is derived from the manifest, never the profile', async () => {
+    const { buildIndex } = await import('@portfolio-engine/agent')
+    const manifest = toPublicManifest(profile(), { config: { privacy: { obfuscateEmail: true } } })
+    const blob = JSON.stringify(buildIndex(manifest))
+    assert.ok(!blob.includes('+44 7700 900000'))
+    assert.ok(!blob.includes('ada@example.com'))
+  })
+})

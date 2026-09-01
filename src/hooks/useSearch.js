@@ -78,7 +78,18 @@ export function useSearch() {
     return agentRef.current.search(query, { limit: 24 })
   }, [])
 
-  return { ready, loading, error, prepare, search, manifest: manifestRef.current }
+  /**
+   * How the agent read a question, without running it.
+   *
+   * Same parser the results came from, so the explanation shown to the visitor can never
+   * describe a different interpretation than the one that produced the list.
+   */
+  const understand = useCallback((query) => {
+    if (!agentRef.current || !query?.trim()) return null
+    return agentRef.current.understand(query)
+  }, [])
+
+  return { ready, loading, error, prepare, search, understand, manifest: manifestRef.current }
 }
 
 /**

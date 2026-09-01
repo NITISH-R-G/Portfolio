@@ -74,6 +74,34 @@ portfolio.entity('projects/some-slug')
 portfolio.search('what did they build with Rust?', { limit: 10, types: ['projects'] })
 ```
 
+Questions work, not just keywords. A query naming a part of the portfolio is understood as
+being about that part:
+
+```js
+portfolio.search('Where did she study?')          // → education records
+portfolio.search('What companies has she worked with?')  // → experience records
+portfolio.search('Which projects involve computer vision?')
+```
+
+The section is a **preference, not a filter** — evidence of another shape can still win if it
+is genuinely the better answer, which matters when the strongest support for "computer vision"
+is a skill carrying `OpenCV — 4 repositories`.
+
+When a question names a section but supplies nothing to match on ("Where did she study?"), the
+section is returned directly. Those results say so, rather than implying a term matched:
+
+```js
+{ type: 'education', reason: 'section', matched: [] }
+```
+
+Inspect the reading without running it:
+
+```js
+portfolio.understand('Where did she study?')
+// { intent: 'find_education', entityTypes: ['education'],
+//   terms: [], description: 'Looking in education', … }
+```
+
 Every result explains itself:
 
 ```js
@@ -138,6 +166,20 @@ There is **no default provider, no bundled key, and no hosted endpoint**. You pa
 that talks to a model you already pay for. `grounding` returns what deterministic search thinks
 is relevant to the same question, so an answer can be displayed with its sources rather than
 taken on faith.
+
+### Copying a result set
+
+```js
+import { resultsToMarkdown, resultsToPrompt } from '@portfolio-engine/agent'
+
+const results = portfolio.search('accessibility work')
+resultsToPrompt(results, { query: 'accessibility work', person: portfolio.person.name })
+```
+
+Both carry the **evidence** — descriptions, technologies, what matched, provenance — not a list
+of titles. `resultsToPrompt` also states that the set is a filtered subset, because a model
+handed three results and asked "what has this person built?" will otherwise answer as though
+those three were the whole career.
 
 ## Errors
 

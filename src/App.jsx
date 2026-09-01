@@ -9,6 +9,7 @@ import CopyMenu from './components/CopyMenu'
 import { useLenis } from './hooks/useLenis'
 import { useScrollAnimation } from './hooks/useScrollAnimation'
 import { useSearchShortcut } from './hooks/useSearch'
+import { useSearchUrl } from './hooks/useSearchUrl'
 
 // The dialog and everything it pulls in (ranking, border-beam, thinking-orbs) stay out of the
 // initial bundle. Most visitors read the page and never open search; those who do wait one
@@ -20,13 +21,28 @@ function App() {
   const [activeSection, setActiveSection] = useState(navigation[0]?.id ?? '')
   const [searchOpen, setSearchOpen] = useState(false)
   const portfolioSurfaceRef = useRef(null)
+  const syncSearchUrlRef = useRef(null)
 
   useLenis({ enabled: config.animations.smoothScroll })
   useScrollAnimation()
 
   const openSearch = useCallback(() => setSearchOpen(true), [])
-  const closeSearch = useCallback(() => setSearchOpen(false), [])
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    // Drop `?search=` on dismissal. The dialog has unmounted by now, so it cannot do this
+    // itself — and a parameter left behind would reopen the search on the next refresh.
+    syncSearchUrlRef.current?.('', { closing: true })
+  }, [])
   useSearchShortcut(openSearch)
+
+  // `?search=` makes a result set linkable — the difference between sending someone a search
+  // and sending them instructions for performing one.
+  const { initialQuery, sync: syncSearchUrl } = useSearchUrl({
+    open: searchOpen, onOpen: openSearch, onClose: () => setSearchOpen(false),
+  })
+  // Held in a ref so `closeSearch` can reach the latest `sync` without depending on it —
+  // the two are mutually referential and a direct dependency would recreate both every render.
+  syncSearchUrlRef.current = syncSearchUrl
 
   // A rough count of what is searchable, so the trigger can say so rather than claiming
   // capability in the abstract.
@@ -85,7 +101,14 @@ function App() {
       </div>
 
       <Suspense fallback={null}>
-        {searchOpen && <SearchDialog open={searchOpen} onClose={closeSearch} />}
+        {searchOpen && (
+          <SearchDialog
+            open={searchOpen}
+            onClose={closeSearch}
+            initialQuery={initialQuery}
+            onQueryChange={syncSearchUrl}
+          />
+        )}
       </Suspense>
 
       <div id="navigation-status" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />

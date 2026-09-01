@@ -246,10 +246,25 @@ export function expandQuery(query) {
  * @returns {SearchResult[]}
  */
 export function rank(documents, query, options = {}) {
-  const { terms, expansions } = expandQuery(query)
+  // Accepts a plain string (the original contract, still used by callers that only want
+  // lexical matching) or a `ParsedQuery` from `query.js`, which additionally carries the
+  // portfolio section the question is about.
+  const parsed = typeof query === 'object' && query !== null && 'terms' in query ? query : null
+  const text = parsed ? parsed.text : query
+
+  const { terms, expansions } = parsed
+    ? { terms: parsed.terms, expansions: parsed.concepts }
+    : expandQuery(text)
   const expanded = [...new Set([...expansions.values()].flat())]
 
-  if (!terms.length && !expanded.length) return []
+  const preferred = parsed?.entityTypes ?? []
+
+  // A question that names a section but no searchable words — "Where did he study?" — has
+  // nothing to match lexically, yet has an obvious correct answer. Return that section,
+  // strongest records first, rather than the empty set the term matcher would produce.
+  if (!terms.length && !expanded.length) {
+    return preferred.length ? sectionResults(documents, preferred, options) : []
+  }
 
   const pool = options.types?.length
     ? documents.filter((d) => options.types.includes(d.type))
@@ -292,6 +307,30 @@ export function rank(documents, query, options = {}) {
 
     score *= TYPE_WEIGHT[document.type] ?? 0.5
 
+    // Coverage: how many of the *ideas* in the question this record accounts for — not how
+    // many words it happens to contain.
+    //
+    // The distinction is what separates "computer vision" from "Computer Science". Counting
+    // words, a B.E. Computer Science degree matches one of two terms in a strong field and
+    // outscores every actual vision project, because those projects match the concept through
+    // "OpenCV" and "detection" and so contain neither typed word. Counting ideas, the degree
+    // satisfies nothing — half a phrase is not the phrase — and the projects satisfy it fully.
+    const ideas = queryIdeas(terms, expansions)
+    if (ideas.length > 1 || expansions.size) {
+      const matchedTerms = new Set(hits.keys())
+      const satisfied = ideas.filter((idea) => satisfies(idea, matchedTerms)).length
+      // Multiplicative and centred below 1, so partial coverage is a penalty rather than a
+      // smaller bonus. A record answering none of the question should not ride a strong
+      // single-field hit to the top.
+      score *= 0.3 + 0.7 * (satisfied / ideas.length)
+    }
+
+    // The section preference from `parseQuery`: a strong nudge, never a filter. Evidence of
+    // the "wrong" shape can still win if it is genuinely the better answer.
+    const typeMatch = preferred.length ? preferred.includes(document.type) : null
+    if (typeMatch === true) score *= 1.9
+    else if (typeMatch === false) score *= 0.65
+
     results.push({
       id: document.id,
       type: document.type,
@@ -301,6 +340,7 @@ export function rank(documents, query, options = {}) {
       score: Number(score.toFixed(4)),
       // Why this matched, in the shape a UI can render and a human can check.
       matched: [...hits.entries()].map(([term, hit]) => ({ term, field: hit.field, direct: hit.direct })),
+      ...(typeMatch === true ? { matchedSection: document.type } : {}),
       provenance: provenanceOf(document),
       record: document.record,
     })
@@ -308,9 +348,105 @@ export function rank(documents, query, options = {}) {
 
   results.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
 
+  // The question named a section and the words found nothing in it. "What companies has he
+  // worked with?" leaves the term "companies", which appears in no record — so the lexical
+  // pass returns either nothing or a handful of unrelated matches from elsewhere. Reading the
+  // named section is the answer to the question that was actually asked.
+  if (preferred.length && !results.some((result) => preferred.includes(result.type))) {
+    const section = sectionResults(documents, preferred, options)
+    if (section.length) return section
+  }
+
   const minScore = options.minScore ?? 0
   const filtered = minScore > 0 ? results.filter((r) => r.score >= minScore) : results
   return typeof options.limit === 'number' ? filtered.slice(0, options.limit) : filtered
+}
+
+/**
+ * The distinct ideas a query is asking about.
+ *
+ * Each idea is the set of tokens that would satisfy it. A recognised concept is one idea
+ * satisfied by any of its expansions — so "computer vision" is *one* thing a record can
+ * answer, by saying "OpenCV" or "object detection" or by naming the phrase itself, and not two
+ * separate words to be scored independently.
+ *
+ * Terms belonging to a recognised concept are folded into it rather than counted again;
+ * otherwise a two-word concept would weigh three times a one-word one purely for being longer.
+ *
+ * @param {string[]} terms @param {Map<string, string[]>} expansions
+ * @returns {string[][]}
+ */
+function queryIdeas(terms, expansions) {
+  /** @type {{phrase: string[], related: string[]}[]} */
+  const ideas = []
+  const claimed = new Set()
+
+  for (const [concept, related] of expansions) {
+    const phrase = tokenize(concept)
+    for (const token of phrase) claimed.add(token)
+    ideas.push({ phrase, related })
+  }
+
+  for (const term of terms) {
+    if (claimed.has(term)) continue
+    ideas.push({ phrase: [term], related: [] })
+  }
+
+  return ideas
+}
+
+/**
+ * Whether a record answers one idea.
+ *
+ * A multi-word concept needs **all** of its words, or one of its expansions. One word of two
+ * is a coincidence, not an answer: "Computer Science" shares a word with "computer vision" and
+ * has nothing to do with it, and letting that count is precisely what put a degree above every
+ * vision project.
+ *
+ * @param {{phrase: string[], related: string[]}} idea @param {Set<string>} matched
+ */
+function satisfies(idea, matched) {
+  if (idea.related.some((token) => matched.has(token))) return true
+  return idea.phrase.every((token) => matched.has(token))
+}
+
+/**
+ * Answer a question that names a section but supplies nothing to match on.
+ *
+ * "Where did he study?" and "What companies has he worked with?" are structural questions:
+ * the answer is a section, and no word in either appears in the records that answer them.
+ * Returning them ranked by their own substance is the honest response — and it is retrieval,
+ * not inference. Nothing is asserted about the records beyond their existence in that section,
+ * and each still carries its own provenance.
+ *
+ * @param {SearchDocument[]} documents @param {string[]} types
+ * @param {{limit?: number}} options
+ * @returns {SearchResult[]}
+ */
+function sectionResults(documents, types, options = {}) {
+  const results = documents
+    .filter((document) => types.includes(document.type))
+    .map((document) => ({
+      id: document.id,
+      type: document.type,
+      title: document.title,
+      subtitle: document.subtitle,
+      url: document.url,
+      // Ranked by how much the record actually says — described records and evidenced ones
+      // are more useful answers than bare titles. Deliberately a small, bounded range: this
+      // is ordering, not a relevance claim.
+      score: Number((1 + Math.min(document.text.length, 400) / 1000 + document.evidence.length * 0.05).toFixed(4)),
+      matched: [],
+      matchedSection: document.type,
+      // Says plainly that this came from reading the section, not from matching words — so a
+      // reader is never shown a "relevance" that was never computed.
+      reason: 'section',
+      provenance: provenanceOf(document),
+      record: document.record,
+    }))
+    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+
+  return typeof options.limit === 'number' ? results.slice(0, options.limit) : results
 }
 
 /**

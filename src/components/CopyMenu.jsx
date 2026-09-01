@@ -17,6 +17,8 @@ import LiquidSurface, { LiquidPiece } from './LiquidSurface'
  * @param {{
  *   entity?: Record<string, any>,
  *   type?: string,
+ *   results?: import('@portfolio-engine/agent').SearchResult[],
+ *   query?: string,
  *   profile?: Record<string, any>,
  *   config?: Record<string, any>,
  *   person?: string,
@@ -25,7 +27,7 @@ import LiquidSurface, { LiquidPiece } from './LiquidSurface'
  *   align?: 'left'|'right',
  * }} props
  */
-export default function CopyMenu({ entity, type, profile, config, person, source, label = 'Copy', align = 'right' }) {
+export default function CopyMenu({ entity, type, profile, config, results, query, person, source, label = 'Copy', align = 'right' }) {
   const [open, setOpen] = useState(false)
   const [state, setState] = useState('idle')
   const rootRef = useRef(null)
@@ -61,7 +63,13 @@ export default function CopyMenu({ entity, type, profile, config, person, source
       const agent = await import('@portfolio-engine/agent')
 
       let text
-      if (entity) {
+      if (results) {
+        // A result set carries its own question. Copying "Screen Saathi, Encolink" without
+        // "what did he build for accessibility?" produces something nobody can interpret.
+        text = format === 'prompt'
+          ? agent.resultsToPrompt(results, { query, person, source })
+          : agent.resultsToMarkdown(results, { query, person, source })
+      } else if (entity) {
         text = format === 'prompt'
           ? agent.entityToPrompt(entity, { type, person, source })
           : agent.entityToMarkdown(entity)
@@ -84,7 +92,7 @@ export default function CopyMenu({ entity, type, profile, config, person, source
       setState('failed')
       setTimeout(() => setState('idle'), 2400)
     }
-  }, [entity, type, profile, config, person, source])
+  }, [entity, type, profile, config, results, query, person, source])
 
   const busy = state === 'working'
 

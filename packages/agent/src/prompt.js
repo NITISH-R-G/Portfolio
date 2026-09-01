@@ -19,7 +19,7 @@
  * @module @portfolio-engine/agent/prompt
  */
 
-import { manifestToMarkdown, entityToMarkdown } from './markdown.js'
+import { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
 
 /**
  * The grounding contract.
@@ -92,6 +92,38 @@ export function entityToPrompt(record, options = {}) {
     // Without this, a model handed one project and asked "what has this person built?" will
     // answer as though that project were the whole career.
     scope: `This is one ${kind} from a larger portfolio, not the person's complete profile.`,
+  })
+}
+
+/**
+ * A prompt built from a set of search results.
+ *
+ * The case this exists for: a recruiter searches "accessibility work", gets three results, and
+ * wants to ask an assistant which is most relevant to a role they are hiring for. That only
+ * works if the prompt carries the evidence — descriptions, technologies, what matched, where
+ * it came from — rather than a list of titles and a link.
+ *
+ * The scope line is doing real work. A model handed a filtered subset and asked "what has this
+ * person built?" will answer as though the subset were the whole career, which is a false
+ * impression built entirely out of true statements.
+ *
+ * @param {import('./search.js').SearchResult[]} results
+ * @param {{query?: string, person?: string, source?: string, question?: string, limit?: number}} [options]
+ * @returns {string}
+ */
+export function resultsToPrompt(results, options = {}) {
+  const body = resultsToMarkdown(results, options)
+  const asked = String(options.query ?? '').trim()
+
+  return assemble(body, {
+    subject: options.person,
+    source: options.source,
+    question: options.question,
+    suggestions: false,
+    scope: asked
+      ? `These are search results for "${asked}" — the portfolio entries matching that question, `
+        + 'not the person\'s complete profile. Do not treat this subset as everything they have done.'
+      : 'These are search results — a subset of the portfolio, not the complete profile.',
   })
 }
 

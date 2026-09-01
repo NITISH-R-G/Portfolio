@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useR
 import Icon from './Icon'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSearch } from '../hooks/useSearch'
+import CopyMenu from './CopyMenu'
 
 /**
  * Both libraries are code-split. They exist to decorate one interaction that most visitors
@@ -31,24 +32,30 @@ const GROUP_LABELS = {
   languages: 'Languages',
 }
 
-/** Queries that demonstrate what this search can actually do. */
+/**
+ * Questions, not keywords.
+ *
+ * These are the affordance that tells a visitor the box takes sentences. A list of noun
+ * phrases teaches the opposite — people type what the examples look like, so the examples have
+ * to look like what the search can actually do.
+ */
 const EXAMPLES = [
-  'projects involving machine learning',
-  'what did they build with Python?',
-  'experience with frontend work',
-  'research and benchmarks',
+  'Which projects demonstrate computer vision?',
+  'What did he build for accessibility?',
+  'Where did he study?',
+  'What companies has he worked with?',
 ]
 
 /**
  * The search dialog.
  *
- * @param {{open: boolean, onClose: () => void}} props
+ * @param {{open: boolean, onClose: () => void, initialQuery?: string, onQueryChange?: (q: string) => void}} props
  */
-export default function SearchDialog({ open, onClose }) {
+export default function SearchDialog({ open, onClose, initialQuery = '', onQueryChange }) {
   const reducedMotion = useReducedMotion()
-  const { ready, loading, error, prepare, search, manifest } = useSearch()
+  const { ready, loading, error, prepare, search, understand, manifest } = useSearch()
 
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [active, setActive] = useState(0)
   const [focused, setFocused] = useState(false)
 
@@ -88,11 +95,33 @@ export default function SearchDialog({ open, onClose }) {
 
   useEffect(() => { setActive(0) }, [deferredQuery])
 
+  // Mirror the query into the URL, debounced by React's deferred value rather than a timer —
+  // the same signal that already gates result rendering, so the address bar cannot describe a
+  // different query than the list beneath it.
+  useEffect(() => {
+    if (open) onQueryChange?.(deferredQuery)
+  }, [open, deferredQuery, onQueryChange])
+
+  // A query arriving from the URL (a shared link, or Back) has to reach the input.
+  useEffect(() => {
+    if (open && initialQuery && initialQuery !== query) setQuery(initialQuery)
+    // Only when the incoming value changes; not on every keystroke, which would fight typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery])
+
   /* Results ------------------------------------------------------------------ */
 
   const results = useMemo(
     () => (ready && deferredQuery.trim() ? search(deferredQuery) : []),
     [ready, deferredQuery, search],
+  )
+
+  // How the question was read. Shown to the visitor, because a search that quietly decides a
+  // question is "about education" should be able to say so — otherwise an unexpected result
+  // set looks like a bug rather than an interpretation.
+  const reading = useMemo(
+    () => (ready && deferredQuery.trim() ? understand(deferredQuery) : null),
+    [ready, deferredQuery, understand],
   )
 
   const groups = useMemo(() => {
@@ -242,7 +271,19 @@ export default function SearchDialog({ open, onClose }) {
 
           {!error && ready && query.trim() && !results.length && (
             <p className="search-message">
-              Nothing matched “{query.trim()}”.
+              No matching evidence found for “{query.trim()}”.
+            </p>
+          )}
+
+          {/* What the search decided the question was about, and what it did with it. Stated
+              plainly so an unexpected result set reads as an interpretation rather than a
+              fault — and so “relevant” is never mistaken for “asserted”. */}
+          {!error && ready && results.length > 0 && (reading?.description || results[0]?.reason === 'section') && (
+            <p className="search-reading">
+              <Icon name="Sparkles" size={12} aria-hidden="true" />
+              {results[0]?.reason === 'section'
+                ? `${reading?.description ?? 'Reading the section'} — listed entries, not keyword matches`
+                : reading.description}
             </p>
           )}
 
@@ -272,6 +313,16 @@ export default function SearchDialog({ open, onClose }) {
 
         <div className="search-footer">
           <span className="search-legend"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> open <kbd>Esc</kbd> close</span>
+          {results.length > 0 && (
+            <CopyMenu
+              results={results}
+              query={query.trim()}
+              person={manifest?.person?.name}
+              source={manifest?.url}
+              label="Copy results"
+              align="left"
+            />
+          )}
           {manifest && (
             <a className="search-manifest-link" href="./portfolio.json" target="_blank" rel="noopener noreferrer">
               <Icon name="Braces" size={12} aria-hidden="true" />

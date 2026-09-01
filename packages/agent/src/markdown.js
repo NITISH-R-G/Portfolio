@@ -156,6 +156,80 @@ export function manifestToMarkdown(manifest, options = {}) {
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n'
 }
 
+/**
+ * A set of search results as Markdown.
+ *
+ * Carries the *evidence*, not a list of titles. The point of copying a result set is that
+ * someone can act on it elsewhere — in a document, an email, or another assistant — and a
+ * bare list of names supports none of that.
+ *
+ * The question is included because a result set without it is uninterpretable: "Screen Saathi,
+ * Encolink, accessibility" means nothing without "what did he build for accessibility?".
+ *
+ * @param {import('./search.js').SearchResult[]} results
+ * @param {{query?: string, person?: string, source?: string, limit?: number}} [options]
+ * @returns {string}
+ */
+export function resultsToMarkdown(results, options = {}) {
+  const list = (Array.isArray(results) ? results : []).slice(0, options.limit ?? 20)
+  const lines = []
+
+  const who = str(options.person)
+  lines.push(`# ${who ? `${who} — search results` : 'Portfolio search results'}`, '')
+  if (str(options.query)) lines.push(`**Question:** ${str(options.query)}`, '')
+
+  if (!list.length) {
+    lines.push('No matching evidence was found in this portfolio.', '')
+    return lines.join('\n')
+  }
+
+  /** @type {Map<string, import('./search.js').SearchResult[]>} */
+  const groups = new Map()
+  for (const result of list) {
+    if (!groups.has(result.type)) groups.set(result.type, [])
+    groups.get(result.type).push(result)
+  }
+
+  for (const [type, items] of groups) {
+    lines.push(`## ${SECTION_TITLES[type] ?? label(type)}`, '')
+    for (const result of items) {
+      lines.push(`### ${str(result.title)}`)
+      if (str(result.subtitle)) lines.push(`*${str(result.subtitle)}*`)
+      lines.push('')
+
+      const record = result.record ?? {}
+      const overview = str(record.description ?? record.summary ?? record.abstract ?? record.excerpt)
+      if (overview) lines.push(overview, '')
+
+      const tech = [...list_(record.technologies), ...list_(record.topics), ...list_(record.tags)]
+        .map(str).filter(Boolean)
+      if (tech.length) lines.push(`**Technologies:** ${tech.join(', ')}`, '')
+
+      // Why it matched — kept so a reader can tell a direct hit from a related-concept one,
+      // and so nobody mistakes "relevant" for "asserted".
+      const direct = (result.matched ?? []).filter((m) => m.direct).map((m) => m.term)
+      const related = (result.matched ?? []).filter((m) => !m.direct).map((m) => m.term)
+      if (direct.length) lines.push(`**Matched:** ${direct.join(', ')}`)
+      if (related.length) lines.push(`**Related concepts:** ${related.join(', ')}`)
+      if (result.reason === 'section') {
+        lines.push(`**Matched:** listed under ${SECTION_TITLES[type] ?? label(type)} (no term match)`)
+      }
+
+      const evidence = (result.provenance?.evidence ?? []).map((e) => str(e?.label)).filter(Boolean)
+      if (evidence.length) lines.push(`**Evidence:** ${evidence.join('; ')}`)
+      if (str(result.provenance?.source)) lines.push(`**Source:** ${label(str(result.provenance.source))}`)
+      if (str(result.url)) lines.push(`**Link:** ${str(result.url)}`)
+      lines.push('')
+    }
+  }
+
+  if (str(options.source)) lines.push('---', '', `From ${str(options.source)}`, '')
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n'
+}
+
+/** @param {unknown} value */
+const list_ = (value) => (Array.isArray(value) ? value : [])
+
 /** @param {Record<string, any>} record */
 function evidenceLines(record) {
   const lines = []

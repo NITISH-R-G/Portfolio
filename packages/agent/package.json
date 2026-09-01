@@ -1,6 +1,6 @@
 {
   "name": "@portfolio-engine/agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read any portfolio-engine portfolio programmatically — entities, deterministic search, provenance, Markdown and LLM-ready prompts. No API key required.",
   "type": "module",
   "license": "MIT",

@@ -24,8 +24,9 @@
 
 import { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
 import { buildIndex, rank } from './search.js'
-import { manifestToMarkdown, entityToMarkdown } from './markdown.js'
-import { manifestToPrompt, entityToPrompt } from './prompt.js'
+import { parseQuery, describeQuery } from './query.js'
+import { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
+import { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'
 
 /**
  * A loaded portfolio.
@@ -142,12 +143,35 @@ export class PortfolioAgent {
    * Deterministic and offline. Results carry the terms that matched and the provenance of the
    * record, so a caller can show *why* something matched rather than asking for trust.
    *
+   * Accepts a natural-language question, not just keywords. "Where did he study?" and "What
+   * companies has he worked with?" are understood as questions about a section of the
+   * portfolio; see `query.js` for how, and for why the section is a preference rather than a
+   * filter.
+   *
    * @param {string} query
-   * @param {{limit?: number, types?: string[], minScore?: number}} [options]
+   * @param {{limit?: number, types?: string[], minScore?: number, parse?: boolean}} [options]
    * @returns {import('./search.js').SearchResult[]}
    */
   search(query, options = {}) {
-    return rank(this._index, query, options)
+    // `parse: false` opts back into pure lexical matching, for a caller that has already
+    // narrowed the question and does not want it re-interpreted.
+    const parsed = options.parse === false ? query : parseQuery(query)
+    return rank(this._index, parsed, options)
+  }
+
+  /**
+   * How a question was understood, without running it.
+   *
+   * Exposed so a consumer — a UI explaining itself, or an agent deciding whether to trust the
+   * interpretation — can inspect the reading before acting on the results.
+   *
+   * @param {string} query
+   * @returns {import('./query.js').ParsedQuery & {description?: string}}
+   */
+  understand(query) {
+    const parsed = parseQuery(query)
+    const description = describeQuery(parsed)
+    return description ? { ...parsed, description } : parsed
   }
 
   /**
@@ -273,6 +297,7 @@ export class PortfolioAgent {
 
 export { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
 export { buildIndex, rank, tokenize, expandQuery } from './search.js'
-export { manifestToMarkdown, entityToMarkdown } from './markdown.js'
-export { manifestToPrompt, entityToPrompt } from './prompt.js'
+export { parseQuery, describeQuery } from './query.js'
+export { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
+export { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'
 export default PortfolioAgent
