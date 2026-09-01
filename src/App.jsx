@@ -3,7 +3,6 @@ import { usePortfolio } from './hooks/usePortfolio'
 import PortfolioShell from './components/PortfolioShell'
 import Dock from './components/Dock'
 import TopNav from './components/TopNav'
-import UserCursor from './components/UserCursor'
 import SearchTrigger from './components/SearchTrigger'
 import CopyMenu from './components/CopyMenu'
 import { useLenis } from './hooks/useLenis'
@@ -76,7 +75,6 @@ function App() {
 
   return (
     <>
-      {config.layout.customCursor && <UserCursor surfaceRef={portfolioSurfaceRef} />}
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <div ref={portfolioSurfaceRef} className={`portfolio-surface shell-${config.layout.shell}`}>
         <div className="search-bar">

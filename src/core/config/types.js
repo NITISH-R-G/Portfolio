@@ -41,7 +41,6 @@
  * @property {'cards'|'timeline'} [experienceLayout]
  * @property {'circle'|'rounded'|'square'} [avatarStyle]
  * @property {'outline'|'solid'|'plain'} [socialIconStyle]
- * @property {boolean} [customCursor]
  */
 
 /**

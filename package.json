@@ -17,7 +17,8 @@
     "deploy:check": "npm run doctor && npm run build",
     "example": "node scripts/example.mjs",
     "benchmark": "node benchmarks/run.mjs",
-    "test:agent": "npm test --workspace @portfolio-engine/agent"
+    "test:agent": "npm test --workspace @portfolio-engine/agent",
+    "benchmark:search": "node benchmarks/search.mjs"
   },
   "repository": {
     "type": "git",

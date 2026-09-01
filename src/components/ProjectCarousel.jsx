@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useHorizontalWheel } from '../hooks/useHorizontalWheel'
 import Icon from './Icon'
 import ProjectTile from './ProjectTile'
 
@@ -19,6 +20,11 @@ export default function ProjectCarousel({ projects }) {
   const reducedMotion = useReducedMotion()
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
+
+  // A vertical wheel over the strip scrolls it sideways, releasing the gesture back to the
+  // page at either end. Without this the row has no pointer affordance at all: its scrollbar
+  // is hidden, so a mouse user has nothing to grab.
+  useHorizontalWheel(scrollRef)
 
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current

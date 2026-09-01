@@ -41,7 +41,13 @@ const SECTION_TITLES = {
  */
 export function entityToMarkdown(record, options = {}) {
   if (!record || typeof record !== 'object') return ''
-  const h = '#'.repeat(Math.min(Math.max(options.heading ?? 1, 1), 4))
+  const level = Math.min(Math.max(options.heading ?? 1, 1), 4)
+  const h = '#'.repeat(level)
+  // One level below the entity's own heading. Previously every internal section was a hard
+  // '##', so an entity rendered at '###' inside a profile produced '## Overview' *underneath*
+  // it — a heading that jumps back above its own parent, which is invalid document structure
+  // and renders as a new top-level section in every Markdown viewer.
+  const hh = '#'.repeat(Math.min(level + 1, 6))
   const lines = []
 
   const title = str(record.name ?? record.title ?? record.company ?? record.institution ?? record.platform)
@@ -60,27 +66,27 @@ export function entityToMarkdown(record, options = {}) {
   /* Body -------------------------------------------------------------------- */
 
   const overview = str(record.description ?? record.summary ?? record.abstract ?? record.excerpt)
-  if (overview) lines.push('## Overview', '', overview, '')
+  if (overview) lines.push(`${hh} Overview`, '', overview, '')
 
   for (const [label, value] of [
     ['Context', record.context], ['Problem', record.problem],
     ['Approach', record.approach], ['Impact', record.impact],
     ['Responsibilities', record.responsibilities], ['Lessons', record.lessons],
   ]) {
-    if (str(value)) lines.push(`## ${label}`, '', str(value), '')
+    if (str(value)) lines.push(`${hh} ${label}`, '', str(value), '')
   }
 
   if (list(record.highlights).length) {
-    lines.push('## Highlights', '', ...list(record.highlights).map((h2) => `- ${str(h2)}`), '')
+    lines.push(`${hh} Highlights`, '', ...list(record.highlights).map((h2) => `- ${str(h2)}`), '')
   }
 
-  const technologies = [...list(record.technologies), ...list(record.topics), ...list(record.tags)]
+  const technologies = dedupe([...list(record.technologies), ...list(record.topics), ...list(record.tags)])
   if (technologies.length) {
-    lines.push('## Technologies', '', technologies.map(str).filter(Boolean).join(', '), '')
+    lines.push(`${hh} Technologies`, '', technologies.join(', '), '')
   }
 
   if (list(record.metrics).length) {
-    lines.push('## Results', '')
+    lines.push(`${hh} Results`, '')
     for (const metric of list(record.metrics)) {
       const value = [str(metric?.value), str(metric?.label)].filter(Boolean).join(' — ')
       if (value) lines.push(`- ${value}${str(metric?.note) ? ` (${str(metric.note)})` : ''}`)
@@ -89,18 +95,18 @@ export function entityToMarkdown(record, options = {}) {
   }
 
   if (list(record.authors).length) {
-    lines.push('## Authors', '', list(record.authors).map(str).filter(Boolean).join(', '), '')
+    lines.push(`${hh} Authors`, '', list(record.authors).map(str).filter(Boolean).join(', '), '')
   }
 
   /* Evidence ---------------------------------------------------------------- */
 
   const evidence = evidenceLines(record)
-  if (evidence.length) lines.push('## Evidence', '', ...evidence, '')
+  if (evidence.length) lines.push(`${hh} Evidence`, '', ...evidence, '')
 
   /* Links ------------------------------------------------------------------- */
 
   const links = linkLines(record)
-  if (links.length) lines.push('## Links', '', ...links, '')
+  if (links.length) lines.push(`${hh} Links`, '', ...links, '')
 
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n'
 }
@@ -201,8 +207,7 @@ export function resultsToMarkdown(results, options = {}) {
       const overview = str(record.description ?? record.summary ?? record.abstract ?? record.excerpt)
       if (overview) lines.push(overview, '')
 
-      const tech = [...list_(record.technologies), ...list_(record.topics), ...list_(record.tags)]
-        .map(str).filter(Boolean)
+      const tech = dedupe([...list_(record.technologies), ...list_(record.topics), ...list_(record.tags)])
       if (tech.length) lines.push(`**Technologies:** ${tech.join(', ')}`, '')
 
       // Why it matched — kept so a reader can tell a direct hit from a related-concept one,
@@ -229,6 +234,30 @@ export function resultsToMarkdown(results, options = {}) {
 
 /** @param {unknown} value */
 const list_ = (value) => (Array.isArray(value) ? value : [])
+
+/**
+ * Unique, trimmed, order-preserving, case-insensitive.
+ *
+ * Imported records carry `technologies`, `topics` and `tags` that overlap heavily — a GitHub
+ * project commonly repeats its whole topic list in its tags — so concatenating them printed
+ * the same seventeen technologies twice in a row.
+ *
+ * @param {unknown[]} values
+ * @returns {string[]}
+ */
+export function dedupe(values) {
+  const seen = new Set()
+  const out = []
+  for (const value of values) {
+    const text = str(value)
+    if (!text) continue
+    const key = text.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(text)
+  }
+  return out
+}
 
 /** @param {Record<string, any>} record */
 function evidenceLines(record) {

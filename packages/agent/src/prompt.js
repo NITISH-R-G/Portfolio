@@ -19,7 +19,7 @@
  * @module @portfolio-engine/agent/prompt
  */
 
-import { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
+import { manifestToMarkdown, entityToMarkdown, dedupe } from './markdown.js'
 
 /**
  * The grounding contract.
@@ -112,20 +112,91 @@ export function entityToPrompt(record, options = {}) {
  * @returns {string}
  */
 export function resultsToPrompt(results, options = {}) {
-  const body = resultsToMarkdown(results, options)
+  const list = (Array.isArray(results) ? results : []).slice(0, options.limit ?? 20)
   const asked = String(options.query ?? '').trim()
+  const who = String(options.person ?? '').trim()
 
-  return assemble(body, {
-    subject: options.person,
-    source: options.source,
-    question: options.question,
-    suggestions: false,
-    scope: asked
-      ? `These are search results for "${asked}" — the portfolio entries matching that question, `
-        + 'not the person\'s complete profile. Do not treat this subset as everything they have done.'
-      : 'These are search results — a subset of the portfolio, not the complete profile.',
-  })
+  const lines = [...PREAMBLE]
+  lines.push(`- ${asked
+    ? `The evidence below is what matched the search "${asked}" — not the person's complete `
+      + 'profile. Do not treat this subset as everything they have done.'
+    : 'The evidence below is a subset of the portfolio, not the complete profile.'}`)
+
+  /* Who -------------------------------------------------------------------- */
+
+  lines.push('', '## Person', '')
+  lines.push(who ? `Name: ${who}` : 'Name: not stated in the supplied evidence.')
+  if (options.source) lines.push(`Published at: ${options.source}`)
+
+  /* What was found ---------------------------------------------------------- */
+
+  lines.push('', '## Evidence', '')
+
+  if (!list.length) {
+    lines.push('No matching evidence was found in this portfolio. Say so rather than answering from general knowledge.')
+  }
+
+  for (const result of list) {
+    const record = result.record ?? {}
+    lines.push(`### ${str(record.name ?? record.title ?? record.company ?? record.institution ?? result.title)}`)
+
+    const context = [str(record.role ?? record.degree ?? record.issuer ?? record.venue), str(record.location)]
+      .filter(Boolean).join(' · ')
+    if (context) lines.push(`Context: ${context}`)
+    lines.push(`Section: ${result.type}`)
+
+    const overview = str(record.description ?? record.summary ?? record.abstract ?? record.excerpt)
+    if (overview) lines.push(`Description: ${overview}`)
+
+    const tech = dedupe([...arr(record.technologies), ...arr(record.topics), ...arr(record.tags)])
+    if (tech.length) lines.push(`Technologies: ${tech.join(', ')}`)
+
+    // How this entry came to be here, stated so the model can weigh it. A section listing is
+    // not the same kind of support as a term appearing in a description, and a model that
+    // cannot tell them apart will cite the weaker one with equal confidence.
+    lines.push(`Why it is here: ${whyPresent(result)}`)
+
+    const evidence = arr(result.provenance?.evidence).map((e) => str(e?.label)).filter(Boolean)
+    if (evidence.length) lines.push(`Evidence: ${evidence.join('; ')}`)
+    if (str(result.provenance?.source)) lines.push(`Reported by: ${str(result.provenance.source)}`)
+    if (str(result.url)) lines.push(`Link: ${str(result.url)}`)
+    lines.push('')
+  }
+
+  /* The ask ----------------------------------------------------------------- */
+
+  lines.push('## Question', '')
+  lines.push(options.question
+    ? String(options.question)
+    : `Answer the question that follows${who ? ` about ${who}` : ''}, using only the evidence above.`)
+  lines.push('')
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n'
 }
+
+/**
+ * Why a result is in the set, in the model's terms.
+ *
+ * The distinction the grounding rules depend on: "the word appears in the description" and
+ * "this entry is filed under Education" are different kinds of support, and a model told only
+ * "relevant" will cite both as though they were the same.
+ *
+ * @param {import('./search.js').SearchResult} result
+ */
+function whyPresent(result) {
+  if (result.reason === 'section') return `listed under ${result.type}; no search term matched its text`
+  const direct = arr(result.matched).filter((m) => m.direct).map((m) => m.term)
+  const related = arr(result.matched).filter((m) => !m.direct).map((m) => m.term)
+  const parts = []
+  if (direct.length) parts.push(`contains ${direct.join(', ')}`)
+  if (related.length) parts.push(`related to ${related.join(', ')} (concept match, not a literal term)`)
+  return parts.join('; ') || 'ranked relevant to the query'
+}
+
+/** @param {unknown} v */
+const arr = (v) => (Array.isArray(v) ? v : [])
+/** @param {unknown} v */
+const str = (v) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '')
 
 /**
  * @param {string} body

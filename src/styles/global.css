@@ -84,7 +84,12 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Deliberately not `scroll-behavior: smooth`.
+     Every call site that wants animated scrolling already passes
+     `scrollIntoView({ behavior })` explicitly — and passes `'auto'` under reduced motion, which
+     a global rule would silently override. It also fought the momentum-scroll library for
+     control of the same scrollTop whenever both were on, which is a large part of why
+     scrolling felt laggy. */
   overflow-wrap: anywhere;
 }
 
@@ -98,41 +103,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-/* Default: preserve native cursor everywhere */
-html,
-body,
-#root,
-.portfolio-surface,
-.portfolio-surface * {
-  cursor: auto;
-}
-
-/* Hide native cursor only when custom cursor is actively visible */
-@media (hover: hover) and (pointer: fine) {
-  body.custom-cursor-active .portfolio-surface,
-  body.custom-cursor-active .portfolio-surface a,
-  body.custom-cursor-active .portfolio-surface button,
-  body.custom-cursor-active .portfolio-surface [role="button"],
-  body.custom-cursor-active .portfolio-surface .nav-icon,
-  body.custom-cursor-active .portfolio-surface .social-icon {
-    cursor: none;
-  }
-
-  /* Preserve text selection affordance */
-  body.custom-cursor-active .portfolio-surface p,
-  body.custom-cursor-active .portfolio-surface h1,
-  body.custom-cursor-active .portfolio-surface h2,
-  body.custom-cursor-active .portfolio-surface h3,
-  body.custom-cursor-active .portfolio-surface h4,
-  body.custom-cursor-active .portfolio-surface li,
-  body.custom-cursor-active .portfolio-surface span,
-  body.custom-cursor-active .portfolio-surface input,
-  body.custom-cursor-active .portfolio-surface textarea,
-  body.custom-cursor-active .portfolio-surface [contenteditable="true"] {
-    cursor: text;
-  }
 }
 
 a {
@@ -444,7 +414,13 @@ body.is-apple .search-trigger-mod::before { content: '⌘'; }
   gap: 24px;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
+  /* `proximity`, not `mandatory`. Mandatory snapping made every wheel tick jump a whole card,
+     and — because the track carries 4px of left padding — it clamped `scrollLeft` so it could
+     never reach 0. That broke the wheel handler's start-boundary check, which reads "am I at
+     the beginning?", so a backward wheel at the first card was captured forever instead of
+     releasing to the page. Proximity keeps the tidy resting positions without owning the
+     range. */
+  scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding: 8px 4px 16px;
@@ -1733,68 +1709,6 @@ body.is-apple .search-trigger-mod::before { content: '⌘'; }
   align-items: center;
   justify-content: center;
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Custom Cursor */
-.cursor-dot,
-.cursor-ring {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9999;
-  transform: translate3d(-50%, -50%, 0);
-  will-change: transform, opacity;
-}
-
-.cursor-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-text);
-  opacity: 1;
-  transition: opacity var(--motion-hover) ease;
-  z-index: 10000;
-}
-
-.cursor-ring {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid var(--color-text);
-  box-sizing: border-box;
-  opacity: 1;
-  transition: border-color var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
-  z-index: 9999;
-}
-
-.cursor-ring.interactive {
-  transform: translate3d(-50%, -50%, 0) scale(1.45);
-  border-color: var(--color-text);
-}
-
-.cursor-dot.interactive {
-  opacity: 0.6;
-}
-
-.cursor-label {
-  position: fixed;
-  pointer-events: none;
-  font-size: var(--text-meta);
-  font-weight: 500;
-  color: var(--color-text);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-3);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translate3d(-50%, -100%, 0) translateY(-8px);
-  transition: opacity var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
-  z-index: 10001;
-}
-
-.cursor-label.visible {
-  opacity: 1;
-  transform: translate3d(-50%, -100%, 0) translateY(0);
 }
 
 /* Focus Visible */

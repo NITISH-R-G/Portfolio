@@ -110,15 +110,13 @@ export function defaultConfig() {
       avatarStyle: 'circle',
       /** `'outline' | 'solid' | 'plain'` */
       socialIconStyle: 'outline',
-      /** Show the custom cursor on fine-pointer devices. */
-      customCursor: true,
     },
 
     animations: {
       /** `'none' | 'subtle' | 'standard' | 'expressive'` */
       intensity: 'standard',
       /** Smooth-scroll hijacking. Off is friendlier; on matches the original design. */
-      smoothScroll: true,
+      smoothScroll: false,
       /**
        * Always honour `prefers-reduced-motion`. Exposed as config so it is visible, but
        * setting it to false is not supported and the UI ignores it.

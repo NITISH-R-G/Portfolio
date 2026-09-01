@@ -24,6 +24,7 @@
 
 import { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
 import { buildIndex, rank } from './search.js'
+import { buildSemanticIndex } from './semantic.js'
 import { parseQuery, describeQuery } from './query.js'
 import { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
 import { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'
@@ -50,6 +51,9 @@ export class PortfolioAgent {
     // Built once. The index is derived data — rebuilding it per query would be wasted work,
     // and caching it across queries is safe because a manifest is immutable once loaded.
     this._index = buildIndex(manifest)
+    // Derived from the corpus once, alongside the lexical index. Both are pure functions of an
+    // immutable manifest, so caching them together is safe and rebuilding per query is waste.
+    this._semantic = buildSemanticIndex(this._index)
   }
 
   /**
@@ -156,7 +160,7 @@ export class PortfolioAgent {
     // `parse: false` opts back into pure lexical matching, for a caller that has already
     // narrowed the question and does not want it re-interpreted.
     const parsed = options.parse === false ? query : parseQuery(query)
-    return rank(this._index, parsed, options)
+    return rank(this._index, parsed, { semantic: this._semantic, ...options })
   }
 
   /**
@@ -298,6 +302,7 @@ export class PortfolioAgent {
 export { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
 export { buildIndex, rank, tokenize, expandQuery } from './search.js'
 export { parseQuery, describeQuery } from './query.js'
-export { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
+export { stem, buildSemanticIndex, relatedTerms } from './semantic.js'
+export { manifestToMarkdown, entityToMarkdown, resultsToMarkdown, dedupe } from './markdown.js'
 export { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'
 export default PortfolioAgent

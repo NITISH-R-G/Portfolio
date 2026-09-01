@@ -35,6 +35,8 @@
  * @module @portfolio-engine/agent/search
  */
 
+import { stem, relatedTerms } from './semantic.js'
+
 /**
  * Collections in the standard, and how much a match in each is worth.
  *
@@ -257,6 +259,15 @@ export function rank(documents, query, options = {}) {
     : expandQuery(text)
   const expanded = [...new Set([...expansions.values()].flat())]
 
+  // Third tier: terms this portfolio's own text associates with the query, learned from
+  // co-occurrence rather than written down. Weakest of the three, and labelled distinctly, so
+  // a reader is never told a word matched when what actually happened is that the corpus
+  // associates it with one that did.
+  const semanticTerms = options.semantic
+    ? [...new Set(terms.flatMap((term) => relatedTerms(term, options.semantic, { limit: 4 })
+        .map((r) => r.term)))].filter((t) => !terms.includes(t) && !expanded.includes(t))
+    : []
+
   const preferred = parsed?.entityTypes ?? []
 
   // A question that names a section but no searchable words — "Where did he study?" — has
@@ -282,7 +293,14 @@ export function rank(documents, query, options = {}) {
     const hits = new Map()
     let score = 0
 
-    for (const [term, isDirect] of [...terms.map((t) => [t, true]), ...expanded.map((t) => [t, false])]) {
+    const candidates = [
+      ...terms.map((t) => [t, 'exact']),
+      ...expanded.map((t) => [t, 'concept']),
+      ...semanticTerms.map((t) => [t, 'semantic']),
+    ]
+
+    for (const [term, kind] of candidates) {
+      const isDirect = kind === 'exact'
       const idf = Math.log(1 + total / (1 + (frequency.get(term) ?? 0)))
 
       for (const [field, value] of Object.entries(fields)) {
@@ -293,12 +311,14 @@ export function rank(documents, query, options = {}) {
         // first, and without this a description that repeats a word ten times would outrank a
         // title that names it once.
         const tf = 1 + Math.log(count)
-        // An expanded term is evidence, but weaker evidence than the word actually typed.
-        const confidence = isDirect ? 1 : 0.45
+        // Weighted by how much each kind of match actually tells you. A typed word is the
+        // strongest signal; a curated concept is weaker; a corpus association is weaker again,
+        // because it says only that these words keep appearing together here.
+        const confidence = kind === 'exact' ? 1 : kind === 'concept' ? 0.45 : 0.22
         score += tf * idf * (FIELD_WEIGHT[field] ?? 1) * confidence
 
         if (!hits.has(term) || (isDirect && !hits.get(term).direct)) {
-          hits.set(term, { field, direct: isDirect })
+          hits.set(term, { field, direct: isDirect, kind })
         }
       }
     }
@@ -339,7 +359,9 @@ export function rank(documents, query, options = {}) {
       url: document.url,
       score: Number(score.toFixed(4)),
       // Why this matched, in the shape a UI can render and a human can check.
-      matched: [...hits.entries()].map(([term, hit]) => ({ term, field: hit.field, direct: hit.direct })),
+      matched: [...hits.entries()].map(([term, hit]) => ({
+        term, field: hit.field, direct: hit.direct, kind: hit.kind ?? (hit.direct ? 'exact' : 'concept'),
+      })),
       ...(typeMatch === true ? { matchedSection: document.type } : {}),
       provenance: provenanceOf(document),
       record: document.record,
@@ -515,11 +537,16 @@ function documentFrequency(documents, terms) {
 function occurrences(value, term) {
   if (!value) return 0
   const tokens = tokenize(value)
+  const termStem = stem(term)
   let count = 0
   for (const token of tokens) {
     if (token === term) count += 2
     else if (term.length >= 4 && token.startsWith(term)) count += 1
     else if (term.length >= 4 && token.length >= 4 && term.startsWith(token)) count += 1
+    // Morphological match: "publications" reaching "publication", "services" reaching
+    // "service". Scored below a literal hit because a shared stem is a weaker signal than a
+    // shared word, but far stronger than nothing — which is what it scored before.
+    else if (term.length >= 4 && stem(token) === termStem) count += 1
   }
   return count
 }

@@ -343,8 +343,13 @@ export default function SearchDialog({ open, onClose, initialQuery = '', onQuery
  * what backs the record, without opening anything.
  */
 function SearchResultRow({ result, index, active, onHover, onOpen }) {
-  const direct = result.matched.filter((m) => m.direct).map((m) => m.term)
-  const related = result.matched.filter((m) => !m.direct).map((m) => m.term)
+  // Four kinds of match, kept distinct on purpose. Telling a reader "matched accessibility"
+  // when the word never appears — it was reached through a related concept, or by reading the
+  // section — is a small lie that undermines the evidence the rest of this panel is for.
+  const exact = result.matched.filter((m) => m.kind === 'exact' || (m.direct && !m.kind)).map((m) => m.term)
+  const concept = result.matched.filter((m) => m.kind === 'concept' || (!m.direct && !m.kind)).map((m) => m.term)
+  const semantic = result.matched.filter((m) => m.kind === 'semantic').map((m) => m.term)
+  const bySection = result.reason === 'section'
   const evidence = result.provenance?.evidence?.[0]?.label
   const source = result.provenance?.source
 
@@ -364,14 +369,24 @@ function SearchResultRow({ result, index, active, onHover, onOpen }) {
         </span>
 
         <span className="search-result-meta">
-          {direct.length > 0 && (
-            <span className="search-why">
-              matched <strong>{direct.slice(0, 3).join(', ')}</strong>
+          {exact.length > 0 && (
+            <span className="search-why" title="These words appear in this entry">
+              matched <strong>{exact.slice(0, 3).join(', ')}</strong>
             </span>
           )}
-          {related.length > 0 && (
-            <span className="search-why search-why-related" title="Matched a related concept, not a word you typed">
-              related: {related.slice(0, 2).join(', ')}
+          {concept.length > 0 && (
+            <span className="search-why search-why-related" title="Reached through a related concept — these words are not in this entry">
+              related to {concept.slice(0, 2).join(', ')}
+            </span>
+          )}
+          {semantic.length > 0 && (
+            <span className="search-why search-why-related" title="This portfolio's own text associates these words with your query — they are not in this entry">
+              associated with {semantic.slice(0, 2).join(', ')}
+            </span>
+          )}
+          {bySection && (
+            <span className="search-why search-why-related" title="Returned because your question named this section, not because a word matched">
+              listed under {result.type}
             </span>
           )}
           {evidence && <span className="search-evidence">{evidence}</span>}

@@ -92,7 +92,12 @@ export function toPublicManifest(profile, options = {}) {
     spec: SPEC_URL,
     provenance: true,
     evidence: hasEvidence(profile),
-    search: 'client',
+    // Named for what actually runs, not for the more flattering word. This is lexical
+    // retrieval plus curated concept expansion plus corpus-derived distributional association
+    // — genuinely more than keyword matching, and genuinely not open-vocabulary semantics: it
+    // cannot relate a word the portfolio never uses. A consumer deciding whether to trust it
+    // with a paraphrase deserves to know which of those it is getting.
+    search: 'lexical+concept+distributional',
     ...(options.capabilities ?? {}),
   }
 

@@ -199,15 +199,9 @@ export default function StylePanel({ builder }) {
       />
       <Toggle
         label="Smooth scrolling"
-        checked={value('animations.smoothScroll', true)}
+        checked={value('animations.smoothScroll', false)}
         onChange={(v) => setConfig('animations.smoothScroll', v)}
-        help="Momentum scrolling on pointer devices. Off is the friendlier default for long pages."
-      />
-      <Toggle
-        label="Custom cursor"
-        checked={value('layout.customCursor', true)}
-        onChange={(v) => setConfig('layout.customCursor', v)}
-        help="Only ever shown on fine-pointer devices."
+        help="Momentum scrolling on pointer devices. Off by default: native scrolling is what your visitor's mouse, trackpad and accessibility settings are already tuned for."
       />
 
       <Note icon="Info">
