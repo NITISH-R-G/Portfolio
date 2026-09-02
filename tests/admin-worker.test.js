@@ -356,3 +356,97 @@ describe('misconfiguration fails closed and says what is missing', () => {
     assert.notEqual(response.status, 302)
   })
 })
+
+describe('ADMIN_ORIGIN carrying a project-site path still works', () => {
+  // The production failure this exists to prevent. `ADMIN_ORIGIN` was configured as
+  // `https://you.github.io/Portfolio` — the URL of the admin, which is the natural thing to
+  // enter and is not an origin. Every credentialed request from the deployed admin was then
+  // blocked by the browser before the Worker's own checks ran, while a manual `/auth/login`
+  // test passed, because the default return path `/admin.html` concatenated onto the stray
+  // `/Portfolio` happened to land correctly. The one test a person runs by hand was the one
+  // case the bug could not break.
+  // A function, not a constant: `ENV.GITHUB_PRIVATE_KEY` is filled in by `before()`, and
+  // spreading ENV while the describe body evaluates would capture it empty — every request
+  // would then fail as "not configured" and prove nothing about origins.
+  const pathed = () => ({ ...ENV, ADMIN_ORIGIN: `${ORIGIN}/Portfolio` })
+
+  const callWith = async (env, { path = '/api/session', method = 'GET', cookie, origin = ORIGIN, body } = {}) => {
+    networkCalls = []
+    const request = new Request(`https://admin.workers.dev${path}`, {
+      method,
+      headers: {
+        ...(origin ? { origin } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(method === 'GET' ? {} : { body: body === undefined ? undefined : JSON.stringify(body) }),
+    })
+    const response = await worker.fetch(request, env)
+    return { status: response.status, headers: response.headers, text: await response.text() }
+  }
+
+  test('the CORS header is an origin, never the configured path', async () => {
+    // A browser compares this against `Origin`, which never carries a path. Any mismatch and
+    // the request never reaches the Worker at all.
+    const result = await callWith(pathed())
+    assert.equal(result.headers.get('access-control-allow-origin'), ORIGIN)
+  })
+
+  test('a preflight answers with the same normalised origin', async () => {
+    const result = await callWith(pathed(), { method: 'OPTIONS' })
+    assert.equal(result.headers.get('access-control-allow-origin'), ORIGIN)
+  })
+
+  test('a save from the admin page is not rejected as a foreign origin', async () => {
+    const cookie = `__Host-portfolio_admin=${await session()}`
+    const result = await callWith(pathed(), {
+      path: '/api/save', method: 'POST', cookie,
+      body: { ...validSave, head: 'HEAD1' },
+    })
+    // 403 would mean the CSRF check compared an origin against a path and refused its own UI.
+    assert.notEqual(result.status, 403)
+  })
+
+  test('a foreign origin is still refused with a path-shaped config', async () => {
+    // Normalising must not have widened what counts as allowed.
+    const cookie = `__Host-portfolio_admin=${await session()}`
+    for (const origin of ['https://evil.example', `${ORIGIN}.evil.example`, 'http://ada.github.io']) {
+      const result = await callWith(pathed(), {
+        path: '/api/save', method: 'POST', cookie, origin,
+        body: { ...validSave, head: 'HEAD1' },
+      })
+      assert.equal(result.status, 403, origin)
+      assert.deepEqual(networkCalls, [], 'refused before GitHub')
+    }
+  })
+
+  test('the default sign-in landing keeps the base path', async () => {
+    // `${origin}${base}/admin.html`. Dropping the base would send a project site to an
+    // `/admin.html` that does not exist.
+    const state = await sign({ n: 'x' }, SECRET, 600)
+    const request = new Request('https://admin.workers.dev/auth/callback?code=c&state=' + encodeURIComponent(state), {
+      headers: { cookie: `__Host-portfolio_state=${state}` },
+    })
+    const response = await worker.fetch(request, pathed())
+    // The code exchange fails against the stubbed network; what matters is that any redirect
+    // this Worker composes is built from origin + base, which the error redirect also uses.
+    const location = response.headers.get('location')
+    if (location) assert.match(location, /^https:\/\/ada\.github\.io\/Portfolio\/admin\.html/)
+  })
+
+  test('a plain origin with no path still behaves exactly as before', async () => {
+    const result = await callWith(ENV)
+    assert.equal(result.headers.get('access-control-allow-origin'), ORIGIN)
+    assert.equal(JSON.parse(result.text).authenticated, false)
+  })
+
+  test('a malformed ADMIN_ORIGIN fails closed, and says so', async () => {
+    const result = await callWith({ ...ENV, ADMIN_ORIGIN: 'not-a-url' })
+    assert.equal(result.status, 500)
+    assert.match(JSON.parse(result.text).error, /ADMIN_ORIGIN must be an absolute URL/)
+    // No credential in the diagnosis.
+    for (const secret of [ENV.GITHUB_CLIENT_SECRET, ENV.SESSION_SECRET]) {
+      assert.ok(!result.text.includes(secret))
+    }
+  })
+})

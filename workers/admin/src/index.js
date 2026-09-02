@@ -96,7 +96,7 @@ function settings(env) {
       clientSecret: env.GITHUB_CLIENT_SECRET,
     },
     secret: env.SESSION_SECRET,
-    origin: env.ADMIN_ORIGIN,
+    ...splitAdminUrl(env.ADMIN_ORIGIN),
     owner,
     repo,
     repository: env.REPOSITORY,
@@ -106,6 +106,65 @@ function settings(env) {
     allowedLogins: (env.ALLOWED_LOGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
     // See `cookie()` for why this defaults to the weaker-looking value.
     sameSite: env.SAMESITE === 'Lax' || env.SAMESITE === 'Strict' ? env.SAMESITE : 'None',
+  }
+}
+
+/**
+ * `ADMIN_ORIGIN` split into the two different things it is used for.
+ *
+ * It is used as an **origin** — for the `Access-Control-Allow-Origin` header and the CSRF check
+ * — and as the **base of a redirect** back to the admin page. Those are not the same value when
+ * the portfolio is a GitHub Pages *project* site, and conflating them breaks both halves in
+ * ways that hide each other:
+ *
+ *   - A browser compares `Access-Control-Allow-Origin` against the `Origin` header, which is
+ *     scheme+host+port and never carries a path. Configured as
+ *     `https://you.github.io/Portfolio`, the header can never match `https://you.github.io`, so
+ *     every credentialed request from the admin is blocked before the Worker's own checks are
+ *     even consulted. `originAllowed` then rejects for the same reason, so a request that did
+ *     get through would be a 403.
+ *   - Meanwhile the sign-in redirect is `origin + returnPath`, and the *default* return path is
+ *     `/admin.html`. With the path baked into the configured value that concatenation happens to
+ *     land correctly — which is precisely why a manual `/auth/login` test passes and hides the
+ *     CORS failure. Sign in through the button, which sends `return=/Portfolio/admin.html`, and
+ *     the same concatenation yields `/Portfolio/Portfolio/admin.html`.
+ *
+ * So the value is parsed once: `origin` for anything compared against a browser's `Origin`, and
+ * `base` for the default landing path. Configuring it either way now works, and — more usefully
+ * — configuring it the *wrong* way no longer produces a system that passes the one test someone
+ * is likely to run by hand.
+ *
+ * @param {string} value
+ * @returns {{origin: string, base: string}}
+ */
+function splitAdminUrl(value) {
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    throw new GitHubError(
+      `ADMIN_ORIGIN must be an absolute URL, e.g. "https://you.github.io". Got: ${value}`,
+      500,
+    )
+  }
+  // A trailing slash would double up against a return path that already starts with one.
+  return { origin: url.origin, base: url.pathname.replace(/\/+$/, '') }
+}
+
+/**
+ * The origin for response headers, computed leniently.
+ *
+ * Separate from `splitAdminUrl` because CORS headers have to be emitted on error responses too,
+ * including the response that says the configuration is broken — throwing here would replace a
+ * readable diagnosis with an opaque failure.
+ *
+ * @param {string|undefined} value
+ */
+const headerOrigin = (value) => {
+  try {
+    return new URL(value).origin
+  } catch {
+    return ''
   }
 }
 
@@ -180,7 +239,9 @@ async function callback(request, env, url) {
   return new Response(null, {
     status: 302,
     headers: [
-      ['location', `${config.origin}${payload.r || '/admin.html'}`],
+      // A caller-supplied return path already carries the site's base; the default has to be
+      // given one, or a project site lands on an admin page that does not exist.
+      ['location', `${config.origin}${payload.r || `${config.base}/admin.html`}`],
       ['set-cookie', cookie(COOKIE, token, SESSION_TTL_SECONDS, config.sameSite)],
       // The state cookie has done its job; leaving it set would let a stale one be reused.
       ['set-cookie', cookie('__Host-portfolio_state', '', 0, config.sameSite)],
@@ -346,7 +407,8 @@ function returnPath(value) {
 }
 
 const corsHeaders = (env) => ({
-  'access-control-allow-origin': env.ADMIN_ORIGIN ?? '',
+  // Normalised, because a browser matches this against `Origin`, which never has a path.
+  'access-control-allow-origin': headerOrigin(env.ADMIN_ORIGIN),
   'access-control-allow-credentials': 'true',
   'access-control-allow-headers': 'content-type',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
@@ -379,7 +441,7 @@ const json = (body, status, env, extra = {}) => new Response(JSON.stringify(body
 const fail = (config, reason) => new Response(null, {
   status: 302,
   headers: {
-    location: `${config.origin}/admin.html?error=${reason}`,
+    location: `${config.origin}${config.base}/admin.html?error=${reason}`,
     'set-cookie': cookie('__Host-portfolio_state', '', 0, config.sameSite),
   },
 })
