@@ -140,7 +140,7 @@ Nothing here is your problem — it is committed and works out of the box:
 - The `src/data/config.json` layer and its merge into the config.
 - The deployment workflow, including generating the semantic index and refusing to deploy
   without it.
-- 69 tests covering the security boundary and the publishing client.
+- 71 tests covering the security boundary and the publishing client.
 
 ### Automatic afterwards, forever
 

@@ -113,7 +113,7 @@ no D1, no Durable Object, no queue — it is a script and five secrets.
 | Concurrent saves | client sends the commit it loaded; mismatch is a 409, and the ref update is `force: false` |
 | GitHub outage | reported as a degraded session, not as a signed-out one |
 
-69 assertions cover these: `tests/admin-security.test.js` tests the decisions, and
+71 assertions cover these: `tests/admin-security.test.js` tests the decisions, and
 `tests/admin-worker.test.js` tests the *server* — real `Request` objects through the exported
 `fetch` handler, with the network stubbed to throw, so every refusal above is asserted to happen
 before GitHub is contacted at all.
