@@ -61,6 +61,14 @@ jobs:
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: npm run import
 
+      # Precompute the semantic search index. Deliberately non-fatal: the model is fetched
+      # from a CDN, and a portfolio should still deploy when that is slow or unreachable —
+      # search degrades to lexical retrieval, which is exactly what a visitor whose browser
+      # cannot load the model gets anyway.
+      - name: Build the semantic search index
+        continue-on-error: true
+        run: npm run embed
+
       - name: Check the configuration
         run: npm run doctor
 

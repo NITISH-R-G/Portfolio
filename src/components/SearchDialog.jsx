@@ -53,7 +53,7 @@ const EXAMPLES = [
  */
 export default function SearchDialog({ open, onClose, initialQuery = '', onQueryChange }) {
   const reducedMotion = useReducedMotion()
-  const { ready, loading, error, prepare, search, understand, manifest } = useSearch()
+  const { ready, loading, error, prepare, search, semanticSearch, understand, semanticState, manifest } = useSearch()
 
   const [query, setQuery] = useState(initialQuery)
   const [active, setActive] = useState(0)
@@ -111,10 +111,27 @@ export default function SearchDialog({ open, onClose, initialQuery = '', onQuery
 
   /* Results ------------------------------------------------------------------ */
 
-  const results = useMemo(
+  // Lexical first, synchronously, so a result list appears on the same frame as the keystroke.
+  const lexical = useMemo(
     () => (ready && deferredQuery.trim() ? search(deferredQuery) : []),
     [ready, deferredQuery, search],
   )
+
+  // Then upgraded in place once the embedding model can answer. Rendering the lexical list
+  // immediately and replacing it is the whole reason this is not a spinner: the visitor is
+  // reading real results while ~23 MB of weights are still in flight, and if they never arrive
+  // nothing is missing from their point of view.
+  const [upgraded, setUpgraded] = useState(null)
+  useEffect(() => {
+    if (!ready || !deferredQuery.trim()) { setUpgraded(null); return undefined }
+    let live = true
+    semanticSearch(deferredQuery).then((results) => { if (live) setUpgraded({ query: deferredQuery, results }) })
+    return () => { live = false }
+  }, [ready, deferredQuery, semanticSearch])
+
+  // Only trust the upgrade if it answers the query currently on screen — an earlier keystroke's
+  // promise resolving late must not replace the current results.
+  const results = upgraded?.query === deferredQuery && upgraded.results.length ? upgraded.results : lexical
 
   // How the question was read. Shown to the visitor, because a search that quietly decides a
   // question is "about education" should be able to say so — otherwise an unexpected result

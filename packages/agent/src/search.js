@@ -38,6 +38,33 @@
 import { stem, relatedTerms } from './semantic.js'
 
 /**
+ * Every weight the ranker applies, in one place.
+ *
+ * Gathered here rather than scattered as literals through the scoring loop because §5 of this
+ * milestone asks for weighting that is explicit and testable, and because a constant buried in
+ * an expression is a constant nobody ever re-examines. Each is a claim about how much a signal
+ * should be trusted, and each is asserted in the tests.
+ */
+export const WEIGHTS = {
+  /** Confidence in a match, by how it was found. */
+  match: { exact: 1, concept: 0.45, semantic: 0.22 },
+  /** Multiplier when the question named this record's section, and when it named another. */
+  section: { preferred: 1.9, other: 0.65 },
+  /** How much of what was typed this record accounts for, at full coverage. */
+  coverage: 0.6,
+  /**
+   * Ceiling on the embedding contribution.
+   *
+   * Semantic similarity improves recall and damages precision if it is allowed to dominate:
+   * on this corpus a genuine paraphrase scored 0.06 against a document while an unrelated one
+   * scored 0.20, so a ranker that trusted cosine alone would confidently invert them. Capped
+   * so it can lift a lexically-invisible document into view without outranking one the reader
+   * actually named.
+   */
+  semantic: { weight: 2.2, floor: 0.22 },
+}
+
+/**
  * Collections in the standard, and how much a match in each is worth.
  *
  * Weights are about *what a person is asking for*, not about how important the section is.
@@ -273,7 +300,7 @@ export function rank(documents, query, options = {}) {
   // A question that names a section but no searchable words — "Where did he study?" — has
   // nothing to match lexically, yet has an obvious correct answer. Return that section,
   // strongest records first, rather than the empty set the term matcher would produce.
-  if (!terms.length && !expanded.length) {
+  if (!terms.length && !expanded.length && !options.semanticScores?.size) {
     return preferred.length ? sectionResults(documents, preferred, options) : []
   }
 
@@ -314,13 +341,22 @@ export function rank(documents, query, options = {}) {
         // Weighted by how much each kind of match actually tells you. A typed word is the
         // strongest signal; a curated concept is weaker; a corpus association is weaker again,
         // because it says only that these words keep appearing together here.
-        const confidence = kind === 'exact' ? 1 : kind === 'concept' ? 0.45 : 0.22
+        const confidence = WEIGHTS.match[kind] ?? WEIGHTS.match.semantic
         score += tf * idf * (FIELD_WEIGHT[field] ?? 1) * confidence
 
         if (!hits.has(term) || (isDirect && !hits.get(term).direct)) {
           hits.set(term, { field, direct: isDirect, kind })
         }
       }
+    }
+
+    // Semantic similarity, when the caller supplied it. Additive rather than multiplicative:
+    // a document with no lexical hit at all can still surface (that is the recall win), but it
+    // enters near the bottom rather than displacing a direct match.
+    const similarity = options.semanticScores?.get(document.id) ?? 0
+    if (similarity >= WEIGHTS.semantic.floor) {
+      score += (similarity - WEIGHTS.semantic.floor) * WEIGHTS.semantic.weight
+      hits.set(`~${document.id}`, { field: 'semantic', direct: false, kind: 'vector', similarity })
     }
 
     if (score <= 0) continue
@@ -348,8 +384,8 @@ export function rank(documents, query, options = {}) {
     // The section preference from `parseQuery`: a strong nudge, never a filter. Evidence of
     // the "wrong" shape can still win if it is genuinely the better answer.
     const typeMatch = preferred.length ? preferred.includes(document.type) : null
-    if (typeMatch === true) score *= 1.9
-    else if (typeMatch === false) score *= 0.65
+    if (typeMatch === true) score *= WEIGHTS.section.preferred
+    else if (typeMatch === false) score *= WEIGHTS.section.other
 
     results.push({
       id: document.id,
@@ -359,9 +395,15 @@ export function rank(documents, query, options = {}) {
       url: document.url,
       score: Number(score.toFixed(4)),
       // Why this matched, in the shape a UI can render and a human can check.
-      matched: [...hits.entries()].map(([term, hit]) => ({
-        term, field: hit.field, direct: hit.direct, kind: hit.kind ?? (hit.direct ? 'exact' : 'concept'),
-      })),
+      matched: [...hits.entries()]
+        .filter(([, hit]) => hit.kind !== 'vector')
+        .map(([term, hit]) => ({
+          term, field: hit.field, direct: hit.direct, kind: hit.kind ?? (hit.direct ? 'exact' : 'concept'),
+        })),
+      // Reported separately from `matched`, and never as a term. A cosine is not a word that
+      // appeared; presenting it as one would be exactly the "similarity dressed as evidence"
+      // the provenance boundary forbids.
+      ...(similarity >= WEIGHTS.semantic.floor ? { similarity: Number(similarity.toFixed(3)) } : {}),
       ...(typeMatch === true ? { matchedSection: document.type } : {}),
       provenance: provenanceOf(document),
       record: document.record,

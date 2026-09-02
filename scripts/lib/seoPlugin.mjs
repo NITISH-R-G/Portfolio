@@ -87,10 +87,19 @@ export function portfolioSeo() {
       // is for agents reading a portfolio someone handed them directly. A person who turned
       // off sitemaps did not thereby ask for their portfolio to be unreadable by tools.
       if (config.agent?.manifest !== false) {
+        // Read rather than regenerated: `npm run embed` owns producing these, so a build
+        // never silently spends two seconds of inference, and a portfolio built without them
+        // reports `lexical+concept+distributional` instead of claiming a capability it lacks.
+        let embeddings
+        try {
+          embeddings = JSON.parse(fs.readFileSync(path.join(PATHS.generated, 'embeddings.json'), 'utf8'))
+        } catch { /* Not built yet, or deliberately absent. */ }
+
         const manifest = toPublicManifest(profile, {
           config,
           canonical: seo?.canonical,
           generatedAt: new Date().toISOString(),
+          ...(embeddings ? { embeddings } : {}),
         })
         this.emitFile({
           type: 'asset',

@@ -25,6 +25,7 @@
 import { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
 import { buildIndex, rank } from './search.js'
 import { buildSemanticIndex } from './semantic.js'
+import { LocalEmbeddingProvider, unpackVectors, cosine, EmbeddingUnavailable } from './embedding.js'
 import { parseQuery, describeQuery } from './query.js'
 import { manifestToMarkdown, entityToMarkdown, resultsToMarkdown } from './markdown.js'
 import { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'
@@ -164,6 +165,57 @@ export class PortfolioAgent {
   }
 
   /**
+   * Attach a precomputed embedding index.
+   *
+   * Built by `npm run embed` and shipped with the portfolio, so the runtime never embeds
+   * documents — only the query.
+   *
+   * @param {{ids: string[], data: string, count: number, dimensions: number, scale: number, model?: string}} index
+   */
+  useEmbeddings(index) {
+    if (!index?.data || !Array.isArray(index.ids)) return this
+    const vectors = unpackVectors(index)
+    this._vectors = new Map(index.ids.map((id, i) => [id, vectors[i]]).filter(([, v]) => v))
+    this._embeddingModel = index.model
+    return this
+  }
+
+  /**
+   * Search, with the embedding model deciding what is *about* the same thing.
+   *
+   * Async because it may have to load a model. Degrades to `search()` — never throws and never
+   * returns nothing — when embeddings are unavailable, which covers a portfolio built without
+   * them, a browser that could not fetch the weights, and an offline first visit.
+   *
+   * @param {string} query
+   * @param {{limit?: number, types?: string[], provider?: object}} [options]
+   * @returns {Promise<import('./search.js').SearchResult[]>}
+   */
+  async semanticSearch(query, options = {}) {
+    if (!query?.trim()) return []
+    if (!this._vectors?.size) return this.search(query, options)
+
+    let scores
+    try {
+      const provider = options.provider ?? this._provider ?? (this._provider = new LocalEmbeddingProvider())
+      const [vector] = await provider.embed([query])
+      if (!vector) throw new EmbeddingUnavailable('no vector')
+
+      scores = new Map()
+      for (const [id, documentVector] of this._vectors) {
+        scores.set(id, cosine(vector, documentVector))
+      }
+    } catch {
+      // The whole point of hybrid: losing the semantic signal costs recall, not search.
+      return this.search(query, options)
+    }
+
+    return rank(this._index, parseQuery(query), {
+      semantic: this._semantic, semanticScores: scores, ...options,
+    })
+  }
+
+  /**
    * How a question was understood, without running it.
    *
    * Exposed so a consumer — a UI explaining itself, or an agent deciding whether to trust the
@@ -300,9 +352,14 @@ export class PortfolioAgent {
 }
 
 export { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
-export { buildIndex, rank, tokenize, expandQuery } from './search.js'
+export { buildIndex, rank, tokenize, expandQuery, WEIGHTS } from './search.js'
 export { parseQuery, describeQuery } from './query.js'
 export { stem, buildSemanticIndex, relatedTerms } from './semantic.js'
+export {
+  LocalEmbeddingProvider, RemoteEmbeddingProvider, openRouterProvider, groqProvider,
+  customProvider, EmbeddingUnavailable, packVectors, unpackVectors, cosine,
+  DEFAULT_MODEL, DEFAULT_DIMENSIONS,
+} from './embedding.js'
 export { manifestToMarkdown, entityToMarkdown, resultsToMarkdown, dedupe } from './markdown.js'
 export { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'
 export default PortfolioAgent

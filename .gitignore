@@ -42,3 +42,6 @@ benchmarks/fixtures/**/*.png
 # not vendored into the repository.
 .agents/
 skills-lock.json
+
+# Scratch probes used while benchmarking the embedding model.
+scratch/

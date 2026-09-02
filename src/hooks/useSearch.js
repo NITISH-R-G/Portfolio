@@ -38,6 +38,9 @@ export function useSearch() {
   const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  // Tracks the embedding model separately from the index: lexical search must be usable the
+  // instant the index is ready, while ~23 MB of weights are still arriving in the background.
+  const [semanticState, setSemanticState] = useState('idle')
 
   // Held in refs, not state: they are large, they never change once built, and putting them
   // in state would re-render every consumer for a value none of them read directly.
@@ -63,8 +66,16 @@ export function useSearch() {
           canonical: config?.site?.url || undefined,
         })
         manifestRef.current = manifest
-        agentRef.current = PortfolioAgent.fromManifest(manifest, { strict: false })
+        const agent = PortfolioAgent.fromManifest(manifest, { strict: false })
+        agentRef.current = agent
         setReady(true)
+
+        // Precomputed document vectors: 63 kB, shipped with the site. Loading them costs
+        // nothing meaningful and does not imply the model — the model is fetched only when a
+        // query actually needs embedding.
+        import('../data/generated/embeddings.json')
+          .then(({ default: index }) => { agent.useEmbeddings(index) })
+          .catch(() => { /* Built without embeddings. Lexical search is unaffected. */ })
       })
       .catch((err) => {
         // A failed index must not take the page with it — the portfolio is still readable.
@@ -79,6 +90,31 @@ export function useSearch() {
   }, [])
 
   /**
+   * Search with embeddings, falling back to lexical rather than failing.
+   *
+   * The first call fetches the model, which is why this reports its own state: a visitor sees
+   * lexical results immediately and better ones a moment later, instead of an empty panel and
+   * a spinner. If the weights never arrive — offline, blocked, an old browser — the lexical
+   * results simply stand, and nothing tells the visitor that anything is missing, because from
+   * their side nothing is.
+   */
+  const semanticSearch = useCallback(async (query) => {
+    const agent = agentRef.current
+    if (!agent || !query?.trim()) return []
+    if (!agent._vectors?.size) return agent.search(query, { limit: 24 })
+
+    setSemanticState((state) => (state === 'ready' ? state : 'loading'))
+    try {
+      const results = await agent.semanticSearch(query, { limit: 24 })
+      setSemanticState('ready')
+      return results
+    } catch {
+      setSemanticState('unavailable')
+      return agent.search(query, { limit: 24 })
+    }
+  }, [])
+
+  /**
    * How the agent read a question, without running it.
    *
    * Same parser the results came from, so the explanation shown to the visitor can never
@@ -89,7 +125,10 @@ export function useSearch() {
     return agentRef.current.understand(query)
   }, [])
 
-  return { ready, loading, error, prepare, search, understand, manifest: manifestRef.current }
+  return {
+    ready, loading, error, prepare, search, semanticSearch, understand,
+    semanticState, manifest: manifestRef.current,
+  }
 }
 
 /**

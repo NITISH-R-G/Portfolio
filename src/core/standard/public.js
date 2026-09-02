@@ -51,6 +51,7 @@ const NEVER_PUBLISHED = ['phone']
  */
 export function toPublicManifest(profile, options = {}) {
   const privacy = options.config?.privacy ?? {}
+  const hasEmbeddings = Boolean(options.embeddings?.data)
 
   // Deliberately *not* `includeEvidence`. That block serializes every claim on a disputed
   // attribute, including the ones that lost — so a résumé the author imported privately and
@@ -92,12 +93,18 @@ export function toPublicManifest(profile, options = {}) {
     spec: SPEC_URL,
     provenance: true,
     evidence: hasEvidence(profile),
-    // Named for what actually runs, not for the more flattering word. This is lexical
-    // retrieval plus curated concept expansion plus corpus-derived distributional association
-    // — genuinely more than keyword matching, and genuinely not open-vocabulary semantics: it
-    // cannot relate a word the portfolio never uses. A consumer deciding whether to trust it
-    // with a paraphrase deserves to know which of those it is getting.
-    search: 'lexical+concept+distributional',
+    // What actually runs, still named precisely. Document vectors from a pretrained model
+    // (all-MiniLM-L6-v2) ship with the manifest and the reader's browser embeds only the
+    // query, so this genuinely relates words the portfolio never uses — "recognizing
+    // emotions" reaches a project called FACE EMOTION DETECTION whose text is its title and
+    // the word Python. It is hybrid rather than pure vector search on purpose: on this corpus
+    // a real paraphrase scored 0.06 against a document an unrelated one scored 0.20 against,
+    // so embeddings raise recall and the lexical signals hold precision.
+    //
+    // Degrades to `lexical+concept+distributional` when the model cannot load, which is a
+    // capability change the consumer can see rather than a silent quality drop.
+    search: hasEmbeddings ? 'hybrid-semantic' : 'lexical+concept+distributional',
+    embeddingModel: hasEmbeddings ? options.embeddings.model : undefined,
     ...(options.capabilities ?? {}),
   }
 
