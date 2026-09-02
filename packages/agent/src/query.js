@@ -187,7 +187,7 @@ function rankTypes(hits) {
   if (!hits.size) return []
   const sorted = [...hits.entries()].sort((a, b) => b[1] - a[1])
   const best = sorted[0][1]
-  return sorted.filter(([, count]) => count >= best).map(([type]) => type)
+  return sorted.filter(([, count]) => count >= best - 1).map(([type]) => type)
 }
 
 /**

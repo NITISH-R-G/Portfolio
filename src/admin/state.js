@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildPortfolio } from '../core/generate/build.js'
 import { recordKey } from '../core/schema/merge.js'
-import { hasContent, prune, setPath, mergeDeep, mergeOverrides } from './drafts.js'
+import { applyClears, hasContent, prune, setPath, mergeDeep, mergeOverrides } from './drafts.js'
 import { DRAFT_KEY, CONFIG_DRAFT_KEY, loadFileConfig, loadSourceLayers, loadImportStatus, loadDocuments } from '../core/load.js'
 
 /** Vite resolves these at build time; the browser never fetches them. */
@@ -74,11 +74,13 @@ export function useBuilder() {
    * derivation and SEO here are the same code paths the built site uses.
    */
   const built = useMemo(() => buildPortfolio({
-    config: mergeDeep(fileConfig, configDraft),
+    // `applyClears` at both merge points, so a field the user emptied previews as empty rather
+    // than showing the sentinel — and so the preview matches what publishing will commit.
+    config: applyClears(mergeDeep(fileConfig, configDraft)),
     sources,
     documents,
     manual,
-    overrides: mergeOverrides(savedOverrides, overrides),
+    overrides: applyClears(mergeOverrides(savedOverrides, overrides)),
     status: status.connectors,
   }), [fileConfig, configDraft, sources, documents, manual, savedOverrides, overrides, status])
 
@@ -244,4 +246,4 @@ function write(key, value) {
  * and Vite's glob resolution along. Re-exported here because every existing caller imports
  * these from `state.js`.
  */
-export { hasContent, setPath, getPath, mergeDeep, mergeOverrides } from './drafts.js'
+export { hasContent, setPath, getPath, mergeDeep, mergeOverrides, applyClears, CLEARED } from './drafts.js'

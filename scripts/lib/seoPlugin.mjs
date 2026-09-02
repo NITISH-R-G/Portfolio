@@ -15,6 +15,8 @@
  */
 
 import { generateSitemap, generateRobots } from '../../src/core/generate/seo.js'
+import { buildIndex } from '../../packages/agent/src/search.js'
+import { fingerprintDocuments } from '../../packages/agent/src/embedding.js'
 import { toPublicManifest } from '../../src/core/standard/public.js'
 import { MANIFEST_FILENAME } from '../../src/core/standard/discovery.js'
 import { loadBuiltPortfolio, PATHS, relative, fs, path } from './portfolio.mjs'
@@ -94,6 +96,22 @@ export function portfolioSeo() {
         try {
           embeddings = JSON.parse(fs.readFileSync(path.join(PATHS.generated, 'embeddings.json'), 'utf8'))
         } catch { /* Not built yet, or deliberately absent. */ }
+
+        // …and checked against the corpus actually being shipped. A record keeps its id when
+        // its description is rewritten, so an index from before the edit still has a vector for
+        // it — one describing text that no longer exists. Ids match, counts match, and the
+        // manifest would claim `hybrid-semantic` while answering from a stale reading of the
+        // portfolio. Dropping the index degrades search; using it silently answers wrongly.
+        if (embeddings) {
+          const current = fingerprintDocuments(buildIndex(toPublicManifest(profile, { config })))
+          if (embeddings.fingerprint !== current) {
+            embeddings = undefined
+            console.warn(
+              '[portfolio] The embedding index does not match the current content and was ignored. '
+              + 'Run `npm run embed` to rebuild it.',
+            )
+          }
+        }
 
         const manifest = toPublicManifest(profile, {
           config,

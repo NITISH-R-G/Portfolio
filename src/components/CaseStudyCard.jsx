@@ -211,11 +211,14 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
               </DetailField>
             )}
 
-            {/* Tools & Tags */}
-            <DetailField label="Stack">
-              <TagList tags={item.tools} />
-              <TagList tags={item.tags} label={item.tools ? '' : 'Tags'} />
-            </DetailField>
+            {/* Tools & Tags. Gated, because an empty "Stack" heading reads as a section that
+                failed to load rather than one with nothing to say. */}
+            {(hasTools || hasTags) && (
+              <DetailField label="Stack">
+                <TagList tags={item.tools} />
+                <TagList tags={item.tags} label={item.tools ? '' : 'Tags'} />
+              </DetailField>
+            )}
 
             {/* Links */}
             {hasLinks && (

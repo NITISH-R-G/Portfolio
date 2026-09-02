@@ -38,7 +38,12 @@ export function useSearchUrl({ open, onOpen, onClose }) {
         onOpen()
       } else {
         // Back out of a search: close, and let the dialog stop owning a history entry.
+        //
+        // `initialQuery` is cleared too. It seeds a freshly mounted dialog, and leaving the
+        // dismissed text in it meant the next time search opened — by shortcut, by button —
+        // it came up pre-filled with the query the visitor had just navigated away from.
         pushedRef.current = false
+        setInitialQuery('')
         onClose()
       }
     }
@@ -63,6 +68,10 @@ export function useSearchUrl({ open, onOpen, onClose }) {
     const active = open && !options.closing
     if (active && trimmed) url.searchParams.set('search', trimmed)
     else url.searchParams.delete('search')
+
+    // Same reason as the popstate path above: once the dialog is closing, the query it held is
+    // history, and a later mount must not inherit it.
+    if (!active) setInitialQuery('')
 
     if (url.href === window.location.href) return
 

@@ -32,7 +32,7 @@ Chosen by measurement rather than reputation. What was measured, and what it cam
 | | |
 | --- | --- |
 | Semantic recall (paraphrases) | 6/7, against 5/7 lexical |
-| Open-vocabulary recall | 10/12, against 9/12 lexical |
+| Open-vocabulary recall | 9/12, against 8/12 lexical |
 | False positives | 0/3 |
 | Query latency, warm (Node) | median 15.5 ms, p95 32.5 ms |
 | Query latency, warm (browser) | median 71 ms, p95 278 ms |
@@ -169,8 +169,14 @@ a lexical-only site.
 npm run benchmark:semantic
 ```
 
-Twelve open-vocabulary cases, seven paraphrases, three negatives, five gates, run against the
-real corpus and compared with the lexical baseline. It also checks its own premise — it reports
-how many "out-of-vocabulary" cases use words that are in fact present, which on this corpus is
-three of twelve, so only nine are genuinely OOV. A benchmark that cannot fail its own assumptions
-is not measuring anything.
+Sixteen open-vocabulary cases, seven paraphrases, three negatives, five gates, run against the
+real corpus and compared with the lexical baseline.
+
+It checks its own premise first, and that check has teeth. Each open-vocabulary case declares the
+words that should be *absent* from the corpus; any case whose words turn out to be present is
+moved into a separate pile and scored separately, because a case a lexical index could answer is
+not measuring open-vocabulary retrieval. Four of the sixteen currently land there — and they
+score 3/4, which is exactly why counting them would have flattered the headline number. The
+reported figure is over the twelve genuine cases only.
+
+A benchmark that cannot fail its own assumptions is not measuring anything.

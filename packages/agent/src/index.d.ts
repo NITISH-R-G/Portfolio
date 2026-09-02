@@ -45,6 +45,38 @@ export interface SearchResult {
   record: Record<string, unknown>
 }
 
+/** The shape `npm run embed` writes to `src/data/generated/embeddings.json`. */
+export interface EmbeddingIndex {
+  ids: string[]
+  /** base64-packed int8 vectors. */
+  data: string
+  count: number
+  dimensions: number
+  scale: number
+  model?: string
+  fingerprint?: string
+  generatedAt?: string
+}
+
+/** Anything with an `embed` method: the local model, a remote endpoint, or your own. */
+export interface EmbeddingProvider {
+  embed(texts: string[]): Promise<number[][]>
+  model?: string
+  requiresKey?: boolean
+}
+
+export interface SemanticSearchOptions extends SearchOptions {
+  /** Override the provider. Defaults to the local model named by the attached index. */
+  provider?: EmbeddingProvider
+}
+
+/** How `parseQuery` read a question. `entityTypes` is a preference, never a filter. */
+export interface ParsedQuery {
+  terms: string[]
+  entityTypes: string[]
+  description?: string
+}
+
 export interface SearchOptions {
   limit?: number
   /** Restrict to given collections, e.g. `['projects', 'experience']`. */
@@ -109,6 +141,15 @@ export declare class PortfolioAgent {
   toPrompt(options?: { entity?: string; question?: string; sections?: string[] }): string
 
   ask(question: string, options: AskOptions): Promise<AskResult>
+
+  /** Attach a precomputed index produced by `npm run embed`. Returns `this`. */
+  useEmbeddings(index: EmbeddingIndex): this
+  /** Whether an index was attached — the public form of "can this portfolio search semantically". */
+  hasEmbeddings(): boolean
+  /** Hybrid retrieval. Falls back to `search()` rather than throwing when embeddings are unavailable. */
+  semanticSearch(query: string, options?: SemanticSearchOptions): Promise<SearchResult[]>
+  /** How a question was parsed, without running it. */
+  understand(query: string): ParsedQuery
 }
 
 export declare function discoverManifest(
@@ -117,6 +158,20 @@ export declare function discoverManifest(
 ): Promise<{ manifest: Record<string, unknown>; url: string; issues: Issue[] }>
 
 export declare function validateManifest(input: unknown): { valid: boolean; issues: Issue[] }
+
+/** How a URL policy answers. Returned by `defaultUrlPolicy` and by any override passed as `allowUrl`. */
+export interface UrlVerdict {
+  allowed: boolean
+  reason?: string
+}
+
+/**
+ * Whether a manifest fetch may go to this URL. `trusted` is true only for the URL the caller
+ * passed in — redirects and links discovered in a page are always false.
+ */
+export declare function defaultUrlPolicy(target: URL, context?: { trusted?: boolean }): UrlVerdict
+export declare function isPrivateHost(hostname: string): boolean
+export declare const MAX_REDIRECTS: number
 
 export declare function buildIndex(manifest: Record<string, unknown>): unknown[]
 export declare function rank(documents: unknown[], query: string, options?: SearchOptions): SearchResult[]
@@ -133,5 +188,16 @@ export declare function entityToPrompt(
   record: Record<string, unknown>,
   options?: { type?: string; person?: string; source?: string; question?: string },
 ): string
+
+/** Serialize a result set. `resultsToPrompt` adds the grounding instructions. */
+export declare function resultsToMarkdown(results: SearchResult[], options?: { query?: string; limit?: number }): string
+export declare function resultsToPrompt(
+  results: SearchResult[],
+  options?: { query?: string; person?: string; limit?: number },
+): string
+
+export declare function stem(word: string): string
+export declare function parseQuery(query: string): ParsedQuery
+export declare function describeQuery(parsed: ParsedQuery): string | undefined
 
 export default PortfolioAgent

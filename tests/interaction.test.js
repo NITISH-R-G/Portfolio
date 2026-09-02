@@ -38,8 +38,26 @@ describe('one scroll system, not two', () => {
     // was driving, and silently overrode the `behavior: 'auto'` that call sites pass under
     // reduced motion.
     const css = read('../src/styles/global.css')
-    const root = css.slice(0, css.indexOf('a {'))
-    assert.ok(!/^\s*scroll-behavior:\s*smooth/m.test(root), 'root still forces smooth scrolling')
+
+    // Every rule whose selector mentions `html`, wherever it appears in the file — including
+    // inside media queries, which is where the second one lives. Slicing at the first `a {`
+    // only covered whatever happened to be declared above that point, so a
+    // `scroll-behavior: smooth` added anywhere later would have gone unnoticed.
+    //
+    // Comments are stripped first: they contain braces, which would otherwise split a
+    // selector from its body.
+    const rules = css.replace(/[/][*][^]*?[*][/]/g, '')
+    const htmlRules = [...rules.matchAll(/([^{}]+)[{]([^{}]*)[}]/g)]
+      .filter(([, selector]) => /(?:^|[\s,>+~])html(?:$|[\s,:.[])/.test(selector.trim() + ' '))
+
+    assert.ok(htmlRules.length > 0, 'no html rule found — the selector convention changed')
+
+    for (const [, selector, body] of htmlRules) {
+      assert.ok(
+        !/scroll-behavior:[\s]*smooth/.test(body),
+        `${selector.trim()} forces smooth scrolling, which overrides behavior: 'auto' at call sites`,
+      )
+    }
   })
 
   test('momentum scrolling is opt-in', () => {

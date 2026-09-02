@@ -3473,14 +3473,6 @@ a:focus-visible,
 /* `display: contents` when inert, so the wrapper adds no box and the closed menu lays out
    byte-for-byte as it did before this feature existed.
 
-   When liquid, the group needs a real box to host its SVG filter — but it must NOT become a
-   positioned containing block. The panel is absolutely positioned with `top: calc(100% + …)`
-   against `.copy-menu`; giving this wrapper `position: relative` re-anchored it here instead,
-   which stretched the 4px gap to 14px and pushed the right edge 4px out of alignment. Static
-   positioning keeps the panel anchored where its own CSS expects. */
-/* `display: contents` when inert, so the wrapper adds no box and the closed menu lays out
-   byte-for-byte as it did before this feature existed.
-
    When liquid the group needs a real box to host its SVG filter, and it is `flex` rather than
    `block` for a specific reason: the library renders each item as an `inline-block`, which
    sits on a text baseline and leaves ~11px of descender leading beneath it. That inflated the

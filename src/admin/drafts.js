@@ -11,6 +11,44 @@
  * @module admin/drafts
  */
 
+/**
+ * "This field was deliberately emptied", as a value a draft can carry.
+ *
+ * A draft is a patch: it holds only what this browser changed, and a merge applies it over what
+ * is already committed. Which means *removing* a key from the draft cannot express a deletion —
+ * it is indistinguishable from never having touched the field, and the committed value wins. So
+ * clearing a published headline did nothing at all: the box emptied, Save reported a change,
+ * and the merge put the old text straight back.
+ *
+ * The marker is a value rather than an absence, so it survives the merge and can be acted on
+ * afterwards. `applyClears` is what turns it back into an absence, and it runs at both points
+ * where a draft stops being a draft — the live preview and the published file — so the marker
+ * itself never reaches the profile or the repository.
+ *
+ * A `\u0000`-prefixed string because it must be distinguishable from every legitimate value a
+ * field can hold, and no portfolio field contains a null byte.
+ */
+export const CLEARED = '\u0000cleared'
+
+/**
+ * Strip cleared fields, turning the marker back into the absence it stands for.
+ *
+ * @template T
+ * @param {T} value
+ * @returns {T}
+ */
+export function applyClears(value) {
+  if (!value || typeof value !== 'object') return value
+  if (Array.isArray(value)) return /** @type {any} */ (value.filter((item) => item !== CLEARED).map(applyClears))
+
+  const out = {}
+  for (const [key, inner] of Object.entries(value)) {
+    if (inner === CLEARED) continue
+    out[key] = applyClears(inner)
+  }
+  return /** @type {any} */ (out)
+}
+
 /** Recursively true when an object holds anything other than empty containers. */
 export function hasContent(value) {
   if (value === undefined || value === null || value === '') return false
@@ -19,12 +57,21 @@ export function hasContent(value) {
   return Object.values(value).some(hasContent)
 }
 
-/** Drop empty values so a cleared field leaves nothing behind in the export. */
+/**
+ * Normalise an override bucket, recording emptied fields rather than dropping them.
+ *
+ * Same reasoning as `setPath`: these buckets are merged over committed overrides, so a removed
+ * key restores the committed value instead of clearing it. An empty array is still dropped —
+ * an empty list and no list mean the same thing for `hidden` and `order`.
+ */
 export function prune(object) {
   const out = {}
   for (const [key, value] of Object.entries(object ?? {})) {
-    if (value === undefined || value === null || value === '') continue
     if (Array.isArray(value) && !value.length) continue
+    if (value === undefined || value === null || value === '') {
+      out[key] = CLEARED
+      continue
+    }
     out[key] = value
   }
   return out
@@ -40,7 +87,9 @@ export function setPath(object, path, value) {
   const [head, ...rest] = path.split('.')
   const next = { ...object }
   if (!rest.length) {
-    if (value === undefined || value === '') delete next[head]
+    // `CLEARED`, not `delete`. See the constant: dropping the key makes "I emptied this" look
+    // exactly like "I never touched this", and the committed value wins.
+    if (value === undefined || value === '') next[head] = CLEARED
     else next[head] = value
     return next
   }

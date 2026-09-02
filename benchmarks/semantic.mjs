@@ -42,6 +42,13 @@ const OPEN_VOCABULARY = [
   { query: 'experience leading or starting a community', expect: /codestreak/i, absent: ['starting'] },
   { query: 'coursework in data and statistics', expect: /iit|madras|data science/i, absent: ['coursework'] },
   { query: 'proof that he can write efficient algorithms', expect: /leetcode|hackerrank|codeforces|solution/i, absent: ['proof', 'efficient'] },
+  // Added to restore the sample size after three of the originals turned out to share words
+  // with the corpus. Each targets a record that genuinely exists; the vocabulary check above
+  // decides whether they count, and a miss is recorded as a miss.
+  { query: 'anything to do with trains or railways', expect: /rail|atc/i, absent: ['trains', 'railways'] },
+  { query: 'systems that spot dishonest financial activity', expect: /raven|verification/i, absent: ['dishonest', 'spot'] },
+  { query: 'moving an application from one operating system to another', expect: /clicky|windows/i, absent: ['moving', 'operating'] },
+  { query: 'anything about electric vehicles or power networks', expect: /ev grid|oracle/i, absent: ['electric', 'vehicles'] },
 ]
 
 /** Paraphrases carried over from the previous benchmark, so the gate is comparable. */
@@ -84,16 +91,28 @@ say(dim(`  ${agent._index.length} documents · ${DEFAULT_MODEL} · local, no API
 /* Verify the premise ---------------------------------------------------------- */
 
 rule('Out-of-vocabulary check')
-let leaked = 0
-for (const { query, absent } of OPEN_VOCABULARY) {
-  const present = absent.filter((word) => vocabulary.has(word))
+
+// Each case is sorted into one of two piles before anything is scored. A case whose "absent"
+// words turn out to be in the corpus is not measuring open-vocabulary retrieval — a lexical
+// index could answer it — so counting it towards the open-vocabulary score would inflate that
+// score with cases it was never entitled to. It is still run and still reported, just under a
+// name that says what it is.
+const genuine = []
+const overlapping = []
+
+for (const testCase of OPEN_VOCABULARY) {
+  const present = testCase.absent.filter((word) => vocabulary.has(word))
   if (present.length) {
-    leaked += 1
-    say(yellow(`  "${present.join(', ')}" IS in the corpus — ${query.slice(0, 44)}`))
+    overlapping.push({ ...testCase, present })
+    say(yellow(`  "${present.join(', ')}" IS in the corpus — ${testCase.query.slice(0, 44)}`))
+  } else {
+    genuine.push(testCase)
   }
 }
-say(leaked
-  ? yellow(`  ${leaked} case(s) are not genuinely open-vocabulary`)
+
+say(overlapping.length
+  ? yellow(`  ${genuine.length} of ${OPEN_VOCABULARY.length} cases are genuinely open-vocabulary; `
+    + `${overlapping.length} scored separately`)
   : green(`  all ${OPEN_VOCABULARY.length} cases use words absent from the corpus`))
 
 /* The comparison -------------------------------------------------------------- */
@@ -121,7 +140,10 @@ const run = async (cases, label) => {
   return { lexical, hybrid, total: cases.length }
 }
 
-const open = await run(OPEN_VOCABULARY, 'Open-vocabulary queries')
+const open = await run(genuine, 'Open-vocabulary queries (no corpus overlap)')
+const overlap = overlapping.length
+  ? await run(overlapping, 'Cases whose words are in the corpus after all')
+  : { lexical: 0, hybrid: 0, total: 0 }
 const para = await run(PARAPHRASES, 'Paraphrases')
 
 /* Precision ------------------------------------------------------------------- */
@@ -162,17 +184,28 @@ rule('Gate')
 const checks = [
   ['paraphrases ≥ 6/7', para.hybrid >= 6, `${para.hybrid}/${para.total}`],
   ['false positives ≤ 0', falsePositives === 0, String(falsePositives)],
-  ['open-vocabulary ≥ 10 cases', OPEN_VOCABULARY.length >= 10, String(OPEN_VOCABULARY.length)],
-  ['open-vocabulary majority retrieved', open.hybrid > open.total / 2, `${open.hybrid}/${open.total}`],
-  ['beats the lexical baseline', open.hybrid + para.hybrid > open.lexical + para.lexical,
-    `${open.hybrid + para.hybrid} vs ${open.lexical + para.lexical}`],
+  // Counts only the cases that survived the vocabulary check. The gate has always been about
+  // having enough genuine cases to measure; scoring the leaked ones towards it would have made
+  // the number easier to hit by writing worse cases.
+  ['genuinely open-vocabulary ≥ 10 cases', genuine.length >= 10, `${genuine.length} of ${OPEN_VOCABULARY.length}`],
+  ['open-vocabulary majority retrieved', open.total > 0 && open.hybrid > open.total / 2, `${open.hybrid}/${open.total}`],
+  // The baseline comparison spans every case, leaked ones included: it asks whether hybrid
+  // retrieval beats lexical retrieval overall, which is a fair question about all of them.
+  ['beats the lexical baseline',
+    open.hybrid + overlap.hybrid + para.hybrid > open.lexical + overlap.lexical + para.lexical,
+    `${open.hybrid + overlap.hybrid + para.hybrid} vs ${open.lexical + overlap.lexical + para.lexical}`],
 ]
 for (const [name, passed, value] of checks) {
   say(`${passed ? green('  PASS') : yellow('  FAIL')}  ${name.padEnd(36)} ${bold(value)}`)
 }
 
 rule('Summary')
-say(`  Open-vocabulary   lexical ${open.lexical}/${open.total}  →  hybrid ${bold(`${open.hybrid}/${open.total}`)}`)
+say(`  Open-vocabulary   lexical ${open.lexical}/${open.total}  →  hybrid ${bold(`${open.hybrid}/${open.total}`)}`
+  + dim(`   (genuine cases only, of ${OPEN_VOCABULARY.length} written)`))
+if (overlap.total) {
+  say(`  Corpus overlap    lexical ${overlap.lexical}/${overlap.total}  →  hybrid ${overlap.hybrid}/${overlap.total}`
+    + dim('   (not counted as open-vocabulary)'))
+}
 say(`  Paraphrases       lexical ${para.lexical}/${para.total}  →  hybrid ${bold(`${para.hybrid}/${para.total}`)}`)
 say(`  False positives   ${bold(String(falsePositives))} of ${NEGATIVES.length}`)
 say('')

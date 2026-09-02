@@ -125,7 +125,7 @@ export function useSearch() {
   const semanticSearch = useCallback(async (query) => {
     const agent = agentRef.current
     if (!agent || !query?.trim()) return []
-    if (!agent._vectors?.size) return agent.search(query, { limit: 24 })
+    if (!agent.hasEmbeddings()) return agent.search(query, { limit: 24 })
 
     setSemanticState((state) => (state === 'ready' ? state : 'loading'))
     try {

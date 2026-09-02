@@ -233,13 +233,36 @@ describe('the write boundary', () => {
     }), 400)
   })
 
+  test('a save with no head is refused before GitHub', async () => {
+    // `commitFiles` skips the precondition entirely when `expectedHead` is absent, so a client
+    // that omitted it would have silently opted out of stale-write protection. The ref update's
+    // own `force: false` only covers the milliseconds between this Worker's read and its write,
+    // not the minutes since the editor loaded.
+    const result = await call({ cookie, body: validSave })
+    refusedBeforeGitHub(result, 400)
+    assert.match(String(result.body.error), /which commit it was made against/)
+  })
+
+  test('a blank or non-string head is refused too', async () => {
+    for (const head of ['', '   ', null, 42, {}, true]) {
+      refusedBeforeGitHub(await call({ cookie, body: { ...validSave, head } }), 400)
+    }
+  })
+
+  test('a valid head is passed through to the commit', async () => {
+    const result = await call({ cookie, body: { ...validSave, head: 'HEAD1' } })
+    assert.ok(networkCalls.length > 0, 'a save with a head should reach GitHub')
+    // The stub throws, so this is a 500 — the point is that it got past validation.
+    assert.notEqual(result.status, 400)
+  })
+
   test('a repository named in the body does not redirect the write', async () => {
     // The body is allowed to carry anything; the Worker reads the repository from the session.
     // This one is *valid*, so it proceeds to GitHub — and the assertion is that the URL it
     // reaches for is the session's repository, not the body's.
     const result = await call({
       cookie,
-      body: { ...validSave, repository: 'mallory/evil', owner: 'mallory', repo: 'evil' },
+      body: { ...validSave, head: 'HEAD1', repository: 'mallory/evil', owner: 'mallory', repo: 'evil' },
     })
     assert.ok(networkCalls.length > 0, 'a valid request should have reached GitHub')
     for (const url of networkCalls) {
@@ -275,7 +298,7 @@ describe('no route hands a credential to the browser', () => {
     // The GitHub stub throws a plain Error carrying a URL. If that reached the client it would
     // describe the Worker's internals to anyone who could provoke it.
     const cookie = `__Host-portfolio_admin=${await session()}`
-    const result = await call({ cookie, body: validSave })
+    const result = await call({ cookie, body: { ...validSave, head: 'HEAD1' } })
     assert.equal(result.status, 500)
     assert.equal(result.body.error, 'Something went wrong.')
     assert.ok(!result.text.includes('api.github.com'))
@@ -292,6 +315,22 @@ describe('cookies', () => {
     assert.match(cookie, /Path=\/(;|$)/)
     // `__Host-` forbids Domain; a cookie carrying one would be silently dropped by the browser.
     assert.ok(!/Domain=/i.test(cookie))
+  })
+
+  test('no JSON response may be cached anywhere', async () => {
+    // `/api/session` is literally an identity document, and an error body differs between a
+    // signed-in and a signed-out caller. `no-store` rather than `no-cache`: the latter still
+    // lets a shared cache keep a copy.
+    const cookie = `__Host-portfolio_admin=${await session()}`
+    for (const result of [
+      await call({ path: '/api/session', method: 'GET' }),
+      await call({ path: '/api/session', method: 'GET', cookie }),
+      await call({ path: '/nope', method: 'GET' }),
+      await call({ cookie, body: validSave }),
+      await call({ path: '/auth/logout', method: 'POST' }),
+    ]) {
+      assert.equal(result.headers.get('cache-control'), 'no-store')
+    }
   })
 
   test('CORS names one origin and never a wildcard, because responses carry credentials', async () => {

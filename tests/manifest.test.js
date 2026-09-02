@@ -166,12 +166,15 @@ describe('search cannot reach what the manifest withholds', () => {
     }
   })
 
-  test('copied output echoes the question, and only the question, from user input', () => {
+  test('copied output echoes the question, and only the question, from user input', async () => {
     // Documenting the behaviour the test above deliberately excludes: the question is included
     // because a result set is uninterpretable without it. It is the searcher's own text, so it
     // carries no portfolio data — but anyone pasting the result elsewhere is also pasting what
     // they typed, which is worth stating rather than leaving implicit.
-    const markdown = resultsToMarkdownSync([], { query: 'anything typed here' })
+    // Imported here rather than reused from the test above, which assigned it to a shared
+    // binding: this has to pass when run alone by name filter.
+    const { resultsToMarkdown } = await import('@portfolio-engine/agent')
+    const markdown = resultsToMarkdown([], { query: 'anything typed here' })
     assert.match(markdown, /anything typed here/)
   })
 

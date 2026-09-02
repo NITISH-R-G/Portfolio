@@ -81,8 +81,13 @@ export function stem(term) {
     break
   }
 
-  // A trailing doubled consonant left by the cut, folded so inflected pairs land together.
-  return word.replace(/([^aeiou])$/, '$1')
+  // A trailing doubled consonant left by the cut, folded so inflected pairs land together:
+  // "running" loses "ing" to leave "runn", which has to become "run" before it can match "run".
+  //
+  // The character between the group and the anchor was a literal 0x01 byte rather than the
+  // backreference `\1` it was meant to be — a control character no word contains, so the rule
+  // matched nothing and every doubled stem stayed doubled.
+  return word.replace(/([^aeiou])\1$/, '$1')
 }
 
 /**

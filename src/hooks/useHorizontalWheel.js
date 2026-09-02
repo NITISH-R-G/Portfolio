@@ -45,24 +45,27 @@ export function useHorizontalWheel(ref, { enabled = true, multiplier = 1 } = {})
       const delta = event.deltaY * unit * multiplier
       if (!delta) return
 
-      // Clamp first, then ask whether anything would meaningfully move.
+      // Release only when the strip is already at the edge *in the direction being scrolled*.
       //
-      // The tolerance is load-bearing, not defensive padding. Scroll-snap and the track's own
-      // left padding hold the resting position a few pixels short of the true start — this
-      // strip settles at 4, and re-snaps back there if you scroll it to 0. An exact
-      // `scrollLeft <= 0` test therefore never fires, so a backward wheel at the first card
-      // was captured on every tick and moved nothing: the wheel appeared dead precisely where
-      // a visitor is most likely to try it.
+      // The previous version asked whether the attempted movement was smaller than the
+      // tolerance, which is a different question and answers it wrongly for small deltas: a
+      // trackpad emits three- and four-pixel ticks, so a slow horizontal gesture in the middle
+      // of the strip looked like "nothing would move" and leaked to the page. Wheel ticks are
+      // large enough to hide it; trackpads are not.
       //
-      // Eight pixels is comfortably larger than any snap or padding offset and an order of
-      // magnitude smaller than a single wheel tick, so it releases at the edges and can never
-      // release mid-strip.
+      // The tolerance is load-bearing at the start edge and not defensive padding. Scroll-snap
+      // and the track's own left padding hold the resting position a few pixels short of the
+      // true start — this strip settles at 4, and re-snaps back there if you scroll it to 0. An
+      // exact `scrollLeft <= 0` test therefore never fires, so a backward wheel at the first
+      // card was captured on every tick and moved nothing: the wheel appeared dead precisely
+      // where a visitor is most likely to try it.
       const max = element.scrollWidth - element.clientWidth
-      const next = Math.max(0, Math.min(max, element.scrollLeft + delta))
-      if (Math.abs(next - element.scrollLeft) < EDGE_TOLERANCE) return
+      const atStart = delta < 0 && element.scrollLeft <= EDGE_TOLERANCE
+      const atEnd = delta > 0 && element.scrollLeft >= max - EDGE_TOLERANCE
+      if (atStart || atEnd) return
 
       event.preventDefault()
-      element.scrollLeft = next
+      element.scrollLeft = Math.max(0, Math.min(max, element.scrollLeft + delta))
     }
 
     // Non-passive because it conditionally calls `preventDefault`. The condition above is what

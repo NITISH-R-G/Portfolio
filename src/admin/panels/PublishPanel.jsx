@@ -37,7 +37,12 @@ export default function PublishPanel({ builder }) {
   const [session, setSession] = useState(null)
   const [status, setStatus] = useState('loading')
   const [result, setResult] = useState(null)
-  const [error, setError] = useState(() => ERRORS[new URLSearchParams(window.location.search).get('error')] ?? null)
+  const [error, setError] = useState(() => {
+    // `Object.hasOwn`, not a plain lookup: `?error=constructor` would otherwise find
+    // `Object.prototype.constructor` and render a function where a sentence belongs.
+    const code = new URLSearchParams(window.location.search).get('error')
+    return code && Object.hasOwn(ERRORS, code) ? ERRORS[code] : null
+  })
 
   const refresh = useCallback(async () => {
     const next = await getSession(config)
@@ -83,7 +88,11 @@ export default function PublishPanel({ builder }) {
         {session?.authenticated && (
           <div className="admin-actions">
             <button type="button" className="btn-admin btn-admin-ghost"
-              onClick={() => signOut(config).then(refresh)}>
+              onClick={() => signOut(config).then(refresh, (err) => {
+                // Refreshing anyway would re-read a session that is still valid and leave the
+                // panel looking signed out when it is not — worse than saying nothing worked.
+                setError(`Could not sign out: ${err.message}`)
+              })}>
               <Icon name="LogOut" size={14} /> Sign out
             </button>
           </div>
@@ -120,13 +129,16 @@ export default function PublishPanel({ builder }) {
             <code>{session.repository}</code> on <code>{session.branch}</code>.
           </p>
 
-          {session.degraded && (
+          {!session.head ? (
+            // Without the commit the editor was looking at, a save cannot carry the
+            // precondition that makes concurrent edits safe — and the Worker rejects one that
+            // does not. Offering the button anyway would be offering a failure.
             <Note tone="warn" icon="AlertTriangle">
-              {session.degraded} Publishing may fail until GitHub is reachable.
+              {session.degraded ?? 'Could not read the current state of your repository.'}
+              {' '}Publishing is unavailable until it is reachable — your changes are safe in
+              this browser, and the blocks below still save them by hand.
             </Note>
-          )}
-
-          {pending.length === 0 ? (
+          ) : pending.length === 0 ? (
             <Note icon="Check">
               Nothing to publish — the repository already matches what you see here.
             </Note>

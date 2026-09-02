@@ -60,6 +60,7 @@ export default function SearchDialog({ open, onClose, initialQuery = '', onQuery
   const [focused, setFocused] = useState(false)
 
   const inputRef = useRef(null)
+  const dialogRef = useRef(null)
   const listRef = useRef(null)
   const restoreRef = useRef(null)
 
@@ -163,6 +164,31 @@ export default function SearchDialog({ open, onClose, initialQuery = '', onQuery
       onClose()
       return
     }
+
+    // Keep Tab inside the dialog. `aria-modal="true"` tells a screen reader that everything
+    // behind this is inert, and without a trap that was a claim the keyboard contradicted:
+    // Tab walked straight out into a page the same markup had just declared unreachable.
+    if (event.key === 'Tab' && dialogRef.current) {
+      const focusable = [...dialogRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])',
+      )].filter((el) => el.offsetParent !== null || el === document.activeElement)
+
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      // Also covers focus sitting on the dialog itself or on something that has since been
+      // removed, where `activeElement` is neither end but is outside the list.
+      if (event.shiftKey && (document.activeElement === first || !focusable.includes(document.activeElement))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+      return
+    }
+
     if (!flat.length) return
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -197,6 +223,7 @@ export default function SearchDialog({ open, onClose, initialQuery = '', onQuery
   return (
     <div className="search-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div
+        ref={dialogRef}
         className="search-dialog"
         role="dialog"
         aria-modal="true"

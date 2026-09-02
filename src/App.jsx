@@ -41,7 +41,11 @@ function App() {
   })
   // Held in a ref so `closeSearch` can reach the latest `sync` without depending on it —
   // the two are mutually referential and a direct dependency would recreate both every render.
-  syncSearchUrlRef.current = syncSearchUrl
+  //
+  // Assigned in an effect rather than during render: a render can be thrown away or replayed,
+  // and writing to a ref while it happens makes the stored value depend on which renders React
+  // decided to keep. The effect runs only for the render that committed.
+  useEffect(() => { syncSearchUrlRef.current = syncSearchUrl }, [syncSearchUrl])
 
   // A rough count of what is searchable, so the trigger can say so rather than claiming
   // capability in the abstract.

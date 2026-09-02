@@ -82,7 +82,14 @@ describe('the deployment workflow refuses to ship a degraded site', () => {
   })
 
   test('the order is checkout, install, verify, build, deploy', () => {
-    const at = (needle) => workflow.indexOf(needle)
+    // Asserting presence rather than trusting `indexOf`: a renamed step returns -1, and -1 is
+    // less than every real index, so a missing marker would have satisfied the comparisons
+    // below and reported a passing ordering test for a workflow that no longer has the step.
+    const at = (needle) => {
+      const index = workflow.indexOf(needle)
+      assert.ok(index >= 0, `the workflow no longer contains ${needle}`)
+      return index
+    }
     assert.ok(at('actions/checkout') < at('npm ci'))
     assert.ok(at('npm ci') < at('npm test'))
     assert.ok(at('npm test') < at('run: npm run build'))

@@ -46,7 +46,7 @@ export default function StylePanel({ builder }) {
   return (
     <Panel
       title="Style"
-      description="Themes are configuration, not code. Everything below writes one value into portfolio.config.js."
+      description="Themes are configuration, not code. Everything below writes one value into src/data/config.json — or into portfolio.config.js if you would rather type it yourself."
     >
       <h3 className="admin-subheading">Theme</h3>
       <div className="theme-grid">

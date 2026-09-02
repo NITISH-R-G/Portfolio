@@ -267,6 +267,17 @@ async function save(request, env) {
   const validated = validateSave(body)
   if (!validated.ok) return json({ error: validated.error }, 400, env)
 
+  // Optimistic concurrency is not optional. `commitFiles` skips the precondition entirely when
+  // `expectedHead` is absent, and the ref update's own `force: false` only covers the
+  // milliseconds between this Worker's read and its write — not the minutes since the editor
+  // loaded, which is the window a stale save actually lives in. A client that simply omits
+  // `head` would therefore have silently opted out of the protection.
+  if (typeof body.head !== 'string' || !body.head.trim()) {
+    return json({
+      error: 'This save did not say which commit it was made against. Reload the editor and try again.',
+    }, 400, env)
+  }
+
   const token = await installationToken(config.app, claims.installation, config.repo)
   const result = await commitFiles({
     token,
@@ -277,9 +288,9 @@ async function save(request, env) {
     // The commit message names the person, because a repository with a publishing API should
     // not have an audit trail that says "someone changed something".
     message: `content: update via admin (${claims.sub})\n\n${validated.files.map((f) => `- ${f.path}`).join('\n')}`,
-    // Absent when the editor could not read a head, in which case the ref update's own
-    // `force: false` is still the backstop.
-    expectedHead: typeof body.head === 'string' ? body.head : undefined,
+    // Required, and checked above. Passing it is what makes a save made against a stale view
+    // of the branch fail loudly rather than overwrite whatever landed in between.
+    expectedHead: body.head,
   })
 
   return json({ ok: true, ...result }, 200, env)
@@ -344,9 +355,20 @@ const corsHeaders = (env) => ({
 
 const preflight = (env) => new Response(null, { status: 204, headers: corsHeaders(env) })
 
+/**
+ * Every response from this Worker depends on who is asking — `/api/session` most obviously,
+ * but an error body differs between a signed-in and a signed-out caller too. `no-store` rather
+ * than `no-cache`: the latter still permits a shared cache to keep a copy and revalidate, and
+ * a copy of someone's session state is exactly what should not exist anywhere.
+ */
 const json = (body, status, env, extra = {}) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'content-type': 'application/json', ...corsHeaders(env), ...extra },
+  headers: {
+    'content-type': 'application/json',
+    'cache-control': 'no-store',
+    ...corsHeaders(env),
+    ...extra,
+  },
 })
 
 /**

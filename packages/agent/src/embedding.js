@@ -116,6 +116,40 @@ export class LocalEmbeddingProvider {
  * The key is supplied by the caller and never read from a bundled config: a browser build must
  * not be able to pick one up, because anything the browser can read is public.
  */
+/**
+ * Refuse to send an API key over a channel that anyone on the path can read.
+ *
+ * The key travels in an `Authorization: Bearer` header on every request, so a plaintext
+ * endpoint leaks it to every hop between here and the server — and unlike a leaked query, a
+ * leaked key keeps being useful. Loopback is the exception, because a self-hosted model server
+ * on `http://localhost:11434` never leaves the machine and is a real way people run these.
+ *
+ * @param {string} baseUrl
+ * @returns {string} the URL, trailing slash removed
+ */
+function requireSecureEndpoint(baseUrl) {
+  let url
+  try {
+    url = new URL(baseUrl)
+  } catch {
+    throw new EmbeddingUnavailable(`Not a valid endpoint URL: ${baseUrl}`)
+  }
+
+  const loopback = url.hostname === 'localhost'
+    || url.hostname === '127.0.0.1'
+    || url.hostname === '[::1]'
+    || url.hostname === '::1'
+
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
+    throw new EmbeddingUnavailable(
+      `Refusing to send an API key to ${url.origin} over ${url.protocol.replace(':', '')}. `
+      + 'Use https, or a loopback address for a local server.',
+    )
+  }
+
+  return baseUrl.replace(/\/$/, '')
+}
+
 export class RemoteEmbeddingProvider {
   /**
    * @param {{
@@ -126,7 +160,7 @@ export class RemoteEmbeddingProvider {
   constructor(options) {
     if (!options?.apiKey) throw new EmbeddingUnavailable('This provider needs an API key.')
     this.id = options.id ?? 'remote'
-    this.baseUrl = options.baseUrl.replace(/\/$/, '')
+    this.baseUrl = requireSecureEndpoint(options.baseUrl)
     this.model = options.model
     this.dimensions = options.dimensions
     this.requiresKey = true
@@ -259,4 +293,68 @@ function normalize(vector) {
   for (const value of vector) magnitude += value * value
   magnitude = Math.sqrt(magnitude) || 1
   return vector.map((value) => value / magnitude)
+}
+
+/* Binding an index to the corpus it was built from --------------------------------- */
+
+/**
+ * What gets embedded for a record.
+ *
+ * Deliberately not the raw concatenation the lexical index uses. A model attends to everything
+ * it is given, so ninety comma-separated GitHub topics drown a one-sentence description that
+ * actually says what the project is. Title and description carry the meaning; tags are included
+ * but truncated, because they are keywords and the lexical layer already matches those exactly.
+ *
+ * Lives here rather than in `scripts/embed.mjs` because the fingerprint below has to be computed
+ * from exactly the same strings on both sides — the writer and the checker. Two copies that
+ * drifted would make every build look stale.
+ *
+ * @param {import('./search.js').SearchDocument} document
+ * @returns {string}
+ */
+export function embeddingTextFor(document) {
+  const parts = [document.title]
+  if (document.subtitle) parts.push(document.subtitle)
+  if (document.text) parts.push(document.text.slice(0, 600))
+  if (document.tags?.length) parts.push(document.tags.slice(0, 12).join(', '))
+  return parts.join('. ')
+}
+
+/**
+ * A deterministic summary of the corpus an index was built from.
+ *
+ * Ids alone are not enough. A record keeps its id when its description is rewritten, so an index
+ * built before the edit still holds a vector for it — one describing text nobody can read any
+ * more. Nothing would notice: the count matches, the ids match, and the site reports
+ * `hybrid-semantic` while answering questions from a stale reading of itself.
+ *
+ * So the fingerprint covers the exact strings that were embedded. Any edit to any of them, and
+ * any change to `embeddingTextFor` itself, produces a different value.
+ *
+ * FNV-1a rather than a cryptographic hash: this is a change-detector, not a security boundary,
+ * and nobody gains anything by forging a match against their own portfolio.
+ *
+ * @param {import('./search.js').SearchDocument[]} documents
+ * @returns {string}
+ */
+export function fingerprintDocuments(documents) {
+  let hash = 0x811c9dc5
+  const write = (value) => {
+    for (let i = 0; i < value.length; i += 1) {
+      hash ^= value.charCodeAt(i)
+      hash = Math.imul(hash, 0x01000193) >>> 0
+    }
+  }
+
+  // Sorted, so reordering the corpus without changing its content does not invalidate a
+  // perfectly good index.
+  const ordered = [...documents].sort((a, b) => String(a.id).localeCompare(String(b.id)))
+  for (const document of ordered) {
+    write(String(document.id))
+    write('\u0000')
+    write(embeddingTextFor(document))
+    write('\u0000')
+  }
+
+  return `fnv1a-${hash.toString(16).padStart(8, '0')}-${documents.length}`
 }

@@ -19,29 +19,13 @@
  */
 
 import { buildIndex } from '../packages/agent/src/search.js'
-import { LocalEmbeddingProvider, packVectors, DEFAULT_MODEL } from '../packages/agent/src/embedding.js'
+import {
+  LocalEmbeddingProvider, packVectors, DEFAULT_MODEL,
+  embeddingTextFor, fingerprintDocuments,
+} from '../packages/agent/src/embedding.js'
 import { toPublicManifest } from '../src/core/standard/public.js'
 import { loadBuiltPortfolio, PATHS, relative, fs, path } from './lib/portfolio.mjs'
 import { dim, ok, rule, say, warn } from './lib/ui.mjs'
-
-/**
- * What gets embedded for a record.
- *
- * Deliberately not the raw concatenation the lexical index uses. A model attends to everything
- * it is given, so ninety comma-separated GitHub topics drown a one-sentence description that
- * actually says what the project is. Title and description carry the meaning; tags are
- * included but truncated, because they are keywords and the lexical layer already matches
- * those exactly.
- *
- * @param {import('../packages/agent/src/search.js').SearchDocument} document
- */
-function textFor(document) {
-  const parts = [document.title]
-  if (document.subtitle) parts.push(document.subtitle)
-  if (document.text) parts.push(document.text.slice(0, 600))
-  if (document.tags.length) parts.push(document.tags.slice(0, 12).join(', '))
-  return parts.join('. ')
-}
 
 async function main() {
   const built = await loadBuiltPortfolio({ onError: (m) => warn(m) })
@@ -73,7 +57,7 @@ async function main() {
   const loadMs = performance.now() - loadStart
 
   const embedStart = performance.now()
-  const vectors = await provider.embed(documents.map(textFor))
+  const vectors = await provider.embed(documents.map(embeddingTextFor))
   const embedMs = performance.now() - embedStart
 
   const packed = packVectors(vectors)
@@ -85,6 +69,10 @@ async function main() {
     // Ids, so a vector is bound to the document it describes rather than to a position that a
     // later change to the corpus would silently invalidate.
     ids: documents.map((document) => document.id),
+    // Binds the vectors to the exact text they describe. The build refuses to use an index
+    // whose fingerprint does not match the corpus it is about to ship, which is what stops a
+    // rewritten description from being searched through its previous meaning.
+    fingerprint: fingerprintDocuments(documents),
     data: packed.data,
     generatedAt: new Date().toISOString(),
   }

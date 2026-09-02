@@ -23,7 +23,7 @@
  * @module admin/publish
  */
 
-import { hasContent, mergeDeep, mergeOverrides } from './drafts.js'
+import { applyClears, hasContent, mergeDeep, mergeOverrides } from './drafts.js'
 
 /** The paths the Worker will accept. Mirrored here only to build the payload. */
 export const PUBLISHABLE = Object.freeze({
@@ -157,7 +157,10 @@ export function filesToPublish(builder, committed = {}) {
   ]
 
   return candidates
-    .map(({ path, value }) => ({ path, value: compact(value) }))
+    // `applyClears` before `compact`: the first turns "the user emptied this" into an absence,
+    // the second drops the empty containers that may be left behind. Order matters — compacting
+    // first would see the marker as content and keep the branch alive.
+    .map(({ path, value }) => ({ path, value: compact(applyClears(value)) }))
     // An empty document for a file that does not exist yet is not a change. Without this,
     // editing only the theme would offer to commit an empty `overrides.json` alongside it,
     // and the user would be shown a file they never touched.

@@ -50,7 +50,11 @@ const NEVER_PUBLISHED = ['phone']
  * @returns {Record<string, any>}
  */
 export function toPublicManifest(profile, options = {}) {
-  const privacy = options.config?.privacy ?? {}
+  // `defaults.js` sets `obfuscateEmail: true`, but this function is an exported boundary and
+  // gets called with configs that were never resolved through it. Falling back to `{}` meant a
+  // direct call published the real address in the most harvestable format there is — the exact
+  // failure this module exists to prevent. An explicit `false` still wins.
+  const privacy = { obfuscateEmail: true, ...(options.config?.privacy ?? {}) }
   const hasEmbeddings = Boolean(options.embeddings?.data)
 
   // Deliberately *not* `includeEvidence`. That block serializes every claim on a disputed

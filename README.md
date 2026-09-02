@@ -217,6 +217,8 @@ npm install @portfolio-engine/agent
 ```
 
 ```js
+import { PortfolioAgent } from '@portfolio-engine/agent'
+
 const portfolio = await PortfolioAgent.fromUrl('https://example.com/portfolio/')
 portfolio.search('projects involving machine learning')
 portfolio.findSkill('Python')     // → 12 repositories, and where it is used

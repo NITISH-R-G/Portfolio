@@ -181,6 +181,20 @@ export class PortfolioAgent {
   }
 
   /**
+   * Whether this portfolio was built with a semantic index.
+   *
+   * Exists so a consumer can tell "no embeddings" apart from "embeddings that found nothing"
+   * without reading a private field. `semanticSearch` still handles the absent case itself —
+   * this is for a UI deciding whether to *promise* semantic search, not for deciding whether
+   * to call it.
+   *
+   * @returns {boolean}
+   */
+  hasEmbeddings() {
+    return Boolean(this._vectors?.size)
+  }
+
+  /**
    * Search, with the embedding model deciding what is *about* the same thing.
    *
    * Async because it may have to load a model. Degrades to `search()` — never throws and never
@@ -193,11 +207,18 @@ export class PortfolioAgent {
    */
   async semanticSearch(query, options = {}) {
     if (!query?.trim()) return []
-    if (!this._vectors?.size) return this.search(query, options)
+    if (!this.hasEmbeddings()) return this.search(query, options)
 
     let scores
     try {
-      const provider = options.provider ?? this._provider ?? (this._provider = new LocalEmbeddingProvider())
+      // The model the index was built with, not the package default. A portfolio whose
+      // `npm run embed` used a different model ships vectors in that model's space, and
+      // embedding the query with another one compares two unrelated geometries — the scores
+      // come back plausible and mean nothing. An explicitly passed provider still wins: the
+      // caller has said which model they want.
+      const provider = options.provider
+        ?? this._provider
+        ?? (this._provider = new LocalEmbeddingProvider({ model: this._embeddingModel }))
       const [vector] = await provider.embed([query])
       if (!vector) throw new EmbeddingUnavailable('no vector')
 
@@ -351,14 +372,17 @@ export class PortfolioAgent {
   }
 }
 
-export { discoverManifest, validateManifest, PortfolioError } from './manifest.js'
+export {
+  discoverManifest, validateManifest, PortfolioError,
+  defaultUrlPolicy, isPrivateHost, MAX_REDIRECTS,
+} from './manifest.js'
 export { buildIndex, rank, tokenize, expandQuery, WEIGHTS } from './search.js'
 export { parseQuery, describeQuery } from './query.js'
 export { stem, buildSemanticIndex, relatedTerms } from './semantic.js'
 export {
   LocalEmbeddingProvider, RemoteEmbeddingProvider, openRouterProvider, groqProvider,
   customProvider, EmbeddingUnavailable, packVectors, unpackVectors, cosine,
-  DEFAULT_MODEL, DEFAULT_DIMENSIONS,
+  DEFAULT_MODEL, DEFAULT_DIMENSIONS, embeddingTextFor, fingerprintDocuments,
 } from './embedding.js'
 export { manifestToMarkdown, entityToMarkdown, resultsToMarkdown, dedupe } from './markdown.js'
 export { manifestToPrompt, entityToPrompt, resultsToPrompt } from './prompt.js'

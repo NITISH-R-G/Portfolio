@@ -57,7 +57,14 @@ function readJsonIfPresent(file) {
   if (!fs.existsSync(file)) return null
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
+    // Valid JSON, wrong shape. Silently returning null here meant a config written as an array
+    // or a bare string looked identical to no config at all, and the person wondering why their
+    // settings vanished had nothing to go on.
+    console.warn(
+      `[portfolio] src/data/config.json must contain a JSON object, not ${describe(parsed)}. Ignored.`,
+    )
+    return null
   } catch (err) {
     // Loud, because this file is written by a machine: if it is malformed, something upstream
     // is broken and silently ignoring it would hide the actual fault.
@@ -65,5 +72,10 @@ function readJsonIfPresent(file) {
     return null
   }
 }
+
+/** @param {unknown} value */
+const describe = (value) => (
+  value === null ? 'null' : Array.isArray(value) ? 'an array' : `a ${typeof value}`
+)
 
 export { ROOT }
