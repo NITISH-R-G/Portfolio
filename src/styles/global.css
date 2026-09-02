@@ -40,6 +40,40 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  /* ── Motion tokens ──────────────────────────────────────────────
+     One coherent scale instead of ~90 hardcoded transition literals.
+     Values come from two places, and each is named honestly:
+
+     1. Durations/easings transitions.dev documents for a matching UI
+        job (dropdown/panel open-close asymmetry, entrance reveal,
+        tooltip intent-delay, stagger) are adopted at their documented
+        value — matched by what the motion DOES, never by which raw
+        number happens to be closest. `--motion-ease-smooth` below is
+        exactly transitions.dev's `--ease-smooth-out`, adopted because
+        this project already used it (as `[0.22, 1, 0.36, 1]`) for the
+        same job — page/section entrance — in most places; the
+        remaining `[0.16, 1, 0.3, 1]` outliers converge onto it.
+     2. transitions.dev's scale is built for discrete components —
+        modal, dropdown, badge, tooltip. Most of this project's
+        transitions are continuous hover-feedback on plain elements
+        (a card's border lighting up, a chip's background shifting),
+        a job the catalogue has no row for. Forcing those onto
+        `--duration-quick` (150ms) because it is numerically close
+        would be exactly the mistake transitions-polish's own doctrine
+        warns against — matching on usage, never on the nearest
+        number. So `--motion-hover` / `--motion-hover-fast` are this
+        project's own tokens, set to the values ~90 existing hover
+        transitions already overwhelmingly agreed on (0.14s / 0.18s)
+        before this pass — extracting a working consensus, not
+        inventing one. */
+  --motion-hover: 0.14s;        /* color/background/border hover feedback */
+  --motion-hover-fast: 0.18s;   /* + transform/box-shadow hover feedback (lift, glow) */
+  --motion-open: 250ms;         /* dropdown/panel/modal open — transitions.dev --duration-fast */
+  --motion-close: 150ms;        /* dropdown/modal close — transitions.dev --duration-quick */
+  --motion-tooltip-delay: 80ms; /* intent-filtering delay before a tooltip/hint appears */
+  --motion-stagger: 40ms;       /* per-item stagger offset, small groups */
+  --motion-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1); /* entrance reveal, open/close, resize */
 }
 
 * {
@@ -50,7 +84,12 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Deliberately not `scroll-behavior: smooth`.
+     Every call site that wants animated scrolling already passes
+     `scrollIntoView({ behavior })` explicitly — and passes `'auto'` under reduced motion, which
+     a global rule would silently override. It also fought the momentum-scroll library for
+     control of the same scrollTop whenever both were on, which is a large part of why
+     scrolling felt laggy. */
   overflow-wrap: anywhere;
 }
 
@@ -66,45 +105,83 @@ body {
   overflow-x: hidden;
 }
 
-/* Default: preserve native cursor everywhere */
-html,
-body,
-#root,
-.portfolio-surface,
-.portfolio-surface * {
-  cursor: auto;
-}
-
-/* Hide native cursor only when custom cursor is actively visible */
-@media (hover: hover) and (pointer: fine) {
-  body.custom-cursor-active .portfolio-surface,
-  body.custom-cursor-active .portfolio-surface a,
-  body.custom-cursor-active .portfolio-surface button,
-  body.custom-cursor-active .portfolio-surface [role="button"],
-  body.custom-cursor-active .portfolio-surface .nav-icon,
-  body.custom-cursor-active .portfolio-surface .social-icon {
-    cursor: none;
-  }
-
-  /* Preserve text selection affordance */
-  body.custom-cursor-active .portfolio-surface p,
-  body.custom-cursor-active .portfolio-surface h1,
-  body.custom-cursor-active .portfolio-surface h2,
-  body.custom-cursor-active .portfolio-surface h3,
-  body.custom-cursor-active .portfolio-surface h4,
-  body.custom-cursor-active .portfolio-surface li,
-  body.custom-cursor-active .portfolio-surface span,
-  body.custom-cursor-active .portfolio-surface input,
-  body.custom-cursor-active .portfolio-surface textarea,
-  body.custom-cursor-active .portfolio-surface [contenteditable="true"] {
-    cursor: text;
-  }
-}
-
 a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ── Search ────────────────────────────────────────────────────────────────
+   The one piece of chrome that sits above the whole portfolio, because it is the
+   thing a visitor is least likely to guess exists and most likely to want. Sticky
+   rather than fixed: it stays reachable while scrolling without being lifted onto
+   its own compositor layer over the entire page, which is what makes a fixed bar
+   with a blur expensive on long documents. */
+.search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .search-bar { background: var(--color-bg); }
+}
+
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: min(560px, 100%);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  cursor: pointer;
+  transition: border-color var(--motion-hover) ease, color var(--motion-hover) ease,
+    background var(--motion-hover) ease;
+}
+
+.search-trigger:hover,
+.search-trigger:focus-visible {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+}
+
+.search-trigger:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.search-trigger-label {
+  flex: 1;
+  text-align: left;
+}
+
+.search-trigger-kbd,
+.search-legend kbd,
+.search-close kbd {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  padding: 2px 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-faint);
+  background: var(--color-bg);
+}
+
+/* ⌘ on Apple platforms, Ctrl everywhere else. Set from JS would mean a hydration
+   mismatch; a content property keyed off a body class avoids rendering the wrong
+   one first and correcting it. */
+.search-trigger-mod::before { content: 'Ctrl '; }
+body.is-apple .search-trigger-mod::before { content: '⌘'; }
 
 /* Page Layout — Editorial resume shell */
 .page-wrapper {
@@ -183,7 +260,7 @@ a {
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 100%;
-  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease, background var(--motion-hover) ease;
 }
 
 .skill-tag:hover {
@@ -277,7 +354,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-muted);
-  transition: border-color 0.14s ease, color 0.14s ease;
+  transition: border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .social-icon:hover {
@@ -337,7 +414,13 @@ a {
   gap: 24px;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
+  /* `proximity`, not `mandatory`. Mandatory snapping made every wheel tick jump a whole card,
+     and — because the track carries 4px of left padding — it clamped `scrollLeft` so it could
+     never reach 0. That broke the wheel handler's start-boundary check, which reads "am I at
+     the beginning?", so a backward wheel at the first card was captured forever instead of
+     releasing to the page. Proximity keeps the tidy resting positions without owning the
+     range. */
+  scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding: 8px 4px 16px;
@@ -367,7 +450,7 @@ a {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease, transform var(--motion-hover-fast) ease;
 }
 
 .project-scroll-card:hover {
@@ -397,6 +480,9 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Intentional exception: 500ms, not a hover token. A slower image zoom is a legitimate
+     emphasis moment (transitions.dev's --duration-very-slow is the same 500ms for exactly
+     that usage), distinct from the quick color/border feedback the hover tokens cover. */
   transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -475,7 +561,7 @@ a {
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   flex-shrink: 0;
-  transition: background 0.14s ease, color 0.14s ease, transform 0.18s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
 }
 
 .project-scroll-card:hover .project-scroll-arrow {
@@ -501,7 +587,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease, opacity var(--motion-hover) ease;
   opacity: 0;
 }
 
@@ -569,7 +655,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+  transition: border-color var(--motion-hover) ease, background var(--motion-hover) ease, transform var(--motion-hover) ease;
 }
 
 .generic-list-card:hover {
@@ -614,7 +700,7 @@ a {
 
 .generic-list-link {
   color: var(--color-text-muted);
-  transition: color 0.14s ease;
+  transition: color var(--motion-hover) ease;
   flex-shrink: 0;
   margin-top: 2px;
   display: inline-flex;
@@ -814,7 +900,7 @@ a {
   justify-content: center;
   font-size: 14px;
   line-height: 1;
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .btn-remove-inline:hover {
@@ -830,7 +916,7 @@ a {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-meta);
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .btn-add-small:hover {
@@ -851,7 +937,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease, transform var(--motion-hover-fast) ease;
 }
 
 .case-card:hover {
@@ -969,7 +1055,7 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   min-width: 80px;
-  transition: border-color 0.14s ease;
+  transition: border-color var(--motion-hover) ease;
 }
 
 .metric-badge:hover {
@@ -1007,7 +1093,7 @@ a {
   cursor: pointer;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
-  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease, background var(--motion-hover) ease;
 }
 
 .case-expand-btn:hover {
@@ -1027,18 +1113,53 @@ a {
   background: var(--color-border);
 }
 
+/* Accordion, transitions.dev's grid-rows pattern (see 21-accordion.md): the track
+   (.case-details) animates 0fr -> 1fr, so the height itself is never measured or driven by
+   JS — the browser's layout engine interpolates it.
+
+   Three levels deep, not two, and the reason is worth stating because it is easy to get
+   subtly wrong: `overflow: hidden` on a grid item zeroes out its *content-derived* minimum
+   size, but padding is part of the box itself, not content — it survives overflow clipping
+   and keeps the collapsed track pinned to (padding + border) tall instead of ~0. Verified
+   directly: with padding on `.case-details-inner` (the clipping item), collapsed measured
+   37px, matching that element's own padding-top + padding-bottom + its border exactly.
+   Moving padding one level further in, onto `.case-details-content` — a plain block with no
+   box-model contribution of its own to the clipping item's minimum size — collapses fully. */
 .case-details {
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion-close) var(--motion-ease-smooth);
+}
+
+.case-details[data-expanded="true"] {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--motion-open) var(--motion-ease-smooth);
 }
 
 .case-details-inner {
-  padding: 0 var(--space-5) var(--space-5);
-  border-top: 1px solid var(--color-border);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity var(--motion-close) var(--motion-ease-smooth);
+}
+
+.case-details[data-expanded="true"] .case-details-inner {
+  opacity: 1;
+  transition: opacity var(--motion-open) var(--motion-ease-smooth);
+}
+
+.case-details-content {
   padding-top: var(--space-4);
+  padding-right: var(--space-5);
+  padding-bottom: var(--space-5);
+  padding-left: var(--space-5);
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
+/* No dedicated reduced-motion override needed here — the project already zeroes every
+   transition-duration globally (see "Reduced Motion" below). Content still opens instantly
+   on click either way; only the animated interpolation is removed. */
 
 .case-detail-field {
   display: flex;
@@ -1119,7 +1240,7 @@ a {
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .case-link:hover {
@@ -1140,7 +1261,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease;
 }
 
 .experience-card:hover {
@@ -1196,7 +1317,7 @@ a {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease;
 }
 
 .education-card:hover {
@@ -1256,7 +1377,7 @@ a {
   font-size: var(--text-body);
   color: var(--color-text-muted);
   line-height: var(--leading-body);
-  transition: border-color 0.14s ease;
+  transition: border-color var(--motion-hover) ease;
 }
 
 .certification-item:hover {
@@ -1287,7 +1408,7 @@ a {
   align-items: center;
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
 }
 
 .contact-row:last-child {
@@ -1482,7 +1603,7 @@ a {
   justify-content: center;
   border-radius: var(--radius-lg);
   color: var(--color-text-muted);
-  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease, transform var(--motion-hover) ease;
 }
 
 .dock-icon:hover,
@@ -1588,68 +1709,6 @@ a {
   align-items: center;
   justify-content: center;
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Custom Cursor */
-.cursor-dot,
-.cursor-ring {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9999;
-  transform: translate3d(-50%, -50%, 0);
-  will-change: transform, opacity;
-}
-
-.cursor-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-text);
-  opacity: 1;
-  transition: opacity 0.14s ease;
-  z-index: 10000;
-}
-
-.cursor-ring {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid var(--color-text);
-  box-sizing: border-box;
-  opacity: 1;
-  transition: border-color 0.14s ease, transform 0.18s ease;
-  z-index: 9999;
-}
-
-.cursor-ring.interactive {
-  transform: translate3d(-50%, -50%, 0) scale(1.45);
-  border-color: var(--color-text);
-}
-
-.cursor-dot.interactive {
-  opacity: 0.6;
-}
-
-.cursor-label {
-  position: fixed;
-  pointer-events: none;
-  font-size: var(--text-meta);
-  font-weight: 500;
-  color: var(--color-text);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-3);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translate3d(-50%, -100%, 0) translateY(-8px);
-  transition: opacity 0.14s ease, transform 0.18s ease;
-  z-index: 10001;
-}
-
-.cursor-label.visible {
-  opacity: 1;
-  transform: translate3d(-50%, -100%, 0) translateY(0);
 }
 
 /* Focus Visible */
@@ -1815,8 +1874,11 @@ a:focus-visible,
     padding: var(--space-4);
   }
 
-  .case-details-inner {
-    padding: 0 var(--space-4) var(--space-4);
+  .case-details-content {
+    padding-top: 0;
+    padding-right: var(--space-4);
+    padding-bottom: var(--space-4);
+    padding-left: var(--space-4);
   }
 
   .generic-list-card {
@@ -1881,20 +1943,25 @@ a:focus-visible,
 /* Accessibility - Skip Link */
 .skip-link {
   position: absolute;
-  top: -100%;
+  /* transform, not top: `top` is a layout property, so animating it forces a reflow on
+     every frame of the transition. A translateY does the identical visual move on the
+     compositor only. Fires once per keyboard session, so this was never the lag source —
+     fixed anyway because "animate transform/opacity, not layout properties" should hold
+     everywhere, not just where it happens to be measurable. */
+  top: var(--space-4);
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(-150%);
   padding: var(--space-3) var(--space-6);
   background: var(--color-text);
   color: var(--color-bg);
   font-weight: 600;
   border-radius: var(--radius-lg);
   z-index: 10000;
-  transition: top 0.2s ease;
+  transition: transform var(--motion-hover-fast) var(--motion-ease-smooth);
 }
 
 .skip-link:focus {
-  top: var(--space-4);
+  transform: translateX(-50%) translateY(0);
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
@@ -1959,7 +2026,7 @@ a:focus-visible,
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -2052,7 +2119,7 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 400;
   cursor: pointer;
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .admin-nav-item:hover {
@@ -2088,7 +2155,7 @@ a:focus-visible,
   font-size: var(--text-body);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease, box-shadow var(--motion-hover) ease;
 }
 
 .btn-admin:focus-visible {
@@ -2159,7 +2226,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   outline: none;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  transition: border-color var(--motion-hover) ease, box-shadow var(--motion-hover) ease;
 }
 
 .field-input::placeholder,
@@ -2227,7 +2294,7 @@ a:focus-visible,
   border-radius: var(--radius-md);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease;
   flex-shrink: 0;
 }
 
@@ -2244,7 +2311,7 @@ a:focus-visible,
   height: 14px;
   border-radius: 50%;
   background: var(--color-text-muted);
-  transition: transform 0.18s ease, background 0.14s ease;
+  transition: transform var(--motion-hover-fast) ease, background var(--motion-hover) ease;
 }
 
 .toggle-track[data-checked="true"] .toggle-thumb {
@@ -2292,7 +2359,7 @@ a:focus-visible,
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
 }
 
 .image-preview-remove:hover {
@@ -2334,7 +2401,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .image-file-btn:hover {
@@ -2412,7 +2479,7 @@ a:focus-visible,
   padding: var(--space-4);
   margin-bottom: var(--space-3);
   background: var(--color-surface);
-  transition: border-color 0.14s ease;
+  transition: border-color var(--motion-hover) ease;
 }
 
 .item-card:hover {
@@ -2446,7 +2513,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background var(--motion-hover) ease;
 }
 
 .btn-remove:hover {
@@ -2474,7 +2541,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-meta);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease;
 }
 
 .btn-move:hover:not(:disabled) {
@@ -2506,7 +2573,7 @@ a:focus-visible,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .btn-add:hover {
@@ -2552,6 +2619,15 @@ a:focus-visible,
     justify-content: center;
   }
 
+  /* The unsaved badge is not a button, so `flex: 1` above never applied to it and nothing
+     stopped it being squeezed: at 375px it collapsed to a circle with its uppercase label
+     spilling over "View portfolio". Its own row instead — it is a status, and a status that
+     obscures the control next to it is worse than no status. */
+  .admin-actions .admin-dirty {
+    flex: 0 0 100%;
+    text-align: center;
+  }
+
   .field-grid {
     grid-template-columns: 1fr;
   }
@@ -2567,7 +2643,7 @@ a:focus-visible,
     z-index: 100;
     padding: var(--space-6) var(--space-4);
     transform: translateX(-100%);
-    transition: transform 0.18s ease;
+    transition: transform var(--motion-hover-fast) ease;
     max-height: 100vh;
     overflow-y: auto;
   }
@@ -2668,7 +2744,7 @@ a:focus-visible,
   text-align: left;
   font-family: var(--font-sans);
   color: var(--color-text);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover-fast) ease, box-shadow var(--motion-hover-fast) ease, transform var(--motion-hover-fast) ease;
 }
 
 .cert-thumb:hover {
@@ -2775,7 +2851,7 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .cert-lightbox-close:hover {
@@ -2903,7 +2979,7 @@ a:focus-visible,
   cursor: pointer;
   padding: 0;
   background: var(--color-surface);
-  transition: border-color 0.14s ease, transform 0.18s ease;
+  transition: border-color var(--motion-hover) ease, transform var(--motion-hover-fast) ease;
 }
 
 .cert-strip-thumb:hover {
@@ -2962,7 +3038,7 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease, color var(--motion-hover) ease;
 }
 
 .cert-lightbox-nav-btn:hover {
@@ -3009,7 +3085,7 @@ a:focus-visible,
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   border: 1px solid var(--color-border);
-  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease, transform var(--motion-hover) ease;
 }
 
 .proof-chip:hover {
@@ -3027,7 +3103,7 @@ a:focus-visible,
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+  transition: border-color var(--motion-hover) ease, background var(--motion-hover) ease, transform var(--motion-hover) ease;
   text-decoration: none;
   color: inherit;
 }
@@ -3107,4 +3183,425 @@ a:focus-visible,
   letter-spacing: var(--tracking-label);
   color: var(--color-text-faint);
   padding: var(--space-1) var(--space-2);
+}
+
+/* ── Search dialog ─────────────────────────────────────────────────────────
+   A modal over the page. Kept to transform/opacity only, and mounted lazily, so
+   opening it costs one composite rather than a layout pass over the document
+   behind it. */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(var(--space-4), 8vh, 96px) var(--space-4) var(--space-4);
+  background: rgba(0, 0, 0, 0.72);
+  animation: search-overlay-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+@keyframes search-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.search-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(70vh, 640px);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: search-dialog-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+@keyframes search-dialog-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The beam wrapper must not introduce its own box — it wraps the field and
+   inherits its radius, so the beam traces the control rather than a rectangle
+   floating around it. */
+.search-field-shell { padding: var(--space-3); }
+.search-beam { display: block; border-radius: var(--radius-md); }
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+}
+
+.search-input::placeholder { color: var(--color-text-faint); }
+/* The browser's own clear affordance duplicates Esc and sits under the close control. */
+.search-input::-webkit-search-cancel-button { display: none; }
+
+.search-close {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.search-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-3);
+  /* Momentum scrolling inside a modal must not chain to the page behind it. */
+  overscroll-behavior: contain;
+}
+
+.search-message {
+  padding: var(--space-4) var(--space-3);
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+  line-height: var(--leading-body);
+}
+
+.search-message-error { color: var(--color-text-muted); }
+
+.search-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.search-examples button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
+}
+
+.search-examples button:hover,
+.search-examples button:focus-visible {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.search-group { padding-top: var(--space-2); }
+
+.search-group-label {
+  position: sticky;
+  top: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.search-results { list-style: none; padding: 0; }
+
+.search-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-hover) ease, border-color var(--motion-hover) ease;
+}
+
+.search-result.is-active,
+.search-result:focus-visible {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  outline: none;
+}
+
+.search-result-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.search-result-title {
+  font-size: var(--text-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.search-result-subtitle,
+.search-result-meta {
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+}
+
+.search-result-meta {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  max-width: 45%;
+}
+
+.search-why strong { color: var(--color-text-muted); font-weight: 500; }
+/* Concept-expanded matches read as a weaker signal than a term the reader typed,
+   because they are one. */
+.search-why-related { font-style: italic; opacity: 0.8; }
+
+.search-evidence,
+.search-source {
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.search-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-faint);
+  font-size: var(--text-meta);
+}
+
+.search-legend { display: flex; align-items: center; gap: var(--space-1); }
+
+.search-manifest-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-faint);
+  transition: color var(--motion-hover) ease;
+}
+
+.search-manifest-link:hover { color: var(--color-text); }
+
+/* ── Copy menu ─────────────────────────────────────────────────────────────
+   Quiet until wanted: one control that opens two options, rather than two
+   buttons competing with the content on every card. */
+.copy-menu { position: relative; display: inline-flex; }
+
+.copy-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-2);
+  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  cursor: pointer;
+  transition: color var(--motion-hover) ease, border-color var(--motion-hover) ease,
+    background var(--motion-hover) ease;
+}
+
+.copy-menu-trigger:hover,
+.copy-menu-trigger:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.copy-menu-trigger.is-copied { color: var(--color-text); border-color: var(--color-border-strong); }
+.copy-menu-trigger:disabled { cursor: progress; }
+
+.copy-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: 260px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: copy-menu-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+.copy-menu-right .copy-menu-panel { right: 0; }
+.copy-menu-left .copy-menu-panel { left: 0; }
+
+@keyframes copy-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Liquid copy menu ---------------------------------------------------------
+   While the menu is open, the merged silhouette *is* the surface: the trigger
+   and panel drop their own background, border and shadow so what the eye sees
+   is one liquid mass necking between them, not two boxes with goo behind.
+   Everything here is scoped to `.is-liquid`, which only exists while open and
+   never under reduced motion — the closed and reduced-motion paths render the
+   original treatment untouched. */
+/* `display: contents` when inert, so the wrapper adds no box and the closed menu lays out
+   byte-for-byte as it did before this feature existed.
+
+   When liquid the group needs a real box to host its SVG filter, and it is `flex` rather than
+   `block` for a specific reason: the library renders each item as an `inline-block`, which
+   sits on a text baseline and leaves ~11px of descender leading beneath it. That inflated the
+   group to 35px against a 23px trigger, and since the panel is positioned with
+   `top: calc(100% + …)`, the 4px gap silently became 14px — too wide for the goo to bridge,
+   which is the entire effect. Flex removes the baseline, so the group's box is the trigger's
+   box and the panel lands where its own CSS says.
+
+   The library sets `position: relative; isolation: isolate` inline on this element, so it is
+   the panel's containing block whether or not we want it to be — matching its height to the
+   trigger's is what makes that harmless. */
+.liquid-surface { display: contents; }
+.liquid-surface.is-liquid { display: flex; }
+
+.copy-menu-liquid.is-liquid .copy-menu-trigger,
+.copy-menu-liquid.is-liquid .copy-menu-panel {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Keep the trigger the same size it is without the effect.
+
+   In the search bar the copy menu is a stretched flex item, so the trigger fills its full
+   height (36px). Wrapping it in a liquid piece made the *piece* the flex item and the button
+   collapsed to its content height (24px), leaving the label riding 6px high inside a 36px
+   liquid blob.
+
+   `!important` is load-bearing rather than lazy: the library writes `display: inline-block`
+   as an inline style on the item wrapper, which beats any stylesheet rule. Left a block
+   container, it does not stretch its child. This is the one declaration that has to win.
+
+   `height: 100%` was tried first and is wrong — the wrapper's height is not definite at that
+   point, so the percentage resolved to zero and collapsed the button entirely. */
+.copy-menu-liquid.is-liquid .copy-menu-trigger-piece { display: flex !important; align-self: stretch; }
+.copy-menu-liquid.is-liquid .copy-menu-trigger { display: flex; flex: 1 1 auto; align-self: stretch; }
+
+/* The panel positions against `.copy-menu`, not against whatever wrapper the
+   liquid group introduces, so the menu lands in the same place on both paths. */
+.copy-menu-panel-piece { position: static; }
+
+.copy-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-hover) ease, color var(--motion-hover) ease;
+}
+
+.copy-menu-item:hover,
+.copy-menu-item:focus-visible {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  outline: none;
+}
+
+.copy-menu-item span { display: flex; flex-direction: column; gap: 1px; }
+.copy-menu-item strong { font-weight: 500; }
+.copy-menu-item em { font-style: normal; color: var(--color-text-faint); }
+
+@media (max-width: 768px) {
+  .search-bar { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+  /* Icon only: the full label pushed the row 11px past the viewport at 375px. The
+     button keeps its accessible name via aria-label. */
+  .search-bar .copy-menu-label { display: none; }
+  /* A keyboard shortcut hint is meaningless on a touch device. */
+  .search-trigger-kbd { display: none; }
+  .search-overlay { padding: var(--space-3); align-items: stretch; }
+  .search-dialog { max-height: none; height: 100%; }
+  .search-result { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .search-result-meta { max-width: 100%; justify-content: flex-start; }
+  .copy-menu-panel { max-width: min(280px, calc(100vw - var(--space-6))); }
+}
+
+/* Card actions row — expand toggle and copy control share a line. */
+.case-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.search-bar .copy-menu-trigger { flex-shrink: 0; }
+
+/* How the question was read.
+   A search that decides "Where did he study?" is about education should say so — otherwise an
+   unexpected result set reads as a fault rather than an interpretation. Uses the existing
+   motion tokens rather than introducing timings of its own. */
+.search-reading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-meta);
+  animation: search-reading-in var(--motion-open) var(--motion-ease-smooth);
+}
+
+.search-reading svg { color: var(--color-text-faint); flex-shrink: 0; }
+
+@keyframes search-reading-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The copy control sits in the footer beside the keyboard legend. */
+.search-footer .copy-menu { margin-left: auto; }
+.search-footer .copy-menu-trigger { font-size: var(--text-meta); }
+
+/* The keyboard legend is meaningless on a touch device, and adding the copy control to the
+   footer left it fighting for room — the labels broke mid-word ("navi gate", "clo se").
+   Dropping it below the breakpoint gives the two controls that *are* usable there the space
+   they need, and costs a touch user nothing they could have acted on. */
+@media (max-width: 640px) {
+  .search-legend { display: none; }
+  .search-footer .copy-menu { margin-left: 0; }
+  .search-footer { justify-content: space-between; gap: var(--space-2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-reading { animation: none; }
 }

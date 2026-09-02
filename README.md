@@ -182,6 +182,54 @@ further. **[docs/themes.md](docs/themes.md)**
 
 ---
 
+## Readable by people *and* by machines
+
+Publish once. A recruiter reads the page; a search engine reads the JSON-LD; an AI agent reads
+a manifest built for it.
+
+**Search that understands what you meant.** Press `⌘K` / `Ctrl-K`. "Recognizing things from
+images" finds a project whose only description is its title — because a real pretrained
+embedding model runs in your browser alongside three corpus-derived signals. No API key, no
+account, no per-query cost, and offline after the first search. Every result still shows *why*
+it matched and what backs it: similarity ranks results, it never becomes evidence.
+**[docs/search.md](docs/search.md)**
+
+**Copy → Markdown or Prompt.** On the whole profile or any single entry. The prompt carries
+grounding instructions — use only this, say so when unsupported, cite the evidence — so a
+recruiter can paste it into ChatGPT, Claude or Gemini and get answers anchored to what the
+portfolio actually says.
+
+**A public manifest.** Every build emits `portfolio.json` beside the page and declares it in
+the head, so any tool handed the URL can find it:
+
+```html
+<link rel="alternate" type="application/portfolio+json" href="./portfolio.json">
+```
+
+It is a security boundary, not a dump: phone numbers are never published, `privacy.hideEmail`
+and `privacy.obfuscateEmail` are enforced at the serializer, and losing claims on disputed
+values stay private.
+
+**An npm package for anyone's portfolio** — not just this one:
+
+```bash
+npm install @portfolio-engine/agent
+```
+
+```js
+import { PortfolioAgent } from '@portfolio-engine/agent'
+
+const portfolio = await PortfolioAgent.fromUrl('https://example.com/portfolio/')
+portfolio.search('projects involving machine learning')
+portfolio.findSkill('Python')     // → 12 repositories, and where it is used
+portfolio.toPrompt()
+```
+
+It reads the published manifest, never the rendered UI, so it survives a complete redesign.
+**[docs/agents.md](docs/agents.md)** · **[packages/agent](packages/agent#readme)**
+
+---
+
 ## One source of truth
 
 Your portfolio is not the only place your profile has to live:
@@ -316,6 +364,7 @@ and every asset 404s with nothing in the console to explain it.
 | `npm run build` | Static site into `dist/` |
 | `npm test` | 400+ tests over the pipeline, documents and extraction |
 | `npm run benchmark` | Score extraction against a frozen corpus — [details](benchmarks/README.md) |
+| `npm run test:agent` | Test the agent package on its own |
 
 ---
 
@@ -327,8 +376,16 @@ themes. It runs the real pipeline, so the preview *is* the build rather than an
 approximation of it.
 
 It never writes to disk and says so. Changes come out as two files you commit:
-`src/data/overrides.json` and a `portfolio.config.js` patch. Everything it does can be
-typed by hand instead.
+`src/data/overrides.json` and `src/data/config.json`. Everything it does can be typed by hand
+instead.
+
+**Or press Publish.** With an optional Cloudflare Worker deployed, the builder signs you in with
+GitHub and commits those files for you — no download, no hand-edited JSON, no manual deploy. It
+is a GitHub App with write access to one repository, no database, no auth service and no bill:
+the browser only ever holds a signed session cookie, and the admin can write three JSON paths
+and nothing else. Setting it up takes about ten minutes and five steps that genuinely cannot be
+automated, all of them written out honestly.
+**[docs/publishing.md](docs/publishing.md)**
 
 ---
 
@@ -423,11 +480,14 @@ import script all read the registry, so none of them need changing.
 [Configuration](docs/configuration.md) ·
 [Connectors](docs/connectors.md) ·
 [Adding a connector](docs/adding-a-connector.md) ·
+[Agents & the manifest](docs/agents.md) ·
 [Extraction benchmark](benchmarks/README.md) ·
 [Data schema](docs/data-schema.md) ·
 [Themes](docs/themes.md) ·
 [Customization](docs/customization.md) ·
 [Deployment](docs/deployment.md) ·
+[Search](docs/search.md) ·
+[Publishing](docs/publishing.md) ·
 [Privacy](docs/privacy.md) ·
 [Security](SECURITY.md) ·
 [Troubleshooting](docs/troubleshooting.md) ·
@@ -446,6 +506,9 @@ import script all read the registry, so none of them need changing.
 - **Extraction, Tier 0 and Tier 1** — a dependency-free reader plus a browser-rendering
   fallback, escalating only when the cheap read falls short, scored on a nine-metric
   benchmark. [benchmarks/README.md](benchmarks/README.md)
+- **Machine-readable publishing** — a public manifest with a real privacy boundary, head
+  autodiscovery, deterministic search, Markdown and grounded-prompt exports, and an npm
+  package that reads any conforming portfolio. [docs/agents.md](docs/agents.md)
 
 ### Not built — explicitly deferred, not implemented under a different name
 

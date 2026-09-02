@@ -24,7 +24,7 @@ export default function StatsSection({ entries, showProvenance = true }) {
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.3, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.3, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="stat-value">{stat.display}</span>
           <span className="stat-label">{stat.label}</span>

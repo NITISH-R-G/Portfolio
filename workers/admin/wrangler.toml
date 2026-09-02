@@ -1,0 +1,41 @@
+# Cloudflare Worker for the admin publishing API.
+#
+# Deploy with:  npx wrangler deploy      (from this directory)
+#
+# There are no bindings here — no KV, no D1, no R2, no Durable Objects. That is the point:
+# every one of those is a stateful service with its own free-tier ceiling and its own
+# failure modes, and this Worker needs none of them because sessions are signed cookies and
+# GitHub is the database. A deployment is one script and seven secrets.
+
+name = "portfolio-admin"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Public, non-secret configuration. Edit these; they are committed.
+#
+# REPOSITORY   the single repository this Worker may ever write to. Not a pattern, not a
+#              list — one repository, checked against the session on every save.
+# ADMIN_ORIGIN the exact origin of your admin page. Used for CORS, for the sign-in redirect
+#              and for the CSRF origin check, so a typo here fails closed rather than open.
+# BRANCH       the branch your site deploys from.
+# SAMESITE     "None" (default) when the admin and this Worker are on different domains,
+#              which is the case for github.io + workers.dev. Set "Lax" if you serve both
+#              from one registrable domain — it is strictly stronger where it works.
+REPOSITORY = "YOUR-USERNAME/YOUR-REPO"
+ADMIN_ORIGIN = "https://YOUR-USERNAME.github.io"
+BRANCH = "main"
+SAMESITE = "None"
+
+# ALLOWED_LOGINS is optional. Leave it unset and anyone with the App installed on the
+# repository can sign in; set it to your GitHub username to make that explicit.
+# ALLOWED_LOGINS = "YOUR-USERNAME"
+
+# Secrets are NOT set here. `wrangler secret put` stores them encrypted, so they never
+# appear in this file, in git, or in the browser bundle:
+#
+#   npx wrangler secret put GITHUB_APP_ID
+#   npx wrangler secret put GITHUB_PRIVATE_KEY      # PKCS#8 PEM, see README
+#   npx wrangler secret put GITHUB_CLIENT_ID
+#   npx wrangler secret put GITHUB_CLIENT_SECRET
+#   npx wrangler secret put SESSION_SECRET          # openssl rand -base64 48

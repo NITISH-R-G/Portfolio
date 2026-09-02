@@ -8,13 +8,17 @@
  * readers never see.
  *
  * So the same `generateSeo` output is injected into `index.html` during the build, and the
- * runtime replacement becomes a no-op that keeps `npm run dev` accurate. The sitemap and
- * robots.txt are emitted from the same data.
+ * runtime replacement becomes a no-op that keeps `npm run dev` accurate. The sitemap,
+ * robots.txt and the public agent manifest are emitted from the same data.
  *
  * @module scripts/lib/seoPlugin
  */
 
 import { generateSitemap, generateRobots } from '../../src/core/generate/seo.js'
+import { buildIndex } from '../../packages/agent/src/search.js'
+import { fingerprintDocuments } from '../../packages/agent/src/embedding.js'
+import { toPublicManifest } from '../../src/core/standard/public.js'
+import { MANIFEST_FILENAME } from '../../src/core/standard/discovery.js'
 import { loadBuiltPortfolio, PATHS, relative, fs, path } from './portfolio.mjs'
 
 /**
@@ -76,7 +80,55 @@ export function portfolioSeo() {
      */
     generateBundle() {
       if (!isBuild || !built) return
-      const { config, seo } = built
+      const { config, profile, seo } = built
+
+      /* The public manifest ------------------------------------------------- */
+
+      // Emitted even when SEO/sitemap generation is switched off, and even without
+      // `site.url`: those settings govern how *search engines* see the page, and the manifest
+      // is for agents reading a portfolio someone handed them directly. A person who turned
+      // off sitemaps did not thereby ask for their portfolio to be unreadable by tools.
+      if (config.agent?.manifest !== false) {
+        // Read rather than regenerated: `npm run embed` owns producing these, so a build
+        // never silently spends two seconds of inference, and a portfolio built without them
+        // reports `lexical+concept+distributional` instead of claiming a capability it lacks.
+        let embeddings
+        try {
+          embeddings = JSON.parse(fs.readFileSync(path.join(PATHS.generated, 'embeddings.json'), 'utf8'))
+        } catch { /* Not built yet, or deliberately absent. */ }
+
+        // …and checked against the corpus actually being shipped. A record keeps its id when
+        // its description is rewritten, so an index from before the edit still has a vector for
+        // it — one describing text that no longer exists. Ids match, counts match, and the
+        // manifest would claim `hybrid-semantic` while answering from a stale reading of the
+        // portfolio. Dropping the index degrades search; using it silently answers wrongly.
+        if (embeddings) {
+          const current = fingerprintDocuments(buildIndex(toPublicManifest(profile, { config })))
+          if (embeddings.fingerprint !== current) {
+            embeddings = undefined
+            console.warn(
+              '[portfolio] The embedding index does not match the current content and was ignored. '
+              + 'Run `npm run embed` to rebuild it.',
+            )
+          }
+        }
+
+        const manifest = toPublicManifest(profile, {
+          config,
+          canonical: seo?.canonical,
+          generatedAt: new Date().toISOString(),
+          ...(embeddings ? { embeddings } : {}),
+        })
+        this.emitFile({
+          type: 'asset',
+          fileName: MANIFEST_FILENAME,
+          source: `${JSON.stringify(manifest, null, 2)}\n`,
+        })
+        console.log(`  ${relative(path.join(PATHS.dist, MANIFEST_FILENAME))} generated (public manifest)`)
+      }
+
+      /* Sitemap and robots --------------------------------------------------- */
+
       if (config.seo?.enabled === false || config.seo?.sitemap === false) return
       if (!config.site.url) return
 

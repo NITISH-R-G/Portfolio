@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildPortfolio } from '../core/generate/build.js'
 import { recordKey } from '../core/schema/merge.js'
+import { applyClears, hasContent, prune, setPath, mergeDeep, mergeOverrides } from './drafts.js'
 import { DRAFT_KEY, CONFIG_DRAFT_KEY, loadFileConfig, loadSourceLayers, loadImportStatus, loadDocuments } from '../core/load.js'
 
 /** Vite resolves these at build time; the browser never fetches them. */
@@ -73,11 +74,13 @@ export function useBuilder() {
    * derivation and SEO here are the same code paths the built site uses.
    */
   const built = useMemo(() => buildPortfolio({
-    config: mergeDeep(fileConfig, configDraft),
+    // `applyClears` at both merge points, so a field the user emptied previews as empty rather
+    // than showing the sentinel — and so the preview matches what publishing will commit.
+    config: applyClears(mergeDeep(fileConfig, configDraft)),
     sources,
     documents,
     manual,
-    overrides: mergeOverrides(savedOverrides, overrides),
+    overrides: applyClears(mergeOverrides(savedOverrides, overrides)),
     status: status.connectors,
   }), [fileConfig, configDraft, sources, documents, manual, savedOverrides, overrides, status])
 
@@ -238,88 +241,9 @@ function write(key, value) {
   }
 }
 
-/** Recursively true when an object holds anything other than empty containers. */
-export function hasContent(value) {
-  if (value === undefined || value === null || value === '') return false
-  if (Array.isArray(value)) return value.length > 0
-  if (typeof value !== 'object') return true
-  return Object.values(value).some(hasContent)
-}
-
-/** Drop empty values so a cleared field leaves nothing behind in the export. */
-function prune(object) {
-  const out = {}
-  for (const [key, value] of Object.entries(object ?? {})) {
-    if (value === undefined || value === null || value === '') continue
-    if (Array.isArray(value) && !value.length) continue
-    out[key] = value
-  }
-  return out
-}
-
 /**
- * Immutably set a dotted path, e.g. `setPath(draft, 'theme.accent', '#f00')`.
- * @param {Record<string, any>} object
- * @param {string} path
- * @param {unknown} value
+ * Draft merging lives in `drafts.js` so the Publish panel can share it without dragging React
+ * and Vite's glob resolution along. Re-exported here because every existing caller imports
+ * these from `state.js`.
  */
-export function setPath(object, path, value) {
-  const [head, ...rest] = path.split('.')
-  const next = { ...object }
-  if (!rest.length) {
-    if (value === undefined || value === '') delete next[head]
-    else next[head] = value
-    return next
-  }
-  next[head] = setPath(next[head] ?? {}, rest.join('.'), value)
-  if (!hasContent(next[head])) delete next[head]
-  return next
-}
-
-/** Read a dotted path, falling back through a second object. */
-export function getPath(object, path, fallback) {
-  const value = path.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), object)
-  return value === undefined ? fallback : value
-}
-
-/** @param {any} base @param {any} patch */
-function mergeDeep(base, patch) {
-  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return patch ?? base
-  const out = { ...(base ?? {}) }
-  for (const [key, value] of Object.entries(patch)) {
-    out[key] = value && typeof value === 'object' && !Array.isArray(value)
-      ? mergeDeep(out[key], value)
-      : value
-  }
-  return out
-}
-
-/** Combine committed overrides with the in-browser draft, draft winning. */
-function mergeOverrides(saved, draft) {
-  if (!hasContent(draft)) return saved
-  if (!saved) return draft
-  return {
-    identity: { ...saved.identity, ...draft.identity },
-    socials: { ...saved.socials, ...draft.socials },
-    order: { ...saved.order, ...draft.order },
-    resolutions: { ...saved.resolutions, ...draft.resolutions },
-    records: mergeBuckets(saved.records, draft.records),
-    hidden: mergeLists(saved.hidden, draft.hidden),
-  }
-}
-
-function mergeBuckets(a, b) {
-  const out = { ...(a ?? {}) }
-  for (const [collection, patches] of Object.entries(b ?? {})) {
-    out[collection] = { ...(out[collection] ?? {}), ...patches }
-  }
-  return out
-}
-
-function mergeLists(a, b) {
-  const out = { ...(a ?? {}) }
-  for (const [collection, ids] of Object.entries(b ?? {})) {
-    out[collection] = [...new Set([...(out[collection] ?? []), ...ids])]
-  }
-  return out
-}
+export { hasContent, setPath, getPath, mergeDeep, mergeOverrides, applyClears, CLEARED } from './drafts.js'

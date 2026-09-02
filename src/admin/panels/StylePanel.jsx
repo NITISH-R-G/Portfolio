@@ -46,7 +46,7 @@ export default function StylePanel({ builder }) {
   return (
     <Panel
       title="Style"
-      description="Themes are configuration, not code. Everything below writes one value into portfolio.config.js."
+      description="Themes are configuration, not code. Everything below writes one value into src/data/config.json — or into portfolio.config.js if you would rather type it yourself."
     >
       <h3 className="admin-subheading">Theme</h3>
       <div className="theme-grid">
@@ -199,15 +199,9 @@ export default function StylePanel({ builder }) {
       />
       <Toggle
         label="Smooth scrolling"
-        checked={value('animations.smoothScroll', true)}
+        checked={value('animations.smoothScroll', false)}
         onChange={(v) => setConfig('animations.smoothScroll', v)}
-        help="Momentum scrolling on pointer devices. Off is the friendlier default for long pages."
-      />
-      <Toggle
-        label="Custom cursor"
-        checked={value('layout.customCursor', true)}
-        onChange={(v) => setConfig('layout.customCursor', v)}
-        help="Only ever shown on fine-pointer devices."
+        help="Momentum scrolling on pointer devices. Off by default: native scrolling is what your visitor's mouse, trackpad and accessibility settings are already tuned for."
       />
 
       <Note icon="Info">

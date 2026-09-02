@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useId } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
 import Icon from './Icon'
+import CopyMenu from './CopyMenu'
 import { track, AnalyticsEvents } from '../lib/analytics'
 
 function hasValue(val) {
@@ -121,92 +121,115 @@ export default function CaseStudyCard({ item, type = 'project', icon }) {
           </div>
         )}
 
-        {/* Expand toggle */}
-        {hasCaseStudy && (
-          <button
-            className="case-expand-btn"
-            onClick={() => {
-              const next = !expanded
-              setExpanded(next)
-              track(next ? AnalyticsEvents.CASE_STUDY_EXPAND : AnalyticsEvents.CASE_STUDY_COLLAPSE, { title })
-            }}
-            aria-expanded={expanded}
-            aria-controls={detailsId}
-          >
-            {expanded ? 'Show less' : 'View details'}
-            <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
-          </button>
-        )}
+        {/* Actions. The copy control sits with the expand toggle rather than floating over
+            the card, so it is discoverable in the place a reader is already looking for
+            things to do, without competing with the content above it. */}
+        <div className="case-actions">
+          {hasCaseStudy && (
+            <button
+              className="case-expand-btn"
+              onClick={() => {
+                const next = !expanded
+                setExpanded(next)
+                track(next ? AnalyticsEvents.CASE_STUDY_EXPAND : AnalyticsEvents.CASE_STUDY_COLLAPSE, { title })
+              }}
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+            >
+              {expanded ? 'Show less' : 'View details'}
+              <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
+            </button>
+          )}
+          <CopyMenu entity={item} type={type} label="Copy" align="left" />
+        </div>
       </div>
 
-      {/* Expanded Details */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
+      {/* Expanded Details — a CSS grid-rows accordion (transitions.dev's pattern), not a
+          Motion height:'auto' tween. That measured Motion's target height synchronously
+          before every open, then drove `height` frame-by-frame in JS — `height` is a layout
+          property, so every one of those frames forced the browser to re-run layout for this
+          element and everything after it. grid-template-rows: 0fr -> 1fr gets the identical
+          visual result with no JS measurement step and no React-driven per-frame writes; the
+          browser's own layout engine owns the whole interpolation. See
+          .agents/skills/transitions-dev/21-accordion.md. Kept permanently mounted (rather
+          than AnimatePresence add/remove) because that is what lets the grid-row transition
+          run at all — animating in a value that does not exist yet has nothing to animate
+          from. `inert` keeps it out of tab order and off screen readers while collapsed, so
+          nothing about the content being technically laid out at zero height leaks into the
+          accessible experience. */}
+      {hasCaseStudy && (
+        <div className="case-details" data-expanded={expanded}>
+          {/* Two nested wrappers, not one: `.case-details-inner` clips (overflow: hidden)
+              and carries no padding of its own, because padding on the element that clips
+              survives the clip and keeps the collapsed track pinned open at (padding +
+              border) tall — measured at 37px before this was split out. All box model
+              (padding, border, layout) lives on `.case-details-content` instead, one level
+              further in, where it cannot hold the collapsed height open. */}
+          <div
             ref={detailsRef}
             id={detailsId}
-            className="case-details"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="case-details-inner"
+            inert={!expanded}
           >
-            <div className="case-details-inner">
-              <DetailField label="Context">
-                {item.context && <p>{item.context}</p>}
+            <div className="case-details-content">
+            <DetailField label="Context">
+              {item.context && <p>{item.context}</p>}
+            </DetailField>
+
+            <DetailField label="Problem">
+              {item.problem && <p>{item.problem}</p>}
+            </DetailField>
+
+            <DetailField label="Approach">
+              {item.approach && <p>{item.approach}</p>}
+            </DetailField>
+
+            <DetailField label="Impact">
+              {item.impact && <p>{item.impact}</p>}
+            </DetailField>
+
+            <DetailField label="Responsibilities">
+              {item.responsibilities && <p>{item.responsibilities}</p>}
+            </DetailField>
+
+            <DetailField label="Constraints">
+              {item.constraints && <p>{item.constraints}</p>}
+            </DetailField>
+
+            <DetailField label="Lessons Learned">
+              {item.lessons && <p>{item.lessons}</p>}
+            </DetailField>
+
+            {/* Full metrics */}
+            {hasMetrics && (
+              <DetailField label="Results">
+                <div className="case-metrics-full">
+                  {item.metrics.map((m, i) => (
+                    <MetricBadge key={i} metric={m} />
+                  ))}
+                </div>
               </DetailField>
+            )}
 
-              <DetailField label="Problem">
-                {item.problem && <p>{item.problem}</p>}
-              </DetailField>
-
-              <DetailField label="Approach">
-                {item.approach && <p>{item.approach}</p>}
-              </DetailField>
-
-              <DetailField label="Impact">
-                {item.impact && <p>{item.impact}</p>}
-              </DetailField>
-
-              <DetailField label="Responsibilities">
-                {item.responsibilities && <p>{item.responsibilities}</p>}
-              </DetailField>
-
-              <DetailField label="Constraints">
-                {item.constraints && <p>{item.constraints}</p>}
-              </DetailField>
-
-              <DetailField label="Lessons Learned">
-                {item.lessons && <p>{item.lessons}</p>}
-              </DetailField>
-
-              {/* Full metrics */}
-              {hasMetrics && (
-                <DetailField label="Results">
-                  <div className="case-metrics-full">
-                    {item.metrics.map((m, i) => (
-                      <MetricBadge key={i} metric={m} />
-                    ))}
-                  </div>
-                </DetailField>
-              )}
-
-              {/* Tools & Tags */}
+            {/* Tools & Tags. Gated, because an empty "Stack" heading reads as a section that
+                failed to load rather than one with nothing to say. */}
+            {(hasTools || hasTags) && (
               <DetailField label="Stack">
                 <TagList tags={item.tools} />
                 <TagList tags={item.tags} label={item.tools ? '' : 'Tags'} />
               </DetailField>
+            )}
 
-              {/* Links */}
-              {hasLinks && (
-                <DetailField label="Links">
-                  <LinkList links={item.links} />
-                </DetailField>
-              )}
+            {/* Links */}
+            {hasLinks && (
+              <DetailField label="Links">
+                <LinkList links={item.links} />
+              </DetailField>
+            )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

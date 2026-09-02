@@ -36,3 +36,12 @@ benchmarks/results/
 # the fixture; these are debugging aids, and a screenshot of someone's profile is not something
 # to commit by reflex.
 benchmarks/fixtures/**/*.png
+
+# Agent-skill tooling installed by `npx skills add`. Third-party skill content and a
+# lockfile for it — developer tooling, not part of the portfolio engine, and deliberately
+# not vendored into the repository.
+.agents/
+skills-lock.json
+
+# Scratch probes used while benchmarking the embedding model.
+scratch/

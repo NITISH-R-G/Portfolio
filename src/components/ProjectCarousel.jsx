@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useHorizontalWheel } from '../hooks/useHorizontalWheel'
 import Icon from './Icon'
 import ProjectTile from './ProjectTile'
 
@@ -20,6 +21,11 @@ export default function ProjectCarousel({ projects }) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
+  // A vertical wheel over the strip scrolls it sideways, releasing the gesture back to the
+  // page at either end. Without this the row has no pointer affordance at all: its scrollbar
+  // is hidden, so a mouse user has nothing to grab.
+  useHorizontalWheel(scrollRef)
+
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
@@ -30,9 +36,26 @@ export default function ProjectCarousel({ projects }) {
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    el.addEventListener('scroll', updateScrollState, { passive: true })
+
+    // Native `scroll` fires far faster than once a frame during momentum scrolling or a
+    // trackpad drag — often dozens of times between two paints. Each firing was reading
+    // scrollWidth/clientWidth (layout reads) and calling two setState updates, so a single
+    // finger-drag across the carousel could queue many re-renders' worth of work for a value
+    // that only actually needs to be current once per frame. Gating with a rAF flag collapses
+    // any run of scroll events between two paints into a single read + at most one update.
+    let scheduled = false
+    const onScroll = () => {
+      if (scheduled) return
+      scheduled = true
+      requestAnimationFrame(() => {
+        scheduled = false
+        updateScrollState()
+      })
+    }
+
+    el.addEventListener('scroll', onScroll, { passive: true })
     updateScrollState()
-    return () => el.removeEventListener('scroll', updateScrollState)
+    return () => el.removeEventListener('scroll', onScroll)
   }, [updateScrollState, projects])
 
   const scroll = useCallback((dir) => {

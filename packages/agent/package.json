@@ -1,0 +1,57 @@
+{
+  "name": "@portfolio-engine/agent",
+  "version": "0.3.0",
+  "description": "Read any portfolio-engine portfolio programmatically — entities, deterministic search, provenance, Markdown and LLM-ready prompts. No API key required.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./search": {
+      "default": "./src/search.js"
+    },
+    "./markdown": {
+      "default": "./src/markdown.js"
+    },
+    "./prompt": {
+      "default": "./src/prompt.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "portfolio",
+    "professional-profile",
+    "resume",
+    "agent",
+    "ai-agent",
+    "llm",
+    "semantic-search",
+    "provenance",
+    "open-standard"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NITISH-R-G/Portfolio.git",
+    "directory": "packages/agent"
+  },
+  "bugs": {
+    "url": "https://github.com/NITISH-R-G/Portfolio/issues"
+  },
+  "homepage": "https://github.com/NITISH-R-G/Portfolio/tree/main/packages/agent#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false
+}
