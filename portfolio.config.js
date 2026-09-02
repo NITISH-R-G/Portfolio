@@ -64,4 +64,11 @@ export default defineConfig({
   deployment: {
     target: 'github-pages',
   },
+
+  // The publishing Worker. Without this the Save panel shows only the copy-and-paste blocks —
+  // which is the correct default for a fork, and was why the deployed admin had no Publish
+  // button at all. An origin only; every credential stays on the far side of it.
+  admin: {
+    api: 'https://portfolio-admin.nitishrg2026.workers.dev',
+  },
 })

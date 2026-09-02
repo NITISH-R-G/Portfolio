@@ -344,3 +344,44 @@ describe('the search index still comes from the manifest', () => {
     assert.ok(!JSON.stringify(buildIndex(manifest)).includes('+44 7700 900000'))
   })
 })
+
+describe('the deployed admin knows it can publish', () => {
+
+  test('this portfolio points at its publishing Worker', () => {
+    // The whole reason the deployed admin had no Publish button: `admin.api` was never set, so
+    // `isConfigured()` was false and `PublishPanel` returned null. Everything downstream —
+    // OAuth, the session, the Worker — was correct and simply had no UI to be reached from.
+    const text = source('portfolio.config.js')
+    assert.match(text, /admin:\s*\{/, 'portfolio.config.js declares no admin block')
+    assert.match(text, /api:\s*'https:\/\//, 'admin.api must be an absolute origin')
+  })
+
+  test('admin.api is an origin, not the admin page URL', () => {
+    // `apiOrigin()` only strips trailing slashes; a path here would be concatenated onto every
+    // route, so `/api/save` would become `/Portfolio/api/save`.
+    const match = /api:\s*'([^']+)'/.exec(source('portfolio.config.js'))
+    assert.ok(match, 'no admin.api found')
+    const url = new URL(match[1])
+    assert.equal(url.pathname, '/', `admin.api must have no path, got "${url.pathname}"`)
+    assert.equal(url.origin + '/', url.href)
+  })
+
+  test('the Connect panel says what still works when publishing is configured', () => {
+    // Connect is the first panel, so its dev-server warning is the first thing a deployed
+    // admin shows. On its own it reads as "none of this works here", which sent a correctly
+    // configured production admin looking for a bug that was not there.
+    const panel = source('src/admin/panels/ConnectPanel.jsx')
+    assert.match(panel, /isConfigured/, 'the panel must know whether publishing is available')
+    assert.match(panel, /publishing && \(/, 'the reassurance must be conditional')
+    assert.match(panel, /Save<\/strong>/, 'it should name the panel that does work')
+  })
+
+  test('the dev-server fallback is still there and still unconditional', () => {
+    // Requirement: development behaviour is untouched. The local write API is probed the same
+    // way and the warning still appears when it is absent.
+    const panel = source('src/admin/panels/ConnectPanel.jsx')
+    assert.match(panel, /api\.isAvailable\(\)/)
+    assert.match(panel, /if \(live === false\)/)
+    assert.match(source('src/admin/api.js'), /const BASE = '\/__portfolio'/)
+  })
+})

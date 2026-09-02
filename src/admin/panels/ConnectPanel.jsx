@@ -21,11 +21,16 @@ import { classifyInput, detectSource } from '../../core/sources/detect.js'
 import { featuredCapabilities, allCapabilities, describeCapability } from '../../core/sources/capabilities.js'
 import { Panel, Note } from '../fields.jsx'
 import * as api from '../api.js'
+import { isConfigured } from '../publish.js'
 
 /**
  * @param {{builder: import('../state.js').Builder}} props
  */
 export default function ConnectPanel({ builder }) {
+  // Whether this deployment has a publishing Worker, so the dev-server notice below can say
+  // what still works rather than only what does not.
+  const publishing = isConfigured(builder.built.config)
+
   const { built } = builder
   const [live, setLive] = useState(null)
   const [state, setState] = useState(null)
@@ -104,10 +109,21 @@ export default function ConnectPanel({ builder }) {
     return (
       <Panel title="Connect anything" description="Bring your professional identity together.">
         <Note tone="warn" icon="AlertTriangle">
-          Connecting writes to <code>portfolio.config.js</code>, which only works while the dev
-          server is running. Start it with <code>npm run dev</code> and open{' '}
-          <code>/admin.html</code> from there — or run <code>npm run setup</code> in your terminal.
+          Connecting writes to <code>portfolio.config.js</code> and runs importers on your
+          machine, so it only works while the dev server is running. Start it with{' '}
+          <code>npm run dev</code> and open <code>/admin.html</code> from there — or run{' '}
+          <code>npm run setup</code> in your terminal.
         </Note>
+        {publishing && (
+          // Connect is the first panel, so this warning is the first thing a deployed admin
+          // shows — and on its own it reads as "none of this works here", which is wrong.
+          // Editing and publishing are a different subsystem and are fully available.
+          <Note icon="UploadCloud">
+            Everything else still works here. Edit your content and settings as usual, then use
+            the <strong>Save</strong> panel to publish them straight to GitHub — only adding new
+            sources needs the dev server.
+          </Note>
+        )}
       </Panel>
     )
   }

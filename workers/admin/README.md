@@ -73,6 +73,15 @@ Then, on the App's page:
 
 Edit `wrangler.toml` in this directory and set `REPOSITORY`, `ADMIN_ORIGIN` and `BRANCH`.
 
+`ADMIN_ORIGIN` is the **origin** your admin is served from — `https://you.github.io` — not the
+URL of the admin page. On a GitHub Pages project site those differ, and the natural thing to
+enter is the page URL (`https://you.github.io/Portfolio`). The Worker now accepts either and
+takes the origin from it, because the failure that produced was unusually well hidden: a browser
+matches `Access-Control-Allow-Origin` against `Origin`, which never carries a path, so every
+request from the admin was blocked — while a manual `/auth/login` test still redirected
+correctly, because the stray path happened to complete the default landing route. The one check
+a person runs by hand was the one case the mistake could not break.
+
 ### 3. Set the secrets
 
 From this directory:
