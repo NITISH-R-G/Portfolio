@@ -2,6 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePortfolio } from './usePortfolio'
 
 /**
+ * The precomputed embedding index, if this build has one.
+ *
+ * A glob rather than `import('../data/generated/embeddings.json')`, and the difference is not
+ * stylistic. `src/data/generated/` is derived output and is gitignored, so a fresh clone does
+ * not have that file — and a bare dynamic import is resolved by the bundler at *build* time,
+ * which turned "no index yet" into `[UNRESOLVED_IMPORT] Could not resolve` and a build that
+ * failed outright. The `.catch()` below was unreachable: nothing was ever built to run it.
+ *
+ * A glob returns an empty map instead of failing to resolve, so the absent file is absent
+ * rather than fatal, and the graceful degradation this file documents actually happens. The
+ * chunk is still lazy — `eager: false` is the default, so the JSON stays out of the entry
+ * bundle exactly as before.
+ */
+const embeddingModules = import.meta.glob('/src/data/generated/embeddings.json')
+
+/** @returns {Promise<Record<string, any>|null>} */
+async function loadEmbeddings() {
+  const load = embeddingModules['/src/data/generated/embeddings.json']
+  if (!load) return null
+  const module = await load()
+  return module?.default ?? module ?? null
+}
+
+/**
  * Search, backed by the same code the npm package uses.
  *
  * The important structural point: this hook contains no search logic. Ranking, concept
@@ -70,11 +94,11 @@ export function useSearch() {
         agentRef.current = agent
         setReady(true)
 
-        // Precomputed document vectors: 63 kB, shipped with the site. Loading them costs
+        // Precomputed document vectors: 64 kB, shipped with the site. Loading them costs
         // nothing meaningful and does not imply the model — the model is fetched only when a
         // query actually needs embedding.
-        import('../data/generated/embeddings.json')
-          .then(({ default: index }) => { agent.useEmbeddings(index) })
+        loadEmbeddings()
+          .then((index) => { if (index) agent.useEmbeddings(index) })
           .catch(() => { /* Built without embeddings. Lexical search is unaffected. */ })
       })
       .catch((err) => {
