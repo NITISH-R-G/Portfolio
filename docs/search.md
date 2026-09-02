@@ -25,7 +25,7 @@ That is what a pretrained embedding model supplies, and it is the only thing it 
 
 ## The model
 
-**`Xenova/all-MiniLM-L6-v2`**, int8-quantized, 384 dimensions, Apache-2.0, ~23 MB.
+**`Xenova/all-MiniLM-L6-v2`**, int8-quantized, 384 dimensions, Apache-2.0.
 
 Chosen by measurement rather than reputation. What was measured, and what it came back as:
 
@@ -34,17 +34,36 @@ Chosen by measurement rather than reputation. What was measured, and what it cam
 | Semantic recall (paraphrases) | 6/7, against 5/7 lexical |
 | Open-vocabulary recall | 10/12, against 9/12 lexical |
 | False positives | 0/3 |
-| Query latency, warm | median 15.5 ms, p95 32.5 ms |
-| Model size | ~23 MB, fetched once, browser-cached |
-| Bundle impact on the page | **+0.19 kB gzip** to the entry chunk |
+| Query latency, warm (Node) | median 15.5 ms, p95 32.5 ms |
+| Query latency, warm (browser) | median 71 ms, p95 278 ms |
+| Bundle impact on the page | **0 bytes** — nothing model-related is fetched on load |
 | Licence | Apache-2.0 |
 | Offline after first load | yes |
 
-The decisive number is the last-but-two. The model is never in the critical path: it lives in a
-lazy chunk that is not requested until someone actually searches, so a visitor who never opens
-the search box downloads none of it.
+### What the first search actually downloads
 
-The measurement that shaped the design, though, was this one: across the real corpus, positive
+Worth stating plainly, because it is larger than the model alone and it is easy to quote only
+the flattering half:
+
+| | Transferred | From |
+| --- | --- | --- |
+| ONNX runtime WebAssembly | 5.75 MB gzipped (23.6 MB raw) | your own site |
+| Model weights, int8 | 21.9 MB | huggingface.co |
+| transformers.js | 157 kB gzipped | your own site |
+| **First search, total** | **~27.8 MB** | |
+| Every search after that | 0 | browser cache |
+
+None of it is fetched until someone actually searches — measured on the production build, the
+first paint requests five JavaScript chunks totalling 200 kB and none of them is any of the
+above. A visitor who never opens the search box downloads none of it, and one who does pays
+once per browser.
+
+That is the honest trade: a large one-time cost, in exchange for no API key, no account, no
+per-query fee, and search that keeps working offline and after the project is abandoned. If
+that trade is wrong for your portfolio, `npm run embed` is optional — skip it and the site
+ships with lexical search and none of the above.
+
+The measurement that shaped the design was this one: across the real corpus, positive
 pairs scored 0.31–0.48 and negatives 0.02–0.20 — but one true positive scored **0.06**, below a
 negative at **0.20**. Pure vector search would have ranked a wrong answer above a right one. So
 the model is a signal, not the ranking.
@@ -130,9 +149,19 @@ by someone with no AI account is not a portfolio with a worse search box.
 npm run embed
 ```
 
-Reads the built profile, embeds 120 documents in about two seconds, and writes
-`src/data/generated/embeddings.json` — 63.5 kB, int8-quantized to a quarter of float32 and
-base64-packed. A missing model is a warning, not a build failure.
+Reads the built profile, embeds every document in about two seconds, and writes
+`src/data/generated/embeddings.json` — 65 kB for 122 documents, int8-quantized to a quarter of
+float32 and base64-packed.
+
+That file is **generated output and is not committed**, so a fresh clone does not have it. The
+build copes: the index is read through `import.meta.glob`, which yields nothing rather than
+failing to resolve, and the manifest then reports `lexical+concept+distributional` instead of
+claiming a capability the site does not have.
+
+CI generates it on every deploy, and the workflow's verify step reads that manifest field and
+**fails the run** if it is not `hybrid-semantic`. A model CDN outage therefore leaves the
+previous deployment — with its working search — in place, rather than quietly replacing it with
+a lexical-only site.
 
 ## Benchmarking it yourself
 

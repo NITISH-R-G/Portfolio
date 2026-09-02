@@ -40,7 +40,9 @@ nothing, because it never needed a server.
 ## Setup
 
 This is the part nobody can do for you, and it is roughly ten minutes. It is written out in
-full rather than described as "one click", because it is not one click.
+full rather than described as "one click", because it is not one click. See
+[Who does what](#who-does-what) below for what is manual, what is already done, and what
+happens on its own afterwards.
 
 ### 1. Create a GitHub App
 
@@ -107,20 +109,53 @@ admin: {
 
 Commit and deploy. Open `/admin.html`, go to **Save**, and the Publish panel is there.
 
-### What is genuinely unavoidable
+## Who does what
 
-Five things, and no amount of tooling removes them, because each is an act of granting
-authority that only the repository owner can perform:
+The three categories are worth keeping apart, because "setup" is often quoted as though it were
+one thing.
 
-1. Creating a GitHub App — only you can grant write access to your repository.
-2. Converting the private key — GitHub issues a format WebCrypto cannot import.
-3. Storing the secrets — they must live somewhere only your server can read.
-4. Deploying the Worker — it runs under your Cloudflare account, not anyone else's.
-5. Setting `admin.api` — the page has to know where to send the request.
+### Required once, by you, the portfolio owner
 
-A `create-portfolio` script could prompt for values and run `wrangler` for you, and it would
-still not be able to click *Generate a private key* on your behalf. Calling that "one click"
-would be a lie, so it is not claimed here.
+Five steps, roughly ten minutes, and **none of them can be automated away**. Each is an act of
+granting authority that only the owner of the repository and the Cloudflare account can perform:
+
+| | Why it cannot be done for you |
+| --- | --- |
+| Create the GitHub App | Only you can grant write access to your repository |
+| Convert the private key | GitHub issues PKCS#1; WebCrypto imports only PKCS#8 |
+| Store the five secrets | They must live where only your server can read them |
+| Deploy the Worker | It runs under your Cloudflare account, not anyone else's |
+| Set `admin.api` | The page has to know where to send the request |
+
+A `create-portfolio` script could prompt for the values and run `wrangler` for you, and it still
+could not click *Generate a private key* on your behalf. **This is not one click, and it is not
+described as one.**
+
+### Already done, by the project maintainer
+
+Nothing here is your problem — it is committed and works out of the box:
+
+- The Worker itself, its routes, session signing, the path allowlist and payload validation.
+- The admin UI's Publish panel, and its behaviour when publishing is not configured.
+- The `src/data/config.json` layer and its merge into the config.
+- The deployment workflow, including generating the semantic index and refusing to deploy
+  without it.
+- 69 tests covering the security boundary and the publishing client.
+
+### Automatic afterwards, forever
+
+Once the five steps are done, this is the whole loop and none of it needs you:
+
+- Sign in — GitHub remembers the App installation; the session lasts eight hours and renews by
+  signing in again.
+- Publish — the Worker mints a fresh token per request, commits, and returns the commit URL.
+- Build and deploy — the existing Actions workflow runs on the commit; Pages serves the result.
+- Token rotation — installation tokens expire in an hour and are never reused. Nothing to
+  rotate by hand.
+
+The one thing that is *not* automatic: the GitHub App client secret does not expire, but you
+should rotate it if you ever suspect it leaked, by generating a new one and re-running
+`npx wrangler secret put GITHUB_CLIENT_SECRET`.
 
 ## Security model
 
@@ -170,10 +205,23 @@ duplicates, and every file must parse as a JSON object.
 
 ## Verification status
 
-The security logic — sessions, the allowlist, payload validation, CSRF, the commit sequence,
-the concurrency guard — is covered by 45 assertions in `tests/admin-security.test.js`, run by
-`npm test`. The GitHub client is exercised against an injected `fetch`, so the request sequence
-is asserted without touching a repository.
+Stated precisely, because "tested" covers very different things here.
 
-End-to-end sign-in has **not** been run against live GitHub and Cloudflare, because doing so
-requires a GitHub App and a Cloudflare account that only the repository owner can create.
+**Verified against the real Worker handler** — `tests/admin-worker.test.js` sends real `Request`
+objects through the exported `fetch` and asserts on the real `Response`, with the network
+stubbed to throw so anything that unexpectedly reached GitHub fails the test. That covers:
+unauthenticated publish, forged session, expired session, wrong repository, signed-in-without-
+installation, cross-site and lookalike origins, missing Origin, path traversal, writes to
+executable files, malformed JSON, non-object content, oversized payloads, duplicate targets,
+cookie flags, CORS, misconfiguration, and that a repository named in the request body cannot
+steer the write.
+
+**Verified against a stateful local stand-in** — sign-in, pending files, publish, the committed
+state, the offline state, the 409 conflict, and merge-not-replace across two sessions with the
+browser's drafts cleared between them.
+
+**Not verified** — the paths that need a real GitHub App: the OAuth code exchange, the
+installation lookup, installation-token minting, and the commit itself. Running those requires a
+GitHub App and a Cloudflare account that only the repository owner can create, so they are
+covered by unit tests against an injected `fetch` and nothing more. Do not read this document as
+saying the live integration has been exercised. It has not.

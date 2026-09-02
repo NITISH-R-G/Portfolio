@@ -132,9 +132,12 @@ export default function PublishPanel({ builder }) {
             </Note>
           ) : (
             <>
-              <ul className="field-help">
-                {pending.map((file) => <li key={file.path}><code>{file.path}</code></li>)}
-              </ul>
+              {/* Not a <ul>: the default marker rendered as a bullet floating outside the
+                  panel's padding at mobile width, and a list of one or two file paths reads
+                  fine without one. */}
+              <p className="field-help publish-files">
+                {pending.map((file) => <code key={file.path}>{file.path}</code>)}
+              </p>
               <button
                 type="button"
                 className="btn-admin btn-admin-primary"

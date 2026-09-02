@@ -113,8 +113,10 @@ no D1, no Durable Object, no queue — it is a script and five secrets.
 | Concurrent saves | client sends the commit it loaded; mismatch is a 409, and the ref update is `force: false` |
 | GitHub outage | reported as a degraded session, not as a signed-out one |
 
-45 assertions in `tests/admin-security.test.js` cover these, with the GitHub client exercised
-against an injected `fetch` so the commit sequence is asserted without touching a repository.
+69 assertions cover these: `tests/admin-security.test.js` tests the decisions, and
+`tests/admin-worker.test.js` tests the *server* — real `Request` objects through the exported
+`fetch` handler, with the network stubbed to throw, so every refusal above is asserted to happen
+before GitHub is contacted at all.
 
 **What it does not defend against:** someone with your GitHub account, a compromised Cloudflare
 account, or a commit made to the repository by some other route. The Worker guards its own
@@ -122,17 +124,37 @@ endpoint.
 
 ## Cost
 
-| | Free allowance | What this uses |
-| --- | --- | --- |
-| Cloudflare Workers | 100,000 requests/day | a handful per editing session |
-| GitHub App | unlimited | one installation, one repository |
-| GitHub Actions | unlimited on public repos | one build per publish |
-| GitHub Pages | free for public repositories | the site |
+| Component | Intended to stay free on | Free allowance | What this uses |
+| --- | --- | --- | --- |
+| Semantic search | nothing — it runs in the visitor's browser | n/a | no service at all |
+| Repository | GitHub | free, public or private | one repository |
+| Hosting | GitHub Pages | free for public repositories | one site |
+| Build | GitHub Actions | unlimited on public repos; 2,000 min/month private | ~1 min per publish |
+| Authentication | GitHub App | unlimited | one installation, one repository |
+| Publishing API | Cloudflare Workers | 100,000 requests/day | a handful per editing session |
 
 No database, no auth SaaS, no CMS, no per-search inference charge, no per-user infrastructure.
 
-**Honest caveat:** a free tier is a company's policy, not a law. If Cloudflare changes theirs, the
-manual save path still works and still costs nothing, because it never needed a server.
+### What is and is not being promised
+
+A free tier is a company's policy, not a law, and nobody can promise those never change. The
+guarantee here is **architectural**, and it is narrower and more durable than a pricing page:
+
+- **Semantic search requires no paid inference, ever.** The model runs in the visitor's browser.
+  There is no API key in the design, no endpoint to bill against, and no request leaves the page
+  after the model is cached. If every embedding vendor raised prices tomorrow, nothing here
+  would change.
+- **The admin requires no paid auth or database.** Sessions are signed cookies; GitHub is the
+  store. There is no row anywhere that someone could start charging for.
+- **Every paid-tier risk is confined to one optional component.** Only the Worker touches
+  Cloudflare, and only publishing touches the Worker. If that tier changed, the manual save path
+  is untouched and still costs nothing, because it never needed a server — and the portfolio
+  itself, search included, is unaffected.
+
+The cost that *is* real and worth stating: the first search in each browser downloads about
+27.8 MB — the ONNX runtime and the model weights. It is paid in bandwidth by the visitor's
+browser once, not in money by anyone, and nothing is fetched at all until someone searches. See
+[docs/search.md](search.md).
 
 ## Setup
 
@@ -145,5 +167,9 @@ key: **[workers/admin/README.md](../workers/admin/README.md)**.
 
 ## Verification status
 
-Unit-tested end to end in logic; **not** verified against live GitHub and Cloudflare, because
-that requires a GitHub App and a Cloudflare account that only the repository owner can create.
+Read [workers/admin/README.md](../workers/admin/README.md#verification-status) for the precise
+split. In short: the Worker's refusal paths are verified through its real handler, the client's
+publish flow is verified against a stateful local stand-in, and the four paths that need a live
+GitHub App — code exchange, installation lookup, token minting, the commit — are **not**
+verified, because running them needs an App and a Cloudflare account only the repository owner
+can create.

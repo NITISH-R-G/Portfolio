@@ -2619,6 +2619,15 @@ a:focus-visible,
     justify-content: center;
   }
 
+  /* The unsaved badge is not a button, so `flex: 1` above never applied to it and nothing
+     stopped it being squeezed: at 375px it collapsed to a circle with its uppercase label
+     spilling over "View portfolio". Its own row instead — it is a status, and a status that
+     obscures the control next to it is worse than no status. */
+  .admin-actions .admin-dirty {
+    flex: 0 0 100%;
+    text-align: center;
+  }
+
   .field-grid {
     grid-template-columns: 1fr;
   }
