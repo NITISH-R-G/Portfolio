@@ -201,5 +201,20 @@ export function defaultConfig() {
       /** `'github-pages' | 'vercel' | 'netlify' | 'cloudflare' | 'static'` */
       target: 'static',
     },
+
+    admin: {
+      /**
+       * Origin of the publishing Worker, e.g. `https://portfolio-admin.you.workers.dev`.
+       *
+       * Empty by default, and empty is a complete configuration: the builder then behaves
+       * exactly as it always has — show the changes, let you commit them yourself. Publishing
+       * is an addition to that flow, not a replacement for it, so a fork with no Cloudflare
+       * account is not a fork with a broken admin.
+       *
+       * Only an origin is ever stored here, never a token: the whole point of the Worker is
+       * that credentials stay on the far side of it.
+       */
+      api: '',
+    },
   }
 }

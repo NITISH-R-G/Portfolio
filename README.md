@@ -187,10 +187,12 @@ further. **[docs/themes.md](docs/themes.md)**
 Publish once. A recruiter reads the page; a search engine reads the JSON-LD; an AI agent reads
 a manifest built for it.
 
-**Search that understands what you meant.** Press `⌘K` / `Ctrl-K`. "Projects involving computer
-vision" finds work described as "object detection with OpenCV" — and every result shows *why*
-it matched and what backs it, so it can be checked rather than trusted. Deterministic, offline,
-no API key.
+**Search that understands what you meant.** Press `⌘K` / `Ctrl-K`. "Recognizing things from
+images" finds a project whose only description is its title — because a real pretrained
+embedding model runs in your browser alongside three corpus-derived signals. No API key, no
+account, no per-query cost, and offline after the first search. Every result still shows *why*
+it matched and what backs it: similarity ranks results, it never becomes evidence.
+**[docs/search.md](docs/search.md)**
 
 **Copy → Markdown or Prompt.** On the whole profile or any single entry. The prompt carries
 grounding instructions — use only this, say so when unsupported, cite the evidence — so a
@@ -372,8 +374,16 @@ themes. It runs the real pipeline, so the preview *is* the build rather than an
 approximation of it.
 
 It never writes to disk and says so. Changes come out as two files you commit:
-`src/data/overrides.json` and a `portfolio.config.js` patch. Everything it does can be
-typed by hand instead.
+`src/data/overrides.json` and `src/data/config.json`. Everything it does can be typed by hand
+instead.
+
+**Or press Publish.** With an optional Cloudflare Worker deployed, the builder signs you in with
+GitHub and commits those files for you — no download, no hand-edited JSON, no manual deploy. It
+is a GitHub App with write access to one repository, no database, no auth service and no bill:
+the browser only ever holds a signed session cookie, and the admin can write three JSON paths
+and nothing else. Setting it up takes about ten minutes and five steps that genuinely cannot be
+automated, all of them written out honestly.
+**[docs/publishing.md](docs/publishing.md)**
 
 ---
 
@@ -474,6 +484,8 @@ import script all read the registry, so none of them need changing.
 [Themes](docs/themes.md) ·
 [Customization](docs/customization.md) ·
 [Deployment](docs/deployment.md) ·
+[Search](docs/search.md) ·
+[Publishing](docs/publishing.md) ·
 [Privacy](docs/privacy.md) ·
 [Security](SECURITY.md) ·
 [Troubleshooting](docs/troubleshooting.md) ·

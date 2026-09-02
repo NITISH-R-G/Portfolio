@@ -20,6 +20,12 @@ import { readRecord, toLayer } from './documents/store.js'
 const configModules = import.meta.glob('/portfolio.config.js', { eager: true })
 const manualModules = import.meta.glob('/src/data/manual.json', { eager: true })
 const overrideModules = import.meta.glob('/src/data/overrides.json', { eager: true })
+// Written by the admin's Publish button, absent in a hand-authored setup. It sits between the
+// JavaScript config and the unsaved browser draft — the same shape, the same merge, so it is
+// the draft made durable rather than a second place settings can live. The admin never writes
+// `portfolio.config.js` itself: that file is imported by the build, so a write to it would be
+// arbitrary code execution on the next deploy.
+const configOverrideModules = import.meta.glob('/src/data/config.json', { eager: true })
 const sourceModules = import.meta.glob('/src/data/generated/sources/*.json', { eager: true })
 const statusModules = import.meta.glob('/src/data/generated/status.json', { eager: true })
 // Documents live outside `generated/` because they are not reproducible: `npm run import`
@@ -100,9 +106,12 @@ export function loadPortfolio(options = {}) {
     ? mergeOverrideLayers(savedOverrides, readDraft(DRAFT_KEY))
     : savedOverrides
 
+  const publishedConfig = moduleDefault(configOverrideModules, '/src/data/config.json') ?? {}
+  const savedConfig = deepMerge(fileConfig, publishedConfig)
+
   const config = useDraft
-    ? deepMerge(fileConfig, readDraft(CONFIG_DRAFT_KEY) ?? {})
-    : fileConfig
+    ? deepMerge(savedConfig, readDraft(CONFIG_DRAFT_KEY) ?? {})
+    : savedConfig
 
   cached = buildPortfolio({
     config,
@@ -143,10 +152,18 @@ export function loadImportStatus() {
  * The config exactly as committed, with no draft applied. The admin needs this to show
  * which settings are unsaved edits and which are already in the file.
  *
+ * Both committed layers, in the order the site applies them: the hand-authored JavaScript, then
+ * anything the admin has already published. Omitting the second would make every published
+ * setting look unsaved, and the Publish panel would keep offering to commit changes that are
+ * already committed.
+ *
  * @returns {import('../core/config/types.js').PortfolioConfig}
  */
 export function loadFileConfig() {
-  return moduleDefault(configModules, '/portfolio.config.js') ?? {}
+  return deepMerge(
+    moduleDefault(configModules, '/portfolio.config.js') ?? {},
+    moduleDefault(configOverrideModules, '/src/data/config.json') ?? {},
+  )
 }
 
 /**

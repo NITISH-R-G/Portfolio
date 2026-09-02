@@ -312,7 +312,7 @@ export function rank(documents, query, options = {}) {
   const total = Math.max(pool.length, 1)
 
   /** @type {SearchResult[]} */
-  const results = []
+  let results = []
 
   for (const document of pool) {
     const fields = searchableFields(document)
@@ -416,9 +416,29 @@ export function rank(documents, query, options = {}) {
   // worked with?" leaves the term "companies", which appears in no record — so the lexical
   // pass returns either nothing or a handful of unrelated matches from elsewhere. Reading the
   // named section is the answer to the question that was actually asked.
+  //
+  // It is *merged*, never substituted. This branch used to `return section`, which was
+  // defensible while the only alternative was an empty list and became wrong the moment
+  // embeddings could answer: "work recognising faces" reads "work" as the experience section,
+  // matches no experience record, and would discard the face-detection project — the section
+  // preference behaving as a filter, which §5 forbids.
+  //
+  // Which half leads is decided by `direct`, a property the matcher already computes, rather
+  // than by a new similarity threshold. A direct hit means a word from the question is
+  // actually in the record; everything else — concept expansion, distributional association,
+  // cosine similarity — is the engine's inference about what the question might have meant.
+  // Measured on this corpus the split is clean: "Where did he study?" and "What companies has
+  // he worked with?" produce no direct hits at all and are answered by their section, while
+  // "work recognising faces" and "experience with emotion detection from photographs" both
+  // land a direct hit on the right project and should lead with it.
   if (preferred.length && !results.some((result) => preferred.includes(result.type))) {
     const section = sectionResults(documents, preferred, options)
-    if (section.length) return section
+    if (section.length) {
+      const seen = new Set(results.map((result) => result.id))
+      const rest = section.filter((result) => !seen.has(result.id))
+      const grounded = results.some((result) => result.matched.some((match) => match.direct))
+      results = grounded ? [...results, ...rest] : [...rest, ...results]
+    }
   }
 
   const minScore = options.minScore ?? 0

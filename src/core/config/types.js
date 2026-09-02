@@ -87,6 +87,11 @@
  */
 
 /**
+ * @typedef {object} AdminConfig
+ * @property {string} [api] Origin of the publishing Worker. Empty disables publishing.
+ */
+
+/**
  * @typedef {object} ConfigIdentity
  * @property {string} [name]
  * @property {string} [headline]
@@ -117,6 +122,7 @@
  * @property {PrivacyConfig} [privacy]
  * @property {FeatureConfig} [features]
  * @property {DeploymentConfig} [deployment]
+ * @property {AdminConfig} [admin]
  */
 
 /**

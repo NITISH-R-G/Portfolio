@@ -10,6 +10,10 @@
  * Both are shown, copyable and downloadable, because "download" behaves differently across
  * browsers and a copy button always works.
  *
+ * When a publishing Worker is configured, `PublishPanel` sits above all of this and commits
+ * the same data for you. The manual blocks stay regardless — they are the fallback when the
+ * service is unreachable, and the answer for anyone who would rather not run a Worker at all.
+ *
  * @module admin/panels/ExportPanel
  */
 
@@ -17,6 +21,7 @@ import { useState } from 'react'
 import Icon from '../../components/Icon'
 import { Panel, Note } from '../fields.jsx'
 import { hasContent } from '../state.js'
+import PublishPanel from './PublishPanel.jsx'
 
 /**
  * @param {{builder: import('../state.js').Builder}} props
@@ -52,8 +57,10 @@ export default function ExportPanel({ builder }) {
   return (
     <Panel
       title="Save your changes"
-      description="This page runs entirely in your browser and cannot write files. Copy each block into the file named above it."
+      description="This page cannot write files itself. Copy each block into the file named above it — or, if publishing is set up, let it commit them for you."
     >
+      <PublishPanel builder={builder} />
+
       {!dirty && (
         <Note icon="Check">
           Nothing to save — you have not changed anything yet.

@@ -105,6 +105,36 @@ describe('conversational queries reach the right evidence', () => {
     assert.equal(results[0].type, 'experience')
   })
 
+  test('naming a section never discards a record the words actually hit', () => {
+    // The bug this guards: reading a section used to *replace* the result list rather than
+    // extend it, so a question that named a section and matched a record elsewhere threw the
+    // match away. "Work" reads as experience; "computer vision" is in a project; answering
+    // with the employment list alone is answering a question nobody asked.
+    const p = portfolio()
+    // "Work" reads as experience; no experience record mentions coral reefs, but a project
+    // does. The old behaviour answered with the employment list and dropped the project.
+    const results = p.search('work on coral reefs', { limit: 20 })
+    assert.ok(results.length > 0)
+    assert.equal(results[0].title, 'reef-vision', results.map((r) => r.title).join(', '))
+    // Grounded matches lead; the section it named follows rather than displacing them.
+    assert.notEqual(results[0].reason, 'section')
+    assert.ok(results.some((r) => r.reason === 'section'), 'the named section is still offered')
+  })
+
+  test('a section still leads when nothing was directly matched', () => {
+    // The other half of the same rule. "Study" appears in no record, so every result is the
+    // engine's inference — and an inferred project is a worse answer to "where did he study"
+    // than the education section itself.
+    const p = portfolio()
+    // "Education in machine learning" matches PyTorch and reef-vision by association only —
+    // no record contains either word directly — so the education section is the better answer
+    // and leads, with the inferred matches kept below it rather than thrown away.
+    const results = p.search('education in machine learning', { limit: 10 })
+    assert.equal(results[0].type, 'education')
+    assert.equal(results[0].reason, 'section')
+    assert.ok(results.some((r) => r.reason !== 'section'), 'inferred matches are kept, not discarded')
+  })
+
   test('co-occurrence outranks repetition', () => {
     // "React and TypeScript together" is a question about both appearing, not about whichever
     // record says "React" most often.

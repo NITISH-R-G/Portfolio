@@ -13,6 +13,7 @@ import { pathToFileURL } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
 import { resolveConfig } from '../../src/core/config/resolve.js'
+import { deepMerge } from '../../src/core/schema/merge.js'
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..')
 
@@ -39,7 +40,30 @@ export async function loadResolvedConfig() {
     }
   }
 
-  return resolveConfig(userConfig)
+  // The admin's published settings layer. It has to be merged here rather than inside
+  // `buildPortfolio`, because Vite reads `site.base` from this function before any of the
+  // build pipeline runs — and a `base` the browser applies but the build does not is a
+  // deployed page that loads nothing.
+  const published = readJsonIfPresent(path.join(ROOT, 'src', 'data', 'config.json'))
+
+  return resolveConfig(published ? deepMerge(userConfig ?? {}, published) : userConfig)
+}
+
+/**
+ * @param {string} file
+ * @returns {Record<string, unknown>|null}
+ */
+function readJsonIfPresent(file) {
+  if (!fs.existsSync(file)) return null
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+  } catch (err) {
+    // Loud, because this file is written by a machine: if it is malformed, something upstream
+    // is broken and silently ignoring it would hide the actual fault.
+    console.warn(`[portfolio] src/data/config.json is not valid JSON and was ignored: ${err.message}`)
+    return null
+  }
 }
 
 export { ROOT }
