@@ -50,6 +50,10 @@ function moduleDefault(modules, path) {
  */
 const DRAFT_KEY = 'portfolio-admin-overrides'
 const CONFIG_DRAFT_KEY = 'portfolio-admin-config'
+// The drafts as they stood when a publish last succeeded. Read only by the admin, to tell
+// "edited and not saved" from "edited, saved, and still shown because the site has not
+// rebuilt yet". The site build never reads it — a deployed page has no localStorage at all.
+const PUBLISHED_KEY = 'portfolio-admin-published'
 
 /**
  * @param {string} key
@@ -227,4 +231,4 @@ export function invalidatePortfolio() {
   cached = null
 }
 
-export { DRAFT_KEY, CONFIG_DRAFT_KEY }
+export { DRAFT_KEY, CONFIG_DRAFT_KEY, PUBLISHED_KEY }

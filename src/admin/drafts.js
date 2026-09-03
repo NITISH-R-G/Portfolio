@@ -49,6 +49,33 @@ export function applyClears(value) {
   return /** @type {any} */ (out)
 }
 
+/**
+ * Whether two drafts describe the same edits.
+ *
+ * Compared by value with keys sorted, not by `JSON.stringify` order, because the two sides are
+ * built at different times and by different code paths — one is what the editor holds now, the
+ * other was serialised when a publish succeeded. Key order between those is not stable and
+ * carries no meaning.
+ *
+ * @param {unknown} a @param {unknown} b
+ * @returns {boolean}
+ */
+export function sameDraft(a, b) {
+  return stableString(a ?? {}) === stableString(b ?? {})
+}
+
+/** @param {unknown} value @returns {string} */
+function stableString(value) {
+  if (Array.isArray(value)) return `[${value.map(stableString).join(',')}]`
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort()
+      .filter((key) => hasContent(value[key]) || value[key] === CLEARED)
+      .map((key) => `${JSON.stringify(key)}:${stableString(value[key])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'null'
+}
+
 /** Recursively true when an object holds anything other than empty containers. */
 export function hasContent(value) {
   if (value === undefined || value === null || value === '') return false

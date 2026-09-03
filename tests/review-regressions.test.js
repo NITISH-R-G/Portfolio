@@ -9,7 +9,7 @@ import {
 } from '@portfolio-engine/agent'
 import { toPublicManifest } from '../src/core/standard/public.js'
 import { normalizeProfile } from '../src/core/schema/profile.js'
-import { setPath, applyClears, prune, mergeDeep, mergeOverrides, CLEARED } from '../src/admin/drafts.js'
+import { setPath, applyClears, prune, sameDraft, mergeDeep, mergeOverrides, CLEARED } from '../src/admin/drafts.js'
 import { filesToPublish } from '../src/admin/publish.js'
 
 /**
@@ -383,5 +383,97 @@ describe('the deployed admin knows it can publish', () => {
     assert.match(panel, /api\.isAvailable\(\)/)
     assert.match(panel, /if \(live === false\)/)
     assert.match(source('src/admin/api.js'), /const BASE = '\/__portfolio'/)
+  })
+})
+
+describe('a successful publish clears the unsaved state', () => {
+  // The production symptom: after the first real publish the header still read UNSAVED while
+  // the Save panel, two inches below, said "Nothing to publish — the repository already
+  // matches what you see here". Both were true, of different questions. `dirty` asked whether
+  // the browser held a non-empty draft; a publish commits the draft but deliberately leaves it
+  // in place, because the page was built before the commit and clearing it would snap the
+  // preview back to the old value until the site rebuilds — which looks like an undo.
+  //
+  // `dirty` now asks whether the drafts differ from the snapshot taken when a publish last
+  // succeeded. These exercise the state machine directly, since the badge is one boolean.
+  const model = () => {
+    let overrides = {}
+    let configDraft = {}
+    let published = {}
+    return {
+      edit: (patch) => { configDraft = mergeDeep(configDraft, patch) },
+      publishSucceeded: () => { published = { overrides, config: configDraft } },
+      reset: () => { overrides = {}; configDraft = {}; published = {} },
+      get dirty() {
+        return !sameDraft(overrides, published.overrides) || !sameDraft(configDraft, published.config)
+      },
+    }
+  }
+
+  test('a clean editor is not dirty', () => {
+    assert.equal(model().dirty, false)
+  })
+
+  test('edit → dirty → publish → clean', () => {
+    const m = model()
+    assert.equal(m.dirty, false)
+    m.edit({ theme: { preset: 'developer' } })
+    assert.equal(m.dirty, true, 'an edit must be reported as unsaved')
+    m.publishSucceeded()
+    assert.equal(m.dirty, false, 'a committed edit is no longer unsaved')
+  })
+
+  test('editing again after a publish is dirty again', () => {
+    // The capability that must survive: genuinely unsaved work is still detected.
+    const m = model()
+    m.edit({ theme: { preset: 'developer' } })
+    m.publishSucceeded()
+    m.edit({ theme: { accent: '#f00' } })
+    assert.equal(m.dirty, true)
+  })
+
+  test('edit → publish failure → still dirty', () => {
+    // Nothing calls `publishSucceeded` on the error path, so the snapshot never moves.
+    const m = model()
+    m.edit({ theme: { preset: 'developer' } })
+    assert.equal(m.dirty, true)
+    // A 409, a network failure, a 403 — the handler sets an error and returns.
+    assert.equal(m.dirty, true, 'a failed publish must leave the work marked unsaved')
+  })
+
+  test('discarding everything leaves a clean editor', () => {
+    // Reset clears the snapshot too: with no drafts left there is nothing for it to vouch for,
+    // and an empty editor comparing itself against edits it no longer holds would report them
+    // unsaved for ever.
+    const m = model()
+    m.edit({ theme: { preset: 'developer' } })
+    m.publishSucceeded()
+    m.reset()
+    assert.equal(m.dirty, false)
+  })
+
+  test('the comparison ignores key order and empty containers', () => {
+    // The two sides are serialised at different times by different code paths.
+    assert.ok(sameDraft({ a: 1, b: 2 }, { b: 2, a: 1 }))
+    assert.ok(sameDraft({ theme: { preset: 'x' } }, { theme: { preset: 'x' }, layout: {} }))
+    assert.ok(!sameDraft({ theme: { preset: 'x' } }, { theme: { preset: 'y' } }))
+    assert.ok(!sameDraft({}, { theme: { preset: 'x' } }))
+  })
+
+  test('an explicit clear is a real difference, not an empty container', () => {
+    // `CLEARED` marks a field the user emptied on purpose. Treating it as "no content" would
+    // make clearing a published field look like no change at all.
+    assert.ok(!sameDraft({ theme: { accent: CLEARED } }, {}))
+    assert.ok(sameDraft({ theme: { accent: CLEARED } }, { theme: { accent: CLEARED } }))
+  })
+
+  test('the Save panel records the publish, and only on success', () => {
+    const panel = source('src/admin/panels/PublishPanel.jsx')
+    // Inside the try, after the await resolved — not in the catch, and not before the call.
+    const afterCommit = panel.indexOf('setStatus(\'published\')')
+    const marks = panel.indexOf('builder.markPublished()')
+    const catchBlock = panel.indexOf('} catch (err) {')
+    assert.ok(marks > afterCommit, 'the snapshot must be taken after the commit is confirmed')
+    assert.ok(marks < catchBlock, 'the snapshot must not be taken on the failure path')
   })
 })
