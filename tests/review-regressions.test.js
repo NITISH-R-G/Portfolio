@@ -455,6 +455,13 @@ describe('a successful publish clears the unsaved state', () => {
   test('the comparison ignores key order and empty containers', () => {
     // The two sides are serialised at different times by different code paths.
     assert.ok(sameDraft({ a: 1, b: 2 }, { b: 2, a: 1 }))
+    // Mixed case, which the lowercase-only case above leaves untested and which is where key
+    // ordering is least obvious. Note what this does *not* prove: both sides are canonicalised
+    // in one process by the same comparator, so `sameDraft` cannot distinguish one total order
+    // from another — the comparator in `stableString` is spelled out for the reader's benefit,
+    // not pinned by this assertion.
+    assert.ok(sameDraft({ Theme: 1, accent: 2, Accent: 3, theme: 4 }, { theme: 4, Accent: 3, accent: 2, Theme: 1 }))
+    assert.ok(!sameDraft({ Theme: 1, theme: 2 }, { Theme: 2, theme: 1 }), 'case is still significant')
     assert.ok(sameDraft({ theme: { preset: 'x' } }, { theme: { preset: 'x' }, layout: {} }))
     assert.ok(!sameDraft({ theme: { preset: 'x' } }, { theme: { preset: 'y' } }))
     assert.ok(!sameDraft({}, { theme: { preset: 'x' } }))

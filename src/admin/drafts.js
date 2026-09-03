@@ -68,7 +68,12 @@ export function sameDraft(a, b) {
 function stableString(value) {
   if (Array.isArray(value)) return `[${value.map(stableString).join(',')}]`
   if (value && typeof value === 'object') {
-    return `{${Object.keys(value).sort()
+    // Code-unit order, stated explicitly. `Object.keys` yields strings, so `<`/`>` compare by
+    // UTF-16 code unit — identical to the default comparator, and deliberately *not*
+    // `localeCompare`: this is a canonical form, so the ordering only has to be total and the
+    // same everywhere. A locale-aware comparator would make it depend on the machine's ICU
+    // data, which is the one property a canonicalisation cannot afford to lose.
+    return `{${Object.keys(value).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
       .filter((key) => hasContent(value[key]) || value[key] === CLEARED)
       .map((key) => `${JSON.stringify(key)}:${stableString(value[key])}`)
       .join(',')}}`
