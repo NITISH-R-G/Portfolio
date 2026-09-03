@@ -26,6 +26,7 @@ import {
 import { toPublicManifest } from '../src/core/standard/public.js'
 import { loadBuiltPortfolio, PATHS, relative, fs, path } from './lib/portfolio.mjs'
 import { dim, ok, rule, say, warn } from './lib/ui.mjs'
+import { installRetryingFetch } from './lib/retryFetch.mjs'
 
 async function main() {
   const built = await loadBuiltPortfolio({ onError: (m) => warn(m) })
@@ -44,15 +45,31 @@ async function main() {
   const provider = new LocalEmbeddingProvider()
 
   const loadStart = performance.now()
+
+  // Installed before `ready()`, because that is where `embedding.js` first imports
+  // `transformers.js` — which captures `globalThis.fetch` into a module constant as it loads
+  // and never looks at it again. Retrying matters here because CI runners share outbound IPs
+  // with the rest of GitHub, and HuggingFace rate-limits by IP: a 429 on the first file was
+  // failing roughly one deploy in two.
+  const restoreFetch = installRetryingFetch({
+    onRetry: ({ attempt, attempts, delayMs, reason }) => {
+      say(dim(`  ${reason} from the model host — retry ${attempt}/${attempts - 1} in ${(delayMs / 1000).toFixed(1)}s`))
+    },
+  })
+
   try {
     await provider.ready()
   } catch (error) {
-    // A missing model is not a build failure. The site still works: search degrades to the
-    // lexical path, which is exactly what happens for a visitor whose browser cannot load the
-    // model either.
+    // Still not a build failure *here*. The site works either way, and a visitor whose browser
+    // cannot load the model gets the same lexical path. What stops a degraded site reaching
+    // production is the deploy guard, which reads the built manifest and refuses to ship
+    // anything that does not report `hybrid-semantic` — so exhausting the retries above ends
+    // the deploy loudly rather than quietly.
     warn(`${error.message}`)
     say(dim('  Skipping embeddings. Search will use lexical retrieval only.'))
     return 0
+  } finally {
+    restoreFetch()
   }
   const loadMs = performance.now() - loadStart
 
