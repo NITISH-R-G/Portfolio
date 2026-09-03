@@ -178,6 +178,64 @@ describe('the waiting is bounded', () => {
     assert.ok(total <= 5000, `slept ${total}ms against a 5000ms budget`)
   })
 
+  test('a sleep that overshoots the deadline stops before retrying', async () => {
+    // The pre-sleep check is a *prediction* — `now() + delayMs` — and a sleep can overshoot it:
+    // a loaded runner schedules late. Here the clock jumps far further than the delay it was
+    // handed, which is the same shape as a process suspended mid-sleep.
+    let clock = 0
+    const calls = []
+    const inner = async () => { calls.push(1); return reply(429) }
+
+    const fetchImpl = retryingFetch(inner, {
+      attempts: 5,
+      budgetMs: 10_000,
+      now: () => clock,
+      random: () => 0.5,
+      // Asked for ~1s, actually consumes the whole budget.
+      sleep: async () => { clock += 50_000 },
+    })
+
+    const response = await fetchImpl('https://hf/model')
+    assert.equal(response.status, 429, 'the transient response is returned, not swallowed')
+    assert.equal(calls.length, 1, 'inner must not be invoked again once the budget is spent')
+  })
+
+  test('the same holds when the failure was a network error', async () => {
+    let clock = 0
+    const calls = []
+    const boom = new TypeError('fetch failed')
+    const inner = async () => { calls.push(1); throw boom }
+
+    const fetchImpl = retryingFetch(inner, {
+      attempts: 5,
+      budgetMs: 10_000,
+      now: () => clock,
+      random: () => 0.5,
+      sleep: async () => { clock += 50_000 },
+    })
+
+    await assert.rejects(() => fetchImpl('https://hf/model'), (error) => error === boom)
+    assert.equal(calls.length, 1, 'the original error is rethrown rather than retried')
+  })
+
+  test('a sleep that stays within the deadline still retries', async () => {
+    // The other half: the post-sleep check must not become a blanket stop.
+    let clock = 0
+    const calls = []
+    const inner = async () => { calls.push(1); return calls.length < 2 ? reply(429) : reply(200) }
+
+    const fetchImpl = retryingFetch(inner, {
+      attempts: 5,
+      budgetMs: 10_000,
+      now: () => clock,
+      random: () => 0.5,
+      sleep: async (ms) => { clock += ms },
+    })
+
+    assert.equal((await fetchImpl('https://hf/model')).status, 200)
+    assert.equal(calls.length, 2, 'a retry inside the budget must still happen')
+  })
+
   test('backoff is exponential, jittered, and capped', () => {
     const opts = { baseDelayMs: 1000, maxDelayMs: 8000, random: () => 1 }
     assert.equal(backoffMs(1, opts), 1000)
@@ -231,6 +289,55 @@ describe('permanent failures are not retried', () => {
     const response = await fetchImpl('https://hf/model', { method: 'POST' })
     assert.equal(response.status, 429)
     assert.equal(calls.length, 1, 'a POST must never be replayed')
+  })
+
+  test('a POST carried on a Request object, with no init, is not replayed', async () => {
+    // The case that reading only `init.method` missed: `fetch(new Request(url, {method:'POST'}))`
+    // passes no init at all, so the method lives on the *input*. It defaulted to GET and the
+    // POST was sent three times. This wrapper is installed on the global fetch for the duration
+    // of the model load, so anything else running in that window would have been replayed too.
+    const { fetchImpl, calls } = scripted([429, 200])
+    const response = await fetchImpl(new Request('https://hf/model', { method: 'POST' }))
+    assert.equal(response.status, 429)
+    assert.equal(calls.length, 1, 'a POST on a Request must never be replayed')
+  })
+
+  test('HEAD is not replayed either', async () => {
+    // Idempotent, so repeating it would be harmless — but the model download never issues one
+    // (`transformers.js` probes metadata with a ranged GET), so allowing it would only widen
+    // what a global wrapper repeats on someone else's behalf.
+    for (const call of [
+      () => scripted([429, 200]).fetchImpl('https://hf/model', { method: 'HEAD' }),
+      () => scripted([429, 200]).fetchImpl(new Request('https://hf/model', { method: 'HEAD' })),
+    ]) {
+      assert.equal((await call()).status, 429)
+    }
+
+    const { fetchImpl, calls } = scripted([429, 200])
+    await fetchImpl(new Request('https://hf/model', { method: 'HEAD' }))
+    assert.equal(calls.length, 1)
+  })
+
+  test('init.method wins over the Request’s own', async () => {
+    const { fetchImpl, calls } = scripted([429, 200])
+    // A GET Request explicitly overridden to POST must not be retried…
+    await fetchImpl(new Request('https://hf/model'), { method: 'POST' })
+    assert.equal(calls.length, 1)
+  })
+
+  test('a GET is still retried, however it is expressed', async () => {
+    // The behaviour that must not regress: every spelling of a GET keeps its retries.
+    for (const [input, init] of [
+      ['https://hf/model', undefined],
+      ['https://hf/model', { method: 'GET' }],
+      ['https://hf/model', { method: 'get' }],
+      [new Request('https://hf/model'), undefined],
+      [new Request('https://hf/model', { method: 'GET' }), undefined],
+    ]) {
+      const { fetchImpl, calls } = scripted([429, 200])
+      assert.equal((await fetchImpl(input, init)).status, 200)
+      assert.equal(calls.length, 2, `${String(input)} ${JSON.stringify(init)}`)
+    }
   })
 })
 

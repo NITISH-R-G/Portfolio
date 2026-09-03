@@ -40,8 +40,30 @@
  */
 export const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504])
 
-/** Only ever retry requests that are safe to repeat. The model download is all GETs. */
-const IDEMPOTENT = new Set(['GET', 'HEAD', undefined, null, ''])
+/**
+ * The only method this will ever replay.
+ *
+ * GET alone, not the whole idempotent family. HEAD is idempotent too and would be harmless to
+ * repeat, but the model download never issues one — `transformers.js` probes file metadata with
+ * a ranged `GET` (`Range: bytes=0-0`) rather than HEAD — so allowing it buys nothing and widens
+ * what a global fetch wrapper will repeat on someone else's behalf.
+ */
+const RETRYABLE_METHOD = 'GET'
+
+/**
+ * The method a request will actually be sent with.
+ *
+ * `init.method` first, then the `Request` object's own — because `fetch(new Request(url, {
+ * method: 'POST' }))` carries the method on the *input* and passes no init at all. Reading only
+ * `init` saw `undefined` there, defaulted to GET, and replayed the POST.
+ *
+ * @param {RequestInfo|URL} input @param {RequestInit} [init]
+ * @returns {string}
+ */
+function resolveMethod(input, init) {
+  const method = init?.method ?? (typeof input === 'object' ? input?.method : undefined) ?? RETRYABLE_METHOD
+  return String(method).toUpperCase()
+}
 
 /** @type {(ms: number) => Promise<void>} */
 const defaultSleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms) })
@@ -76,8 +98,7 @@ export function retryingFetch(inner, options = {}) {
   } = options
 
   return async function fetchWithRetry(input, init) {
-    const method = (init?.method ?? 'GET').toUpperCase()
-    if (!IDEMPOTENT.has(method)) return inner(input, init)
+    if (resolveMethod(input, init) !== RETRYABLE_METHOD) return inner(input, init)
 
     const url = typeof input === 'string' ? input : (input?.url ?? String(input))
     const deadline = now() + budgetMs
@@ -118,6 +139,15 @@ export function retryingFetch(inner, options = {}) {
 
       onRetry?.({ attempt, attempts, delayMs, reason, url })
       await sleep(delayMs)
+
+      // The check above is a *prediction* — `now() + delayMs` — and a sleep can overshoot it:
+      // a loaded runner schedules late, and an injected clock may advance by more than the
+      // delay it was handed. Measuring once the sleep has actually returned is what stops one
+      // extra request being issued after the budget is already spent.
+      if (now() >= deadline) {
+        if (response) return response
+        throw failure
+      }
     }
   }
 }
