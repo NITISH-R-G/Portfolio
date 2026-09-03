@@ -68,6 +68,9 @@ export default function PublishPanel({ builder }) {
       const committed = await publish(config, { files: pending, head: session.head })
       setResult(committed)
       setStatus('published')
+      // These drafts are now in the repository, so they are no longer unsaved work. Recorded
+      // rather than cleared: the preview still needs them until the site rebuilds.
+      builder.markPublished()
       // Re-read so the next comparison is against what is now on the branch; without this a
       // second publish would offer to commit the same change again.
       refresh()

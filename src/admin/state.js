@@ -18,8 +18,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildPortfolio } from '../core/generate/build.js'
 import { recordKey } from '../core/schema/merge.js'
-import { applyClears, hasContent, prune, setPath, mergeDeep, mergeOverrides } from './drafts.js'
-import { DRAFT_KEY, CONFIG_DRAFT_KEY, loadFileConfig, loadSourceLayers, loadImportStatus, loadDocuments } from '../core/load.js'
+import { applyClears, hasContent, prune, sameDraft, setPath, mergeDeep, mergeOverrides } from './drafts.js'
+import { DRAFT_KEY, CONFIG_DRAFT_KEY, PUBLISHED_KEY, loadFileConfig, loadSourceLayers, loadImportStatus, loadDocuments } from '../core/load.js'
 
 /** Vite resolves these at build time; the browser never fetches them. */
 const manualModules = import.meta.glob('/src/data/manual.json', { eager: true })
@@ -46,6 +46,7 @@ const moduleDefault = (modules, path) => modules[path]?.default ?? modules[path]
  * @property {(collection: string, ids: string[]) => void} setOrder
  * @property {(collection: string, id: string, direction: -1|1) => void} move
  * @property {() => void} reset
+ * @property {() => void} markPublished
  * @property {(collection: string, id: string) => void} revert
  */
 
@@ -55,6 +56,9 @@ const moduleDefault = (modules, path) => modules[path]?.default ?? modules[path]
 export function useBuilder() {
   const [overrides, setOverrides] = useState(() => read(DRAFT_KEY, {}))
   const [configDraft, setConfigDraft] = useState(() => read(CONFIG_DRAFT_KEY, {}))
+  // The drafts as they stood when a publish last succeeded. See `dirty` below for why this
+  // exists rather than the drafts simply being cleared.
+  const [published, setPublished] = useState(() => read(PUBLISHED_KEY, {}))
 
   const fileConfig = useMemo(() => loadFileConfig(), [])
   const sources = useMemo(() => loadSourceLayers(), [])
@@ -67,6 +71,7 @@ export function useBuilder() {
   // and these documents are small, so there is nothing to debounce.
   useEffect(() => write(DRAFT_KEY, overrides), [overrides])
   useEffect(() => write(CONFIG_DRAFT_KEY, configDraft), [configDraft])
+  useEffect(() => write(PUBLISHED_KEY, published), [published])
 
   /**
    * The preview runs the *real* pipeline, not a simplified version of it. That is what
@@ -204,17 +209,47 @@ export function useBuilder() {
   const reset = useCallback(() => {
     setOverrides({})
     setConfigDraft({})
+    // The snapshot goes too. It records "these drafts are already committed", and with no
+    // drafts left there is nothing for it to vouch for — keeping it would leave an empty
+    // editor comparing itself against edits it no longer holds, and reporting them unsaved.
+    setPublished({})
   }, [])
 
+  /**
+   * Record that the current drafts have been committed.
+   *
+   * Called by the Save panel when the Worker confirms a commit. Deliberately not a reset: the
+   * page was built before the publish, so `fileConfig` does not contain the change yet and
+   * clearing the drafts would make the preview snap back to the old value until the site
+   * rebuilds — which looks exactly like the publish having been undone.
+   */
+  const markPublished = useCallback(() => {
+    setPublished({ overrides, config: configDraft })
+  }, [overrides, configDraft])
+
+  /**
+   * Whether this browser holds edits that are not saved anywhere.
+   *
+   * It used to ask whether the drafts were *non-empty*, which is a different question and
+   * answered the wrong one after a successful publish: the drafts stay in localStorage so the
+   * preview keeps showing the change until the site rebuilds, so the badge read "unsaved"
+   * forever — while the Save panel, which compares against the repository, correctly said
+   * there was nothing left to publish. Two true statements about two different questions, and
+   * only one of them was the question the badge claimed to answer.
+   *
+   * So it now compares the drafts against the snapshot taken when a publish last succeeded.
+   * Editing anything after that makes them differ again immediately, which is the ability to
+   * spot genuinely unsaved work that this has to keep.
+   */
   const dirty = useMemo(
-    () => hasContent(overrides) || hasContent(configDraft),
-    [overrides, configDraft],
+    () => !sameDraft(overrides, published.overrides) || !sameDraft(configDraft, published.config),
+    [overrides, configDraft, published],
   )
 
   return {
     built, overrides, configDraft, sources, documents, status, dirty,
     setConfig, setIdentity, setSocial, patchRecord, toggleHidden, isHidden,
-    setOrder, move, reset, revert, resolveConflict, clearResolution,
+    setOrder, move, reset, revert, resolveConflict, clearResolution, markPublished,
   }
 }
 
