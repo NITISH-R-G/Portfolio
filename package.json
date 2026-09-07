@@ -21,7 +21,9 @@
     "url": "git+https://github.com/ncdai/chanhdai.com.git"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:app": "next dev",
+    "dev:api": "node scripts/dev-api.mjs",
     "build": "next build",
     "start": "next start",
     "preview": "pnpm registry:build && next build && next start",

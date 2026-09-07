@@ -121,6 +121,26 @@ const nextConfig: NextConfig = {
      * 404s on a project site — verified: `/preview/hero-01/` is a 404 under `/Portfolio`.
      */
     NEXT_PUBLIC_BASE_PATH: basePath,
+
+    /**
+     * Where the admin's local write API is, during development only.
+     *
+     * The admin can connect a source, run an import and disconnect one, and all three need to
+     * write files — which a static export has no way to do. In development those calls go to
+     * `scripts/dev-api.mjs`, a loopback-bound sidecar process; `pnpm dev` starts it alongside
+     * this server.
+     *
+     * The production branch of this ternary is the load-bearing one. An exported build sets
+     * the variable to an empty string, `admin/api.js` sees no origin, and every write control
+     * degrades to showing you the change to apply yourself rather than failing against an
+     * endpoint that was never deployed. It is also why no API origin is ever baked into the
+     * published site.
+     */
+    NEXT_PUBLIC_ADMIN_API:
+      process.env.NODE_ENV === "development"
+        ? process.env.PORTFOLIO_ADMIN_API ??
+          `http://127.0.0.1:${process.env.PORTFOLIO_ADMIN_PORT ?? 4319}`
+        : "",
   },
   reactStrictMode: true,
   typedRoutes: true,

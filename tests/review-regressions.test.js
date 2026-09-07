@@ -348,7 +348,28 @@ describe('the deployed admin knows it can publish', () => {
     const panel = source('src/admin/panels/ConnectPanel.jsx')
     assert.match(panel, /api\.isAvailable\(\)/)
     assert.match(panel, /if \(live === false\)/)
-    assert.match(source('src/admin/api.js'), /const BASE = '\/__portfolio'/)
+
+    // The route contract is unchanged — `/__portfolio/...` — but the origin is no longer this
+    // page's. The API used to be middleware inside the Vite dev server, which a relative path
+    // found; it is now a separate local process, because a static export has nowhere to put a
+    // write endpoint. Asserting the prefix rather than the whole literal keeps the requirement
+    // (same routes, same probe, same fallback) without pinning the transport that serves them.
+    const api = source('src/admin/api.js')
+    assert.match(api, /\/__portfolio/, 'the route prefix must not change')
+    assert.match(api, /NEXT_PUBLIC_ADMIN_API/, 'the origin comes from the environment')
+  })
+
+  test('a production build advertises no admin API origin', () => {
+    // The mechanism that keeps the deployed admin honest: with no origin configured there is
+    // nothing to probe, `isAvailable` is false without a request, and every write control
+    // degrades to showing the change rather than failing against an endpoint that was never
+    // deployed. A default that pointed anywhere would undo that.
+    const api = source('src/admin/api.js')
+    assert.match(api, /NEXT_PUBLIC_ADMIN_API \?\? ''/, 'the origin must default to empty')
+    assert.match(api, /if \(!BASE\) return Promise\.resolve\(false\)/, 'no origin means no probe')
+
+    const config = source('next.config.ts')
+    assert.match(config, /NODE_ENV === "development"/, 'the origin is set in development only')
   })
 })
 

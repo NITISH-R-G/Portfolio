@@ -9,20 +9,47 @@
  * @module admin/api
  */
 
-const BASE = '/__portfolio'
+/**
+ * Where the API lives.
+ *
+ * The route contract is unchanged — `/__portfolio/state`, `/__portfolio/import` and the rest
+ * are exactly what they were — but the origin is no longer this page's. The API used to be
+ * middleware inside the Vite dev server, so a relative path found it; the app is now a static
+ * Next export with nowhere to put a write endpoint, and the API is a separate local process.
+ *
+ * `NEXT_PUBLIC_ADMIN_API` is what points at that process, and it is inlined at build time.
+ * In a production export it is simply not set, which is the mechanism that keeps the deployed
+ * admin from advertising an API that cannot exist: no origin, no probe, no controls that
+ * pretend to save.
+ */
+const ORIGIN = process.env.NEXT_PUBLIC_ADMIN_API ?? ''
+const BASE = ORIGIN ? `${ORIGIN}/__portfolio` : ''
+
+/**
+ * A header a cross-site form cannot set.
+ *
+ * Sending it is what forces a CORS preflight on every mutation, and the sidecar answers that
+ * preflight only for the admin's own origin. Must match `ADMIN_HEADER` in
+ * `scripts/lib/adminApi.mjs`.
+ */
+const ADMIN_HEADER = 'x-portfolio-admin'
 
 /**
  * Whether the local write API is reachable.
  *
- * Probed once and cached: it cannot appear mid-session, since it exists only when the dev
- * server is the thing serving this page.
+ * Probed once and cached: it cannot appear mid-session, since it exists only when a dev
+ * session is running alongside this page.
  *
  * @type {Promise<boolean>|null}
  */
 let availability = null
 
 export function isAvailable() {
-  availability ??= fetch(`${BASE}/state`, { method: 'GET' })
+  // No configured origin means there is nothing to ask. Probing anyway would spend a failed
+  // request on every deployed admin load to learn what the build already knows.
+  if (!BASE) return Promise.resolve(false)
+
+  availability ??= fetch(`${BASE}/state`, { method: 'GET', headers: { [ADMIN_HEADER]: '1' } })
     .then((res) => res.ok)
     .catch(() => false)
   return availability
@@ -34,9 +61,14 @@ export function isAvailable() {
  * @returns {Promise<any>}
  */
 async function call(route, body) {
+  if (!BASE) throw new Error('The local admin API is not running.')
+
   const res = await fetch(`${BASE}${route}`, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', [ADMIN_HEADER]: '1' },
+    // Nothing here is authenticated by a cookie, and sending one to a local process that has
+    // no use for it would only widen what a mistake could reach.
+    credentials: 'omit',
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
 
