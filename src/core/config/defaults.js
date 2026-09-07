@@ -33,6 +33,7 @@ export const SECTION_IDS = /** @type {const} */ ([
   'contact',
   'github',
   'skills',
+  'showcase',
   'blocks',
   'experience',
   'education',
@@ -270,6 +271,9 @@ export function defaultConfig() {
        * the data and decide; this one has no data behind it — the component registry is part of
        * the application, not of anyone's profile — so `'auto'` would mean "always", and a
        * portfolio with nothing in it would still render a strip of components.
+       *
+       * `showcase` is the opposite and stays `'auto'`: it is built from the owner's own
+       * projects, so the data answers the question.
        */
       blocks: false,
     },

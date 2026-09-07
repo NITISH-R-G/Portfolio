@@ -301,6 +301,7 @@ export type PageSectionId =
   | 'profile'
   | 'overview'
   | 'github'
+  | 'showcase'
   | 'stack'
   | 'blocks'
   | 'experience'
@@ -313,6 +314,7 @@ export const PAGE_SECTION_BY_ENGINE_ID: Record<string, PageSectionId> = {
   hero: 'profile',
   contact: 'overview',
   github: 'github',
+  showcase: 'showcase',
   skills: 'stack',
   blocks: 'blocks',
   experience: 'experience',
@@ -383,6 +385,59 @@ export function toProjects(p: EngineProfile): Project[] {
 }
 
 export const PROJECTS: Project[] = toProjects(profile)
+
+/* -------------------------------------------------------------------------- */
+/* Showcase                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One deployed project, shown large.
+ *
+ * A showcase item is not a new kind of record — it is a project the owner marked with
+ * `showcase: true`. That is deliberate: a project already carries a name, a description, a live
+ * URL, a repository, a screenshot and a probe result, and duplicating those into a second
+ * collection would mean two places to edit the same fact and one of them going stale.
+ */
+export type ShowcaseItem = {
+  id: string
+  title: string
+  description?: string
+  category: string
+  /** The deployment being shown. Empty means there is nothing to frame. */
+  url: string
+  /** The repository, when there is one. */
+  sourceUrl?: string
+  screenshot?: string
+  embeddable: boolean
+  blockedReason?: string
+}
+
+/** Items with no URL are dropped: a showcase of a project with nothing to show is a card of air. */
+export function toShowcase(p: EngineProfile): ShowcaseItem[] {
+  return (p.projects ?? [])
+    .filter((project: EngineRecord) => project.showcase === true)
+    .map((project: EngineRecord, i: number) => {
+      const url = project.previewUrl || project.liveUrl || ''
+      // The same build-time probe the project list uses, so a site that refuses framing is
+      // refused identically in both places.
+      const policy = framePolicy(project.preview === false ? undefined : url)
+
+      return {
+        id: project.id || slug(project.name, `showcase-${i}`),
+        title: project.name ?? '',
+        description: project.description,
+        category: project.category || 'Projects',
+        url,
+        sourceUrl: project.repository,
+        screenshot: asset(project.image),
+        embeddable: policy.embeddable,
+        blockedReason: policy.reason,
+      }
+    })
+    .filter((item: ShowcaseItem) => Boolean(item.url))
+}
+
+export const SHOWCASE: ShowcaseItem[] = toShowcase(profile)
 
 /**
  * His model nests positions under a company; ours is one record per role. Consecutive records

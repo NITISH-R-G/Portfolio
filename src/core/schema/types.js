@@ -236,6 +236,12 @@
  * @property {number} [watchers]
  * @property {string} [primaryLanguage]
  * @property {string[]} [topics]
+ * @property {boolean} [showcase]      Render this project in the showcase section — the large
+ *                                     visual grid, as opposed to the compact project list. Set
+ *                                     by the owner; nothing infers it.
+ * @property {string} [category]       Groups showcase items, in the way his registry blocks are
+ *                                     grouped by `categories`. Free text: the categories are
+ *                                     whatever the owner names.
  * @property {boolean} [featured]      Set by the user. `featureScore` is what the generator
  *                                     computes; an explicit `featured` always wins.
  * @property {number} [featureScore]   0–100, assigned by `core/generate/scoring.js`.

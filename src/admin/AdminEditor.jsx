@@ -55,6 +55,7 @@ import ExperiencePanel from './panels/ExperiencePanel.jsx'
 import SkillsPanel from './panels/SkillsPanel.jsx'
 import RecordsPanel from './panels/RecordsPanel.jsx'
 import BlocksPanel from './panels/BlocksPanel.jsx'
+import ShowcasePanel from './panels/ShowcasePanel.jsx'
 import ThemePanel from './panels/ThemePanel.jsx'
 import NavigationPanel from './panels/NavigationPanel.jsx'
 import FooterPanel from './panels/FooterPanel.jsx'
@@ -78,6 +79,7 @@ const SECTIONS = [
   { id: 'experience', title: 'Experience', component: ExperiencePanel, canvas: true },
   { id: 'skills', title: 'Skills', component: SkillsPanel, canvas: true },
   { id: 'records', title: 'Education & awards', component: RecordsPanel, canvas: true },
+  { id: 'showcase', title: 'Showcase', component: ShowcasePanel, canvas: true },
   { id: 'blocks', title: 'Blocks', component: BlocksPanel, canvas: true },
   { id: 'navigation', title: 'Navigation', component: NavigationPanel, canvas: true },
   { id: 'footer', title: 'Footer', component: FooterPanel, canvas: true },

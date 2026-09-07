@@ -1,1 +1,18 @@
-{}
+{
+  "records": {
+    "projects": {
+      "github-amypo": {
+        "showcase": true,
+        "category": "Web app"
+      },
+      "github-iportfolio-macos-style-portfolio-": {
+        "showcase": true,
+        "category": "Interactive"
+      },
+      "github-intelli-credit-v2": {
+        "showcase": true,
+        "category": "AI"
+      }
+    }
+  }
+}

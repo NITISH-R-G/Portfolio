@@ -185,6 +185,15 @@ export const SECTION_DEFINITIONS = [
     count: (p) => (p.socials?.github ? 1 : 0),
   },
   {
+    id: 'showcase',
+    label: 'Showcase',
+    navLabel: 'Showcase',
+    icon: 'LayoutGrid',
+    // Real profile content, so `auto` can answer from the data: the section appears once the
+    // owner has marked a deployed project for it, and disappears when they have not.
+    count: (p) => (p.projects ?? []).filter((project) => project.showcase === true).length,
+  },
+  {
     id: 'blocks',
     label: 'Blocks',
     navLabel: 'Blocks',

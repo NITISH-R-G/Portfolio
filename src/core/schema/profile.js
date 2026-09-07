@@ -412,6 +412,10 @@ const project = (o) => {
     watchers: num(o.watchers),
     primaryLanguage: str(o.primaryLanguage ?? o.language),
     topics: strArray(o.topics),
+    // Owner-set, never inferred: which projects get the large visual treatment, and how they
+    // are grouped there. See `features/portfolio/components/showcase`.
+    showcase: typeof o.showcase === 'boolean' ? o.showcase : undefined,
+    category: str(o.category),
     featured: typeof o.featured === 'boolean' ? o.featured : undefined,
     featureScore: num(o.featureScore),
     date: parseDate(o.date ?? o.createdAt),

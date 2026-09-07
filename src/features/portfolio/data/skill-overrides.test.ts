@@ -1,3 +1,4 @@
+import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
@@ -43,8 +44,10 @@ const PATCH = {
 /** The stack exactly as the page builds it, from a real build. */
 const stackOf = (overrides?: Overrides) => toTechStack(built(overrides).profile)
 
+// Rendered as an element rather than called: a component that later gains a hook would throw,
+// and that failure would look like a data bug rather than a test one.
 const render = (overrides?: Overrides) =>
-  renderToStaticMarkup(TechStack({ items: stackOf(overrides) }) as never)
+  renderToStaticMarkup(createElement(TechStack, { items: stackOf(overrides) }))
 
 describe("what the adapter hands the component", () => {
   it("carries the chosen icon, href and category", () => {

@@ -14,6 +14,7 @@ import { GitHubContributions } from "@/features/portfolio/components/github-cont
 import { Overview } from "@/features/portfolio/components/overview"
 import { ProfileHeader } from "@/features/portfolio/components/profile-header"
 import { Projects } from "@/features/portfolio/components/projects"
+import { Showcase } from "@/features/portfolio/components/showcase"
 import { SocialLinks } from "@/features/portfolio/components/social-links"
 import { TechStack } from "@/features/portfolio/components/tech-stack"
 import {
@@ -52,6 +53,7 @@ const SECTIONS: Record<PageSectionId, () => React.ReactNode> = {
   ),
   github: () => <GitHubContributions />,
   stack: () => <TechStack />,
+  showcase: () => <Showcase />,
   blocks: () => <Blocks />,
   experience: () => <Experiences />,
   education: () => <Education />,

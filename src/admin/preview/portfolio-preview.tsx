@@ -12,6 +12,7 @@ import { Education } from '@/features/portfolio/components/education'
 import { Experiences } from '@/features/portfolio/components/experiences'
 import { Overview } from '@/features/portfolio/components/overview'
 import { ProfileHeader } from '@/features/portfolio/components/profile-header'
+import { Showcase } from '@/features/portfolio/components/showcase'
 import { Projects } from '@/features/portfolio/components/projects'
 import { SocialLinks } from '@/features/portfolio/components/social-links'
 import { TechStack } from '@/features/portfolio/components/tech-stack'
@@ -24,6 +25,7 @@ import {
   toPageSections,
   toProfileOptions,
   toProjects,
+  toShowcase,
   toSocialLinks,
   toTechStack,
   toUser,
@@ -100,6 +102,7 @@ export function PortfolioPreview({
       experiences: toExperiences(profile),
       education: toEducation(profile),
       projects: toProjects(profile),
+      showcase: toShowcase(profile),
       awards: toAwards(profile),
       certifications: toCertifications(profile),
       footer: toFooter(config),
@@ -125,6 +128,7 @@ export function PortfolioPreview({
     // gap in the preview that is never explained reads as a bug in the preview.
     github: () => <UnavailableSection label="GitHub contributions" />,
     stack: () => <TechStack items={data.stack} />,
+    showcase: () => <Showcase items={data.showcase} />,
     blocks: () => <Blocks />,
     experience: () => <Experiences experiences={data.experiences} />,
     education: () => <Education education={data.education} />,
