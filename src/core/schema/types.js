@@ -224,6 +224,11 @@
  * @property {string[]} [technologies]
  * @property {string} [repository]
  * @property {string} [liveUrl]
+ * @property {string} [previewUrl]     Overrides `liveUrl` for the embedded preview, for a
+ *                                     project whose demo lives somewhere other than its
+ *                                     homepage.
+ * @property {boolean} [preview]       Whether to offer the embedded preview at all.
+ *                                     Absent means yes when there is a URL to embed.
  * @property {string} [image]
  * @property {string} [imageAlt]
  * @property {number} [stars]
@@ -258,6 +263,11 @@
  * @typedef {object} SkillItem
  * @property {string} name
  * @property {string} [category]
+ * @property {string} [icon]           Slug naming the logo, e.g. "typescript". Absent means
+ *                                     the renderer infers one from `name`, and shows none when
+ *                                     it cannot. See `features/portfolio/data/tech-icons`.
+ * @property {string} [url]            Homepage for the technology. Absent renders a plain pill
+ *                                     rather than a link to nowhere.
  * @property {number} [proficiency]     1–5. Manual only; never inferred from activity.
  * @property {SkillEvidence[]} [evidence]
  * @property {number} [weight]          Derived relevance, 0–100.

@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Icon from '../../components/Icon'
+import Icon from '../icon.jsx'
 import { getConnector } from '../../connectors/index.js'
 import { classifyInput, detectSource } from '../../core/sources/detect.js'
 import { featuredCapabilities, allCapabilities, describeCapability } from '../../core/sources/capabilities.js'

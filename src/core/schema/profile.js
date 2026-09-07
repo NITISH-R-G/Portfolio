@@ -438,8 +438,24 @@ const skill = (o) => {
   if (!name) return null
   const proficiency = num(o.proficiency)
   return compact({
+    /**
+     * Skills used to be the one collection with no id, so `applyOverrides` — which keys patches
+     * by `patch.id` — could never match a patch to a skill, and every skill override was
+     * silently discarded. For an imported skill this is the same value `recordKey` already
+     * derived, so nothing about existing data changes.
+     */
+    id: str(o.id) ?? slugify(name),
     name,
     category: str(o.category),
+    /**
+     * The logo his `TechStack` draws beside the label, named by slug — see
+     * `features/portfolio/data/tech-icons`. Absent means the renderer infers one from the name,
+     * which is what an imported stack relies on.
+     */
+    icon: str(o.icon),
+    // Through `url()` like every other link, so an override cannot smuggle a `javascript:` URL
+    // into a pill that the page turns into an anchor.
+    url: url(o.url ?? o.href ?? o.homepage),
     proficiency: proficiency !== undefined ? clamp(proficiency, 1, 5) : undefined,
     evidence: evidenceList(o.evidence),
     weight: num(o.weight),

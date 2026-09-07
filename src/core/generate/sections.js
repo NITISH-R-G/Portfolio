@@ -176,6 +176,26 @@ export const SECTION_DEFINITIONS = [
     count: (p) => (p.languages ?? []).length,
   },
   {
+    id: 'github',
+    label: 'GitHub contributions',
+    navLabel: 'GitHub',
+    icon: 'Github',
+    // Not profile content: the graph is fetched at build time for the connected account, so
+    // what justifies the section is having connected one at all.
+    count: (p) => (p.socials?.github ? 1 : 0),
+  },
+  {
+    id: 'blocks',
+    label: 'Blocks',
+    navLabel: 'Blocks',
+    icon: 'LayoutGrid',
+    // The component registry this application ships. There is no profile data to weigh, so
+    // `auto` cannot answer the question and the default is off — see `defaultConfig`. This
+    // count exists so that turning it on reports a section with something in it.
+    alwaysConsider: true,
+    count: () => 1,
+  },
+  {
     id: 'contact',
     label: 'Contact',
     navLabel: 'Contact',

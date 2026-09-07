@@ -45,3 +45,17 @@ skills-lock.json
 
 # Scratch probes used while benchmarking the embedding model.
 scratch/
+
+# Next's build output and caches. This repository gained them when the upstream application
+# was vendored in; the ignore list above predates that and covered only the engine's own
+# artefacts. `.next` alone reaches well over a gigabyte, and `out/` is the static export that
+# `npm run build` regenerates from a checkout.
+.next/
+out/
+next-env.d.ts
+
+# Lint and formatter caches. Machine-local, and named by whatever `--cache-location` was passed.
+.eslintcache*
+
+# TypeScript's incremental build cache.
+*.tsbuildinfo

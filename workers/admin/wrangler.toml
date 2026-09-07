@@ -22,8 +22,8 @@ compatibility_date = "2025-01-01"
 # SAMESITE     "None" (default) when the admin and this Worker are on different domains,
 #              which is the case for github.io + workers.dev. Set "Lax" if you serve both
 #              from one registrable domain — it is strictly stronger where it works.
-REPOSITORY = "YOUR-USERNAME/YOUR-REPO"
-ADMIN_ORIGIN = "https://YOUR-USERNAME.github.io"
+REPOSITORY = "NITISH-R-G/Portfolio"
+ADMIN_ORIGIN = "https://nitish-r-g.github.io"
 BRANCH = "main"
 SAMESITE = "None"
 

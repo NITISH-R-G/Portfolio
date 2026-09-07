@@ -300,6 +300,17 @@ export function deriveSkills(profile, options = {}) {
       category: existing?.category ?? categorizeSkill(entry.name),
       ...(existing?.proficiency !== undefined ? { proficiency: existing.proficiency } : {}),
       ...(existing?.source ? { source: existing.source } : {}),
+      /**
+       * Carried across from the declared record.
+       *
+       * This branch rebuilds an evidenced skill field by field rather than spreading it, so
+       * anything not named here is dropped — which silently discarded the id, the logo and the
+       * homepage for every skill that had evidence. The unevidenced branch below spreads, so
+       * the same override worked there and not here, which is the worst shape a bug can have.
+       */
+      ...(existing?.id ? { id: existing.id } : {}),
+      ...(existing?.icon ? { icon: existing.icon } : {}),
+      ...(existing?.url ? { url: existing.url } : {}),
       evidence,
       weight: total,
       // Remembered so the cap below can protect it. A skill the owner declared *and* has

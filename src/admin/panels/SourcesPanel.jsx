@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import Icon from '../../components/Icon'
+import Icon from '../icon.jsx'
 import { CONNECTORS, connectorGroups, getConnector } from '../../connectors/index.js'
 import { deriveHealth, summarize, isSuccess, HEALTH_STATES, describeAge } from '../../core/sources/health.js'
 import { Panel, Note } from '../fields.jsx'

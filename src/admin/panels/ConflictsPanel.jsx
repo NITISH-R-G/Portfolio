@@ -12,7 +12,7 @@
  * @module admin/panels/ConflictsPanel
  */
 
-import Icon from '../../components/Icon'
+import Icon from '../icon.jsx'
 import { Panel, Note } from '../fields.jsx'
 
 /**

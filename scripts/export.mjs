@@ -21,7 +21,7 @@
 import { formatRange, formatDate } from '../src/core/schema/date.js'
 import { headlineStats } from '../src/core/generate/stats.js'
 import { groupSkills } from '../src/core/generate/skills.js'
-import { toDocument } from '../src/core/standard/document.js'
+import { toPublicManifest } from '../src/core/standard/public.js'
 import { loadBuiltPortfolio, PATHS, relative, fs, path } from './lib/portfolio.mjs'
 import { dim, say, ok, warn, rule } from './lib/ui.mjs'
 
@@ -42,10 +42,15 @@ async function main() {
   const files = [
     // The standard document, not a dump of internal state — this is the file another
     // renderer is expected to consume, so it carries its version and its spec URL.
-    ['portfolio.json', () => `${JSON.stringify(toDocument(profile, {
+    //
+    // Through `toPublicManifest`, never `toDocument` directly. That is the whole point of
+    // `core/standard/public.js`: it applies the author's `privacy` settings, and calling the
+    // document builder straight defeated `hideEmail` and `obfuscateEmail` for every owner who
+    // had set them — publishing the real address in the most harvestable form there is.
+    ['portfolio.json', () => `${JSON.stringify(toPublicManifest(profile, {
+      config,
       generatedAt: new Date().toISOString(),
-      evidence: built.evidence,
-      includeEvidence: true,
+      canonical: config?.site?.url || undefined,
     }), null, 2)}\n`],
     ['resume.json', () => JSON.stringify(jsonResume(profile, config), null, 2) + '\n'],
     ['resume.md', () => resumeMarkdown(profile)],

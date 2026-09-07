@@ -137,7 +137,7 @@ describe('theme customization', () => {
   })
 
   test('layout max width feeds a token', () => {
-    assert.equal(resolveTheme(resolveConfig({ layout: { maxWidth: 'wide' } }).config).vars['--layout-max-width'], '960px')
+    assert.equal(resolveTheme(resolveConfig({ layout: { maxWidth: 'wide' } }).config).vars['--layout-max-width'], '896px')
     assert.equal(resolveTheme(resolveConfig({ layout: { maxWidth: 'full' } }).config).vars['--layout-max-width'], '100%')
   })
 

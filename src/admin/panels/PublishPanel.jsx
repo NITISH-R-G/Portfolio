@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import Icon from '../../components/Icon'
+import Icon from '../icon.jsx'
 import { Note } from '../fields.jsx'
 import { getSession, signIn, signOut, publish, filesToPublish, isConfigured } from '../publish.js'
 
@@ -50,14 +50,19 @@ export default function PublishPanel({ builder }) {
     setStatus(next.offline ? 'offline' : 'ready')
   }, [config])
 
+  const configured = isConfigured(config)
+
   useEffect(() => {
-    if (!isConfigured(config)) { setStatus('unconfigured'); return }
-    refresh()
-  }, [config, refresh])
+    // Fetching the publishing session on mount, which is exactly what an effect is for: the
+    // Worker is an external system and its answer cannot be derived from render. The rule fires
+    // because `refresh` sets state, but it does so after an await, not synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, see above
+    if (configured) refresh()
+  }, [configured, refresh])
 
   // Not configured is not a failure and gets no UI. The panel below explains the manual
   // route, which is complete on its own.
-  if (status === 'unconfigured') return null
+  if (!configured) return null
 
   const pending = session?.authenticated ? filesToPublish(builder, session.files ?? {}) : []
 

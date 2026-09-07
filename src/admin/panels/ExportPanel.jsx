@@ -18,7 +18,7 @@
  */
 
 import { useState } from 'react'
-import Icon from '../../components/Icon'
+import Icon from '../icon.jsx'
 import { Panel, Note } from '../fields.jsx'
 import { hasContent } from '../state.js'
 import PublishPanel from './PublishPanel.jsx'
