@@ -1,4 +1,4 @@
-import { LICENSE, SOURCE_CODE_GITHUB_URL } from "@/config/site"
+import { SOURCE_CODE_GITHUB_URL } from "@/config/site"
 import { cn } from "@/lib/utils"
 import { DmcaIcon } from "@/components/icons"
 import { SOCIAL_ICONS } from "@/features/portfolio/components/social-link-icons"
@@ -76,21 +76,10 @@ export function SiteFooter({
             </Item>
           )}
 
-          {/* The upstream licence this application is used under: a fact about the code, not a
-              preference, so it is not configurable and correctly still names his repository. */}
-          <Item>
-            <dt>Built on</dt>
-            <dd>
-              <a
-                className="link-underline"
-                href={LICENSE.url}
-                target="_blank"
-                rel="noopener"
-              >
-                chanhdai.com ({LICENSE.name})
-              </a>
-            </dd>
-          </Item>
+          {/* The upstream MIT attribution this row used to carry lives in the repository
+              LICENSE file and the admin Footer's "Attribution" note instead: the licence
+              names his repository, and the trademark policy asks forks to ship as their
+              own rather than present his brand on their public pages. */}
         </dl>
 
         {footer.showSocialLinks && social.length > 0 && (

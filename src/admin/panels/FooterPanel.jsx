@@ -11,9 +11,10 @@
  *
  * Everything on this panel is a control over something the component actually branches on:
  * `enabled` returns null, `showSocialLinks` and `showSourceCode` drop their rows, `showDmca`
- * adds the badge back. The licence row has no control, because it is a statement about which
- * code this is rather than a preference — it correctly still names his repository, and turning
- * it off would be misattribution rather than configuration.
+ * adds the badge back. The upstream MIT attribution is deliberately not a row: it lives in
+ * the repository LICENSE file and in the "Attribution" note below, so the public footer
+ * ships as the owner's own while the licence row's fact — which code this is, and under
+ * which licence — is still stated in the software.
  *
  * @module admin/panels/FooterPanel
  */
@@ -22,7 +23,6 @@ import { PlusIcon, Trash2Icon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 import { getPath } from '../drafts.js'
 import { Note, Panel, Toggle } from '../fields.jsx'
@@ -193,12 +193,28 @@ export default function FooterPanel({ builder }) {
               </Note>
             </Section>
 
-            <Section title="Not configurable">
+            <Section title="Attribution">
               <p className="text-xs text-pretty text-muted-foreground">
-                The <Label className="inline font-mono text-xs">Built on</Label> row names the
-                upstream project this application is used under, and the licence it is used
-                under. That is a fact about the code rather than a preference, so it has no
-                switch.
+                This site&apos;s design is adapted from{' '}
+                <a
+                  className="link-underline"
+                  href="https://github.com/ncdai/chanhdai.com"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  chanhdai.com
+                </a>{' '}
+                by ncdai, used under the{' '}
+                <a
+                  className="link-underline"
+                  href="https://github.com/ncdai/chanhdai.com/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  MIT License
+                </a>
+                . The full licence text is preserved in the repository LICENSE file. It is
+                intentionally not shown in the public footer.
               </p>
             </Section>
           </>
