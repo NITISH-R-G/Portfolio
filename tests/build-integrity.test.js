@@ -76,18 +76,30 @@ describe('the deployment workflow refuses to ship a degraded site', () => {
   const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'deploy.yml'), 'utf8')
 
   test('it generates the semantic index before building', () => {
-    const embed = workflow.indexOf('npm run embed')
-    const build = workflow.indexOf('run: npm run build')
+    const embed = workflow.indexOf('run: pnpm embed')
+    const build = workflow.indexOf('run: pnpm build')
     assert.ok(embed > 0, 'the workflow must generate the embedding index')
     assert.ok(embed < build, 'the index must be generated before the build that reads it')
   })
 
   test('it fails rather than deploying without the index', () => {
     // The index is not committed, so this assertion is the only thing between a CDN failure
-    // and a deployment that silently answers every query lexically.
-    assert.match(workflow, /capabilities\.search/)
-    assert.match(workflow, /!= "hybrid-semantic"/)
-    assert.match(workflow, /::error::Built site reports/)
+    // and a deployment that silently answers every query lexically. The guard asserts the
+    // index file rather than a built manifest: Next's static export emits no portfolio.json
+    // to read `capabilities.search` back out of, and that field was derived from this file's
+    // presence in the first place.
+    assert.match(workflow, /! -s src\/data\/generated\/embeddings\.json/)
+    assert.match(workflow, /::error::src\/data\/generated\/embeddings\.json is missing/)
+    assert.match(workflow, /exit 1/)
+  })
+
+  test('it invokes the import script rather than the pnpm built-in', () => {
+    // `pnpm import` is a built-in that generates a lockfile from an npm/yarn one; it shadows
+    // the package script of the same name. The import step is `continue-on-error`, so getting
+    // this wrong is silent: the step fails, the run stays green, and the site deploys with
+    // whatever data was last committed.
+    assert.match(workflow, /run: pnpm run import/)
+    assert.doesNotMatch(workflow, /run: pnpm import$/m)
   })
 
   test('the order is checkout, install, verify, build, deploy', () => {
@@ -99,10 +111,10 @@ describe('the deployment workflow refuses to ship a degraded site', () => {
       assert.ok(index >= 0, `the workflow no longer contains ${needle}`)
       return index
     }
-    assert.ok(at('actions/checkout') < at('npm ci'))
-    assert.ok(at('npm ci') < at('npm test'))
-    assert.ok(at('npm test') < at('run: npm run build'))
-    assert.ok(at('run: npm run build') < at('upload-pages-artifact'))
+    assert.ok(at('actions/checkout') < at('pnpm install --frozen-lockfile'))
+    assert.ok(at('pnpm install --frozen-lockfile') < at('run: pnpm test'))
+    assert.ok(at('run: pnpm test') < at('run: pnpm build'))
+    assert.ok(at('run: pnpm build') < at('upload-pages-artifact'))
     assert.ok(at('upload-pages-artifact') < at('deploy-pages'))
   })
 })

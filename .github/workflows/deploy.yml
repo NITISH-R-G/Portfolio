@@ -8,7 +8,7 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
-  # A portfolio should not go stale because its owner stopped running `pnpm import`.
+  # A portfolio should not go stale because its owner stopped running `pnpm run import`.
   # This refreshes the data weekly. Remove the block if you prefer to import by hand.
   schedule:
     - cron: "0 6 * * 1"
@@ -40,7 +40,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -66,7 +66,11 @@ jobs:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-        run: pnpm import
+        # `pnpm run`, not `pnpm import`: `import` is a pnpm built-in that generates a
+        # lockfile from an npm/yarn one, and it shadows the package script. With
+        # `continue-on-error` above, the mistake is silent — the step fails, the run
+        # stays green, and the site deploys with whatever data was last committed.
+        run: pnpm run import
 
       # Precompute the semantic search index.
       #
