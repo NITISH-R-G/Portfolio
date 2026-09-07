@@ -8,7 +8,7 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
-  # A portfolio should not go stale because its owner stopped running `npm run import`.
+  # A portfolio should not go stale because its owner stopped running `pnpm import`.
   # This refreshes the data weekly. Remove the block if you prefer to import by hand.
   schedule:
     - cron: "0 6 * * 1"
@@ -30,17 +30,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The project is pnpm-managed: pnpm-lock.yaml is the committed lockfile and
+      # package.json pins the version via `packageManager`, so pnpm/action-setup needs
+      # no version of its own. It runs before setup-node because `cache: pnpm` resolves
+      # the store path by invoking pnpm, which has to already be on PATH.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
       # Every secret below is optional. A connector with no credential either runs on its
       # public rate limit or reports itself unavailable — neither fails the build.
@@ -59,7 +66,7 @@ jobs:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-        run: npm run import
+        run: pnpm import
 
       # Precompute the semantic search index.
       #
@@ -70,19 +77,19 @@ jobs:
       # degraded. Re-running the workflow is the fix.
       - name: Build the semantic search index
         continue-on-error: true
-        run: npm run embed
+        run: pnpm embed
 
       - name: Check the configuration
-        run: npm run doctor
+        run: pnpm doctor
 
       - name: Build
-        run: npm run build
+        run: pnpm build
 
       - name: Verify the built output
         run: |
           set -euo pipefail
-          test -f dist/index.html
-          test -d dist/assets
+          test -f out/index.html
+          test -d out/_next
 
           # Read the configured base path rather than assuming one, then confirm the built
           # HTML actually references assets under it. A mismatch here is the single most
@@ -90,7 +97,7 @@ jobs:
           BASE=$(node -e "import('./scripts/lib/loadConfig.mjs').then(m => m.loadResolvedConfig()).then(r => console.log(r.config.site.base))")
           echo "Configured base path: $BASE"
 
-          if ! grep -q "src=\"${BASE}assets/" dist/index.html; then
+          if ! grep -q "src=\"${BASE}_next/" out/index.html; then
             echo "::error::Built HTML does not reference assets under '$BASE'."
             echo "Set site.base in portfolio.config.js to '/<your-repo-name>/' for a GitHub Pages project site."
             exit 1
@@ -98,22 +105,19 @@ jobs:
 
           # The SEO plugin bakes the real title into the HTML; a placeholder means it did
           # not run and every shared link would unfurl as "Portfolio".
-          if grep -q "<title>Portfolio</title>" dist/index.html; then
+          if grep -q "<title>Portfolio</title>" out/index.html; then
             echo "::error::index.html still has the placeholder title. Check identity.name in portfolio.config.js."
             exit 1
           fi
 
           # The embedding index is generated output and is not committed, so the only thing
           # standing between a CDN failure and a silently lexical-only deployment is this
-          # check. The manifest reports what search the built site can actually do, so it is
-          # the honest thing to assert against — it is derived from the index's presence
-          # rather than from the step above having been attempted.
-          SEARCH=$(node -e "console.log(JSON.parse(require('fs').readFileSync('dist/portfolio.json','utf8')).capabilities.search)")
-          echo "Search capability: $SEARCH"
-
-          if [ "$SEARCH" != "hybrid-semantic" ]; then
-            echo "::error::Built site reports '$SEARCH' — the semantic index is missing."
-            echo "The 'Build the semantic search index' step above did not produce src/data/generated/embeddings.json."
+          # check. It asserts the index file itself rather than a built manifest: the Next
+          # export emits no portfolio.json to read `capabilities.search` back out of, and
+          # that field was derived from this file's presence in the first place.
+          if [ ! -s src/data/generated/embeddings.json ]; then
+            echo "::error::src/data/generated/embeddings.json is missing — the deployed site would fall back to lexical search."
+            echo "The 'Build the semantic search index' step above did not produce it."
             echo "Re-run this workflow; the model is fetched from a CDN and the failure is usually transient."
             exit 1
           fi
@@ -121,7 +125,7 @@ jobs:
       - name: Upload built site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./out
 
   deploy:
     needs: build
