@@ -308,3 +308,115 @@ function defaultMessage(state, connector) {
     default: return ''
   }
 }
+
+/**
+ * What changed, in enough detail to review.
+ *
+ * `diffProfiles` answers "how many"; this answers "which, and what about them". They share
+ * `fingerprint` deliberately — two functions that disagreed about what counts as a change
+ * would be worse than either alone, and the counts persisted in `status.json` must keep
+ * meaning exactly what the review screen shows.
+ *
+ * `updated` carries the field names that actually differ, found by comparing the two records
+ * rather than by asking the connector. A connector cannot tell you this: it returns what is
+ * true now, not what was true before.
+ *
+ * @param {object|undefined} before
+ * @param {object|undefined} after
+ * @param {{limit?: number}} [options]  Caps each list; `truncated` says whether it bit.
+ * @returns {{
+ *   counts: {added: number, removed: number, updated: number},
+ *   added: {collection: string, id: string, label: string}[],
+ *   removed: {collection: string, id: string, label: string}[],
+ *   updated: {collection: string, id: string, label: string, fields: string[]}[],
+ *   truncated: boolean,
+ * }}
+ */
+export function describeChanges(before, after, options = {}) {
+  const limit = options.limit ?? 25
+  const previous = records(before)
+  const next = records(after)
+
+  const added = []
+  const removed = []
+  const updated = []
+
+  for (const [key, entry] of next) {
+    const was = previous.get(key)
+    if (!was) {
+      added.push({ collection: entry.collection, id: entry.id, label: entry.label })
+    } else if (was.hash !== entry.hash) {
+      updated.push({
+        collection: entry.collection,
+        id: entry.id,
+        label: entry.label,
+        fields: changedFields(was.value, entry.value),
+      })
+    }
+  }
+
+  for (const [key, entry] of previous) {
+    if (!next.has(key)) removed.push({ collection: entry.collection, id: entry.id, label: entry.label })
+  }
+
+  const truncated = added.length > limit || removed.length > limit || updated.length > limit
+
+  return {
+    // Taken from `diffProfiles` rather than from the lists above, so the headline number can
+    // never drift from the one already written into `status.json`.
+    counts: diffProfiles(before, after),
+    added: added.slice(0, limit),
+    removed: removed.slice(0, limit),
+    updated: updated.slice(0, limit),
+    truncated,
+  }
+}
+
+/**
+ * `fingerprint`, but keeping the record so a field-level comparison is possible.
+ *
+ * @param {object|undefined} profile
+ * @returns {Map<string, {collection: string, id: string, label: string, hash: string, value: object}>}
+ */
+function records(profile) {
+  const out = new Map()
+  if (!profile || typeof profile !== 'object') return out
+
+  for (const [collection, list] of Object.entries(profile)) {
+    if (!Array.isArray(list)) continue
+    for (const record of list) {
+      if (!record || typeof record !== 'object') continue
+      const { source: _source, ...rest } = record
+      const id = record.id ?? record.name ?? record.title ?? record.platform ?? JSON.stringify(rest).slice(0, 40)
+      out.set(`${collection}/${id}`, {
+        collection,
+        id: String(id),
+        // What a person would recognise, which is not always the id — a package's id is its
+        // name, but a publication's is a DOI.
+        label: String(record.name ?? record.title ?? record.platform ?? id),
+        hash: stableHash(rest),
+        value: rest,
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * Which top-level fields differ between two versions of a record.
+ *
+ * `source` is already stripped by the caller: it carries `fetchedAt`, which changes on every
+ * import and would report every record as touched.
+ *
+ * @param {object} before
+ * @param {object} after
+ * @returns {string[]}
+ */
+function changedFields(before, after) {
+  const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])
+  const changed = []
+  for (const key of keys) {
+    if (stringify(before?.[key]) !== stringify(after?.[key])) changed.push(key)
+  }
+  return changed.sort()
+}

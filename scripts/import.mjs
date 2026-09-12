@@ -20,6 +20,7 @@
  */
 
 import { runConnectors } from '../src/connectors/run.js'
+import { createHttpCache } from '../src/connectors/cache.js'
 import { loadResolvedConfig } from './lib/loadConfig.mjs'
 import { PATHS, writeJson, readJson, readSources, loadEnv, relative, fs, path } from './lib/portfolio.mjs'
 import {
@@ -37,7 +38,17 @@ const value = (name) => {
 }
 
 const dryRun = flag('dry-run')
+/**
+ * Emit the run as one marked JSON line, for a caller that needs the result rather than the
+ * report. The admin's import preview is `--dry-run --json`: the same fetch, the same
+ * normalisation, the same diff against what is on disk, and nothing written. The human report
+ * still goes to stdout as before, so running this by hand is unchanged.
+ */
+const asJson = flag('json')
 const only = (value('only') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+
+/** A prefix the caller greps for, unlikely to occur in any connector's own message. */
+const JSON_MARKER = '@@portfolio-import-json@@'
 
 /** States that mean the source contributed something the portfolio will show. */
 const PRODUCTIVE = new Set(['imported', 'partial', 'manual', 'link-only'])
@@ -70,11 +81,17 @@ async function main() {
     readSources().map((source) => [source.key, source.profile]),
   )
 
-  const { sources, status, unknown } = await runConnectors({
+  // Conditional requests, where the provider supports them. A dry run reads the cache but must
+  // not write it: a preview that recorded validators would make the real import that follows
+  // believe nothing had changed.
+  const cache = createHttpCache(readJson(PATHS.httpCache) ?? {})
+
+  const { sources, status, unknown, requests, revalidated } = await runConnectors({
     dataSources,
     only: only.length ? only : undefined,
     previous,
     previousProfiles,
+    cache,
     log: () => {},
     // Report each source the moment it settles, so a slow one does not make the script
     // look hung — the user sees the fast ones land first.
@@ -125,7 +142,16 @@ async function main() {
     warn(`${failed.length} source${failed.length === 1 ? '' : 's'} failed. The rest of your portfolio is unaffected.`)
   }
 
+  // Worth saying out loud: it is the difference between a slow import and a fast one, and for
+  // GitHub specifically a revalidated request costs nothing against the rate limit.
+  if (revalidated > 0) {
+    info(`${revalidated} of ${requests} requests were already up to date (304).`)
+  }
+
   if (dryRun) {
+    // Emitted before the early return, so a preview reports exactly what a real run would
+    // have written — `recordsChanged` included, since it was computed against what is on disk.
+    if (asJson) emit({ preview: true, applied: false, status, unknown, sources, requests, revalidated })
     say(dim(`\nDry run complete in ${seconds(started)}s. No files were written.`))
     return 0
   }
@@ -133,6 +159,8 @@ async function main() {
   /* Write ------------------------------------------------------------------- */
 
   writeSources(sources, only)
+
+  writeJson(PATHS.httpCache, cache.entries())
 
   writeJson(PATHS.status, {
     generatedAt: new Date().toISOString(),
@@ -145,6 +173,8 @@ async function main() {
   ok(`Wrote ${relative(PATHS.sources)}/ and ${relative(PATHS.status)} in ${seconds(started)}s.`)
   say(dim('Run `npm run dev` to see the result, or `npm run build` to produce the site.'))
 
+  if (asJson) emit({ preview: false, applied: true, status, unknown, sources, requests, revalidated })
+
   // Exit non-zero only when every configured source failed — that is a broken setup, and a
   // CI job should notice. A single failing platform is normal and must not break a deploy.
   if (configured.length > 0 && productive.length === 0 && failed.length > 0) {
@@ -153,6 +183,33 @@ async function main() {
     return 1
   }
   return 0
+}
+
+/**
+ * The machine-readable form of a run.
+ *
+ * Source *profiles* are deliberately excluded. They are large, a real run has already written
+ * them to disk, and a preview has no business shipping a whole normalized profile into a
+ * browser tab. Counts, states and changes are what a preview is for; the profile itself is
+ * only ever read back from disk after the user confirms.
+ *
+ * @param {{preview: boolean, applied: boolean, status: object, unknown: string[],
+ *   sources: {key: string}[], requests?: number, revalidated?: number}} result
+ */
+function emit(result) {
+  say(`${JSON_MARKER}${JSON.stringify({
+    preview: result.preview,
+    applied: result.applied,
+    generatedAt: new Date().toISOString(),
+    unknown: result.unknown,
+    connectors: result.status,
+    ...(result.requests !== undefined
+      ? { requests: result.requests, revalidated: result.revalidated }
+      : {}),
+    // Which sources actually produced a profile, so a caller can tell "ran and returned
+    // nothing" apart from "did not run at all".
+    produced: result.sources.map((source) => source.key).sort(),
+  })}`)
 }
 
 /**

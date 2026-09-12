@@ -114,8 +114,22 @@ export const activateVersion = (id, versionId) => call('/document/activate', { i
 /** @param {string} id */
 export const deleteDocument = (id) => call('/document/delete', { id })
 
-/** @param {string[]} [only] */
-export const runImport = (only) => call('/import', only?.length ? { only } : {})
+/**
+ * Run the importer.
+ *
+ * `preview` is the same run with nothing written: the connectors are fetched and normalized
+ * exactly as they would be, the diff is computed against what is on disk, and the result comes
+ * back for the user to accept or discard. It is not a simulation — the numbers it reports are
+ * the numbers applying would produce, because it is the same code path.
+ *
+ * @param {string[]} [only]
+ * @param {{preview?: boolean}} [options]
+ */
+export const runImport = (only, options = {}) =>
+  call('/import', {
+    ...(only?.length ? { only } : {}),
+    ...(options.preview ? { preview: true } : {}),
+  })
 
 /**
  * Base64 without blowing the argument limit.

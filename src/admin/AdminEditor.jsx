@@ -49,6 +49,7 @@ import { useBuilder } from './state.js'
 import ConnectPanel from './panels/ConnectPanel.jsx'
 import SourcesPanel from './panels/SourcesPanel.jsx'
 import ConflictsPanel from './panels/ConflictsPanel.jsx'
+import CompletenessPanel from './panels/CompletenessPanel.jsx'
 import ProfilePanel from './panels/ProfilePanel.jsx'
 import ProjectsPanel from './panels/ProjectsPanel.jsx'
 import ExperiencePanel from './panels/ExperiencePanel.jsx'
@@ -56,6 +57,7 @@ import SkillsPanel from './panels/SkillsPanel.jsx'
 import RecordsPanel from './panels/RecordsPanel.jsx'
 import BlocksPanel from './panels/BlocksPanel.jsx'
 import ShowcasePanel from './panels/ShowcasePanel.jsx'
+import TimelinePanel from './panels/TimelinePanel.jsx'
 import ThemePanel from './panels/ThemePanel.jsx'
 import NavigationPanel from './panels/NavigationPanel.jsx'
 import FooterPanel from './panels/FooterPanel.jsx'
@@ -74,11 +76,13 @@ const SECTIONS = [
   { id: 'connect', title: 'Connect', component: ConnectPanel },
   { id: 'sources', title: 'Imports', component: SourcesPanel },
   { id: 'conflicts', title: 'Conflicts', component: ConflictsPanel },
+  { id: 'completeness', title: 'Completeness', component: CompletenessPanel, canvas: true },
   { id: 'profile', title: 'Profile', component: ProfilePanel, canvas: true },
   { id: 'projects', title: 'Projects', component: ProjectsPanel, canvas: true },
   { id: 'experience', title: 'Experience', component: ExperiencePanel, canvas: true },
   { id: 'skills', title: 'Skills', component: SkillsPanel, canvas: true },
   { id: 'records', title: 'Education & awards', component: RecordsPanel, canvas: true },
+  { id: 'timeline', title: 'Timeline', component: TimelinePanel, canvas: true },
   { id: 'showcase', title: 'Showcase', component: ShowcasePanel, canvas: true },
   { id: 'blocks', title: 'Blocks', component: BlocksPanel, canvas: true },
   { id: 'navigation', title: 'Navigation', component: NavigationPanel, canvas: true },

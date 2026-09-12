@@ -72,6 +72,16 @@ jobs:
         # stays green, and the site deploys with whatever data was last committed.
         run: pnpm run import
 
+      # What the refresh actually did, on the run page rather than buried in a log.
+      #
+      # A single failing source is not a failed build — that is deliberate, and it is exactly
+      # why this exists: without it, a source that starts failing every Monday is invisible
+      # behind a green tick. Never fails the run itself.
+      - name: Report the refresh
+        if: always()
+        continue-on-error: true
+        run: pnpm run refresh:report -- --summary
+
       # Precompute the semantic search index.
       #
       # Non-fatal here so the step's own error output survives into the log, but NOT ignored:

@@ -17,6 +17,7 @@ import { Projects } from "@/features/portfolio/components/projects"
 import { Showcase } from "@/features/portfolio/components/showcase"
 import { SocialLinks } from "@/features/portfolio/components/social-links"
 import { TechStack } from "@/features/portfolio/components/tech-stack"
+import { Timeline } from "@/features/portfolio/components/timeline"
 import {
   PAGE_SECTIONS,
   PROFILE_OPTIONS,
@@ -60,6 +61,7 @@ const SECTIONS: Record<PageSectionId, () => React.ReactNode> = {
   projects: () => <Projects />,
   awards: () => <Awards />,
   certifications: () => <Certifications />,
+  timeline: () => <Timeline />,
 }
 
 /**

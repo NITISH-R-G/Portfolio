@@ -304,7 +304,14 @@ function deleteDocument(body) {
  */
 async function runImport(body) {
   const { spawn } = await import('node:child_process')
-  const args = [path.join(PATHS.root, 'scripts', 'import.mjs')]
+  const args = [path.join(PATHS.root, 'scripts', 'import.mjs'), '--json']
+
+  // The preview. `--dry-run` already existed and already did the right thing — fetch,
+  // normalise, diff against what is on disk, write nothing — so a preview is that run plus a
+  // machine-readable result, not a second importer. Nothing reaches the active profile until
+  // the caller asks again without this flag.
+  const preview = body?.preview === true
+  if (preview) args.push('--dry-run')
 
   // Refresh-one is `only`. Filtered to connector-key shape rather than passed through: these
   // become process arguments, and the filter is what keeps that from being a shell for
@@ -320,10 +327,47 @@ async function runImport(body) {
     child.stdout.on('data', (chunk) => { output += chunk })
     child.stderr.on('data', (chunk) => { output += chunk })
     child.on('close', (code) => {
-      resolve({ ok: code === 0, code, output: output.slice(-8000), status: readJson(PATHS.status) })
+      const result = parseResult(output)
+      resolve({
+        // A run that produced a result is a run that finished its work. The exit code is
+        // still reported, but it is not the only evidence — on Windows the importer trips a
+        // libuv teardown assertion *after* writing everything, and treating that as failure
+        // told the user their successful import had failed.
+        ok: result ? true : code === 0,
+        code,
+        preview,
+        applied: result?.applied ?? (!preview && code === 0),
+        result: result ? redact(result) : undefined,
+        output: output.slice(-8000),
+        // A preview must not appear to have changed the recorded health of anything, so the
+        // status it reports is the one still on disk.
+        status: readJson(PATHS.status),
+      })
     })
-    child.on('error', (err) => resolve({ ok: false, error: err.message }))
+    child.on('error', (err) => resolve({ ok: false, preview, applied: false, error: err.message }))
   })
+}
+
+/** The marker `scripts/import.mjs --json` writes its result behind. */
+const RESULT_MARKER = '@@portfolio-import-json@@'
+
+/**
+ * Pull the structured result out of a run's output.
+ *
+ * Returns undefined rather than throwing when there is nothing to find: an importer that died
+ * before emitting is a failure the caller should see as one, not a parse error.
+ *
+ * @param {string} output
+ */
+function parseResult(output) {
+  const at = output.lastIndexOf(RESULT_MARKER)
+  if (at === -1) return undefined
+  const line = output.slice(at + RESULT_MARKER.length).split('\n')[0]
+  try {
+    return JSON.parse(line)
+  } catch {
+    return undefined
+  }
 }
 
 /* -------------------------------------------------------------------------- */

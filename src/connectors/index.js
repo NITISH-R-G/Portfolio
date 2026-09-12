@@ -13,9 +13,12 @@
 import github from './github/index.js'
 import gitlab from './gitlab/index.js'
 import bitbucket from './bitbucket/index.js'
+import codeberg from './codeberg/index.js'
+import sourcehut from './sourcehut/index.js'
 import dockerhub from './dockerhub/index.js'
 import npm from './npm/index.js'
 import pypi from './pypi/index.js'
+import cratesio from './cratesio/index.js'
 import huggingface from './huggingface/index.js'
 import kaggle from './kaggle/index.js'
 import leetcode from './leetcode/index.js'
@@ -23,12 +26,16 @@ import codeforces from './codeforces/index.js'
 import codechef from './codechef/index.js'
 import hackerrank from './hackerrank/index.js'
 import hackerearth from './hackerearth/index.js'
+import atcoder from './atcoder/index.js'
 import stackoverflow from './stackoverflow/index.js'
 import orcid from './orcid/index.js'
 import semanticScholar from './semantic-scholar/index.js'
 import dblp from './dblp/index.js'
 import googleScholar from './google-scholar/index.js'
 import researchgate from './researchgate/index.js'
+import openalex from './openalex/index.js'
+import crossref from './crossref/index.js'
+import arxiv from './arxiv/index.js'
 import medium from './medium/index.js'
 import substack from './substack/index.js'
 import hashnode from './hashnode/index.js'
@@ -38,6 +45,11 @@ import youtube from './youtube/index.js'
 import devpost from './devpost/index.js'
 import linkedin from './linkedin/index.js'
 import x from './x/index.js'
+import bluesky from './bluesky/index.js'
+import mastodon from './mastodon/index.js'
+import codepen from './codepen/index.js'
+import behance from './behance/index.js'
+import dribbble from './dribbble/index.js'
 import custom from './custom/index.js'
 
 /**
@@ -48,13 +60,14 @@ import custom from './custom/index.js'
  * @type {import('./types.js').Connector[]}
  */
 export const CONNECTORS = [
-  github, gitlab, bitbucket, dockerhub,
-  npm, pypi, huggingface, kaggle,
-  leetcode, codeforces, codechef, hackerrank, hackerearth,
+  github, gitlab, bitbucket, codeberg, sourcehut, dockerhub,
+  npm, pypi, cratesio, huggingface, kaggle,
+  leetcode, codeforces, codechef, hackerrank, hackerearth, atcoder,
   stackoverflow,
-  orcid, semanticScholar, dblp, googleScholar, researchgate,
+  orcid, semanticScholar, dblp, openalex, crossref, arxiv, googleScholar, researchgate,
   medium, substack, hashnode, devto, website, youtube,
-  devpost, linkedin, x,
+  codepen, behance, dribbble,
+  devpost, linkedin, x, bluesky, mastodon,
   custom,
 ]
 
@@ -102,6 +115,7 @@ export function connectorGroups() {
     ['code', 'Code'],
     ['packages', 'Packages & registries'],
     ['ml', 'Models & data'],
+    ['design', 'Design'],
     ['competitive', 'Competitive programming'],
     ['research', 'Research'],
     ['writing', 'Writing'],

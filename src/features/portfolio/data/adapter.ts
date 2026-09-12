@@ -309,6 +309,7 @@ export type PageSectionId =
   | 'projects'
   | 'awards'
   | 'certifications'
+  | 'timeline'
 
 export const PAGE_SECTION_BY_ENGINE_ID: Record<string, PageSectionId> = {
   hero: 'profile',
@@ -322,6 +323,7 @@ export const PAGE_SECTION_BY_ENGINE_ID: Record<string, PageSectionId> = {
   projects: 'projects',
   achievements: 'awards',
   certifications: 'certifications',
+  timeline: 'timeline',
 }
 
 type EngineSection = { id: string; visible?: boolean }
@@ -639,3 +641,113 @@ export type SocialName = string
 export type SocialLink = SocialProfile & { name: SocialName }
 
 export const SOCIAL_LINKS: SocialLink[] = toSocialLinks(profile)
+
+/* -------------------------------------------------------------------------- */
+/* Timeline                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The life-in-years strip, built from what was imported.
+ *
+ * Upstream this module's data file was 130 lines of one person's biography — his birth year,
+ * the schools he attended, the awards he won, the company he founded. Reusable as a
+ * *component*; not reusable as *content*, and shipping it in a template means anyone who
+ * enables the section publishes a stranger's life as their own.
+ *
+ * So the milestones are derived from records the owner actually has: roles, degrees and awards
+ * already carry dates, and a timeline is exactly a list of dated things. Nothing is invented —
+ * a portfolio with no dated records produces no milestones, and the component renders nothing.
+ *
+ * `timeline.birthYear` in config sets where the strip starts; without it, it starts at the
+ * earliest record. `timeline.milestones` replaces the derivation entirely for someone who
+ * would rather write their own.
+ */
+export function toTimeline(
+  p: EngineProfile,
+  c: EngineConfig
+): { birthYear: number; milestones: { year: number; content?: string }[] } {
+  const configured = (c as { timeline?: { birthYear?: number; milestones?: unknown[] } }).timeline
+
+  // An explicit list wins outright: someone who wrote their own timeline does not want it
+  // merged with a guess.
+  const authored = Array.isArray(configured?.milestones) ? configured.milestones : undefined
+  if (authored?.length) {
+    const milestones = authored
+      .map((entry) => {
+        const item = entry as { year?: unknown; content?: unknown }
+        const year = Number(item?.year)
+        if (!Number.isFinite(year)) return null
+        const content = typeof item?.content === 'string' ? item.content.trim() : ''
+        return { year, ...(content ? { content } : {}) }
+      })
+      .filter(Boolean) as { year: number; content?: string }[]
+    return { birthYear: Number(configured?.birthYear) || earliest(milestones), milestones: fill(milestones) }
+  }
+
+  /** year → the things that happened in it. */
+  const byYear = new Map<number, string[]>()
+  const note = (year: number | undefined, text: string) => {
+    if (!Number.isFinite(year as number) || !text) return
+    const list = byYear.get(year as number) ?? []
+    list.push(text)
+    byYear.set(year as number, list)
+  }
+
+  // Field names taken from `core/schema/profile.js`, not guessed. The normaliser renames on the
+  // way in — a connector's `title`/`startDate` become `role`/`dates.start`, and awards land in
+  // `achievements` with a single `date` — so reading the input shape here yields nothing at all.
+  for (const role of (p.experience ?? []) as EngineRecord[]) {
+    const where = role.company ?? 'a new role'
+    note(yearOf(role.dates?.start), `Started at **${where}**${role.role ? ` as ${role.role}` : ''}.`)
+  }
+  for (const study of (p.education ?? []) as EngineRecord[]) {
+    const where = study.institution ?? 'a new school'
+    note(yearOf(study.dates?.start), `Started at **${where}**${study.degree ? ` — ${study.degree}` : ''}.`)
+  }
+  for (const award of (p.achievements ?? []) as EngineRecord[]) {
+    note(yearOf(award.date), `Awarded **${award.title}**${award.organization ? ` by ${award.organization}` : ''}.`)
+  }
+
+  const milestones = [...byYear.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([year, lines]) => ({ year, content: lines.join('\n\n') }))
+
+  const birthYear = Number(configured?.birthYear) || earliest(milestones)
+  return { birthYear, milestones: fill(milestones, birthYear) }
+}
+
+/**
+ * The component draws one cell per year, so the gaps have to exist as entries.
+ *
+ * Upstream this was written by hand — every empty year listed one by one. Deriving it means a
+ * timeline stays continuous no matter which years happen to have records.
+ */
+function fill(
+  milestones: { year: number; content?: string }[],
+  from?: number
+): { year: number; content?: string }[] {
+  if (!milestones.length) return []
+  const start = from && Number.isFinite(from) ? Math.min(from, milestones[0].year) : milestones[0].year
+  const end = milestones[milestones.length - 1].year
+  const byYear = new Map(milestones.map((m) => [m.year, m]))
+
+  const out: { year: number; content?: string }[] = []
+  for (let year = start; year <= end; year += 1) out.push(byYear.get(year) ?? { year })
+  return out
+}
+
+function earliest(milestones: { year: number }[]): number {
+  return milestones.length ? milestones[0].year : new Date().getFullYear()
+}
+
+/** The year a portfolio date began, whatever shape it arrived in. */
+function yearOf(value: unknown): number | undefined {
+  if (!value) return undefined
+  const iso = typeof value === 'string' ? value : (value as { iso?: string })?.iso
+  const year = Number(String(iso ?? '').slice(0, 4))
+  return Number.isFinite(year) && year > 1900 ? year : undefined
+}
+
+export const TIMELINE = toTimeline(profile, config)
+export const TIMELINE_BIRTH_YEAR = TIMELINE.birthYear
+export const TIMELINE_MILESTONES = TIMELINE.milestones

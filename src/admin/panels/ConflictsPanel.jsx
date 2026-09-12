@@ -14,6 +14,7 @@
 
 import Icon from '../icon.jsx'
 import { Panel, Note } from '../fields.jsx'
+import { explainConflict, needsAttention } from '../../core/identity/explain.js'
 
 /**
  * @param {{builder: import('../state.js').Builder}} props
@@ -23,7 +24,10 @@ export default function ConflictsPanel({ builder }) {
   const conflicts = built.conflicts ?? []
   const resolutions = overrides.resolutions ?? {}
 
-  const unresolved = conflicts.filter((c) => !c.resolved)
+  // Not simply `!resolved`. A conflict your config already settles is *decided* — nagging about it would
+  // bury the ones that are genuinely a coin toss, which is the only kind worth a person's
+  // time. `needsAttention` applies the resolver's own reasoning to make that distinction.
+  const unresolved = conflicts.filter(needsAttention)
 
   if (!conflicts.length) {
     return (
@@ -49,11 +53,14 @@ export default function ConflictsPanel({ builder }) {
     >
       {unresolved.length > 0 ? (
         <Note tone="warn" icon="AlertTriangle">
-          <strong>{unresolved.length}</strong> {unresolved.length === 1 ? 'conflict has' : 'conflicts have'} not
-          been reviewed. The most recently observed value is being used until you choose.
+          <strong>{unresolved.length}</strong> {unresolved.length === 1 ? 'conflict is' : 'conflicts are'} settled
+          only by a tiebreak, not by a rule. Choosing decides them for good.
         </Note>
       ) : (
-        <Note icon="Check">Every conflict has been decided.</Note>
+        <Note icon="Check">
+          Nothing needs you. Every disagreement is settled by a rule — your own values, or a
+          source that outranks the other — rather than by a tiebreak.
+        </Note>
       )}
 
       <Note icon="Info">
@@ -136,10 +143,13 @@ export default function ConflictsPanel({ builder }) {
 
               <footer className="conflict-foot">
                 {conflict.resolved && (
-                  <button type="button" className="btn-admin btn-admin-ghost"
-                    onClick={() => clearResolution(conflict.id)}>
-                    <Icon name="Undo2" size={14} /> Undo decision
-                  </button>
+                  <>
+                    <button type="button" className="btn-admin btn-admin-ghost"
+                      onClick={() => clearResolution(conflict.id)}>
+                      <Icon name="Undo2" size={14} /> Undo decision
+                    </button>
+                    <span className="conflict-hint">{explainConflict(conflict).summary}</span>
+                  </>
                 )}
                 {conflict.staleResolution && (
                   <span className="conflict-hint conflict-hint-warn">
@@ -147,9 +157,14 @@ export default function ConflictsPanel({ builder }) {
                     reports this. Pick again.
                   </span>
                 )}
+                {/* Why this value is the one being published. Read from the resolver's own
+                    ranking rather than assumed: the old text said "observed most recently" for
+                    every unresolved conflict, which was simply untrue whenever layer precedence
+                    or a value the owner had typed was what actually decided it. */}
                 {!conflict.resolved && !conflict.staleResolution && (
                   <span className="conflict-hint">
-                    Currently using <strong>{labelOf(conflict)}</strong> because it was observed most recently.
+                    Using <strong>{conflict.chosenLabel ?? labelOf(conflict)}</strong>.{' '}
+                    {explainConflict(conflict).summary}
                   </span>
                 )}
                 {resolution?.value !== undefined && (

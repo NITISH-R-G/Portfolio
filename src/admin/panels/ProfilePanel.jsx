@@ -23,6 +23,8 @@ import { Label } from '@/components/ui/label'
 import { getConnector } from '../../connectors/index.js'
 import Icon from '../icon.jsx'
 import { Grid, Note, Panel, TextArea, TextField } from '../fields.jsx'
+import { fieldState } from '@/core/identity/explain.js'
+import { evidenceFor } from '@/core/identity/resolve.js'
 import { EditorLayout, Section } from '../preview/editor-layout.jsx'
 import { PortfolioPreview } from '../preview/portfolio-preview'
 import { PreviewFrame } from '../preview/preview-frame'
@@ -38,12 +40,27 @@ export default function ProfilePanel({ builder }) {
 
   const imported = importedIdentity(sources)
 
+  /**
+   * One identity field, with its provenance.
+   *
+   * `state` is the addition that makes the rest of this honest. Every control on this panel
+   * used to look the same whether the value arrived from a connector, was written in the
+   * config file, or was typed over the top — so "Revert" was a button whose effect you could
+   * not predict. The badge names the layer that actually won, read from the resolver's own
+   * ranking rather than inferred here, and carries the value that Revert would restore.
+   */
   const field = (key, label, extra = {}) => ({
     label,
     value: identity[key] ?? '',
     onChange: (value) => setIdentity(key, value),
     overridden: overrides.identity?.[key] !== undefined,
     onRevert: () => setIdentity(key, ''),
+    state: fieldState({
+      field: key,
+      value: identity[key],
+      overrides: overrides.identity ?? {},
+      claims: evidenceFor({ evidence: built.evidence }, 'identity', key),
+    }),
     help:
       imported[key] && imported[key] !== identity[key]
         ? `Imported: "${truncate(imported[key])}"`

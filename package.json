@@ -47,6 +47,7 @@
     "prepare": "husky",
     "setup": "node scripts/setup.mjs",
     "import": "node scripts/import.mjs",
+    "refresh:report": "node scripts/refresh-report.mjs",
     "import:file": "node scripts/import-file.mjs",
     "export": "node scripts/export.mjs",
     "doctor": "node scripts/doctor.mjs",

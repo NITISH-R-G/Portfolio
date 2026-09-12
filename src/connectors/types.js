@@ -32,7 +32,7 @@
 
 /**
  * Broad grouping, used only to organize the setup wizard and admin UI.
- * @typedef {'code'|'competitive'|'research'|'writing'|'packages'|'ml'|'community'|'video'|'social'|'other'} ConnectorCategory
+ * @typedef {'code'|'competitive'|'research'|'writing'|'packages'|'ml'|'design'|'community'|'video'|'social'|'other'} ConnectorCategory
  */
 
 /**

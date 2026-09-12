@@ -33,10 +33,15 @@ const PATTERNS = [
   { connector: 'github', pattern: /^(?:www\.)?github\.com\/([^/?#]+)\/?$/i, field: 'username' },
   { connector: 'gitlab', pattern: /^(?:www\.)?gitlab\.com\/([^/?#]+)\/?$/i, field: 'username' },
   { connector: 'bitbucket', pattern: /^(?:www\.)?bitbucket\.org\/([^/?#]+)\/?$/i, field: 'workspace' },
+  { connector: 'codeberg', pattern: /^(?:www\.)?codeberg\.org\/([^/?#]+)\/?$/i, field: 'username' },
+  // SourceHut puts the tilde in the path, and the same account is reachable through several
+  // subdomains — `git.`, `meta.`, or none.
+  { connector: 'sourcehut', pattern: /^(?:(?:git|meta|hg|lists|todo|builds)\.)?sr\.ht\/~([^/?#]+)/i, field: 'username' },
   { connector: 'dockerhub', pattern: /^(?:www\.)?hub\.docker\.com\/u\/([^/?#]+)/i, field: 'username' },
 
   { connector: 'npm', pattern: /^(?:www\.)?npmjs\.com\/~([^/?#]+)/i, field: 'username' },
   { connector: 'pypi', pattern: /^pypi\.org\/user\/([^/?#]+)/i, field: 'username' },
+  { connector: 'cratesio', pattern: /^(?:www\.)?crates\.io\/users\/([^/?#]+)/i, field: 'username' },
   {
     connector: 'pypi',
     pattern: /^pypi\.org\/project\/([^/?#]+)/i,
@@ -54,6 +59,7 @@ const PATTERNS = [
   { connector: 'codechef', pattern: /^(?:www\.)?codechef\.com\/users\/([^/?#]+)/i, field: 'username' },
   { connector: 'hackerrank', pattern: /^(?:www\.)?hackerrank\.com\/(?:profile\/)?([^/?#]+)/i, field: 'username' },
   { connector: 'hackerearth', pattern: /^(?:www\.)?hackerearth\.com\/@?([^/?#]+)/i, field: 'username' },
+  { connector: 'atcoder', pattern: /^(?:www\.)?atcoder\.jp\/users\/([^/?#]+)/i, field: 'username' },
 
   { connector: 'stackoverflow', pattern: /^(?:www\.)?stackoverflow\.com\/users\/(\d+)/i, field: 'userId' },
 
@@ -62,6 +68,10 @@ const PATTERNS = [
   { connector: 'dblp', pattern: /^dblp\.org\/pid\/(.+?)(?:\.html)?$/i, field: 'pid' },
   { connector: 'googleScholar', pattern: /^scholar\.google\.[a-z.]+\/citations\?(?:.*&)?user=([^&#]+)/i, field: 'id' },
   { connector: 'researchgate', pattern: /^(?:www\.)?researchgate\.net\/profile\/([^/?#]+)/i, field: 'username' },
+  // OpenAlex and Crossref are both matched by ORCID, so an orcid.org URL configures whichever
+  // the user is adding — the existing `orcid` rule wins for the bare profile.
+  { connector: 'openalex', pattern: /^(?:www\.)?openalex\.org\/(?:works\?filter=author\.orcid:)?(\d{4}-\d{4}-\d{4}-\d{3}[\dX])/i, field: 'orcid' },
+  { connector: 'arxiv', pattern: /^(?:www\.)?arxiv\.org\/a\/([^/?#]+)/i, field: 'author' },
 
   { connector: 'medium', pattern: /^(?:www\.)?medium\.com\/@([^/?#]+)/i, field: 'username' },
   { connector: 'medium', pattern: /^([^.]+)\.medium\.com\/?$/i, field: 'username' },
@@ -74,6 +84,10 @@ const PATTERNS = [
   { connector: 'devpost', pattern: /^(?:www\.)?devpost\.com\/([^/?#]+)/i, field: 'username' },
   { connector: 'linkedin', pattern: /^(?:[a-z]{2,3}\.)?(?:www\.)?linkedin\.com\/in\/([^/?#]+)/i, field: 'username' },
   { connector: 'x', pattern: /^(?:www\.)?(?:x|twitter)\.com\/([^/?#]+)/i, field: 'username' },
+  { connector: 'bluesky', pattern: /^(?:www\.)?bsky\.app\/profile\/([^/?#]+)/i, field: 'handle' },
+  { connector: 'codepen', pattern: /^(?:www\.)?codepen\.io\/([^/?#]+)/i, field: 'username' },
+  { connector: 'behance', pattern: /^(?:www\.)?behance\.net\/([^/?#]+)/i, field: 'username' },
+  { connector: 'dribbble', pattern: /^(?:www\.)?dribbble\.com\/([^/?#]+)/i, field: 'username' },
 ]
 
 /**

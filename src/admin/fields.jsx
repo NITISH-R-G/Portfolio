@@ -31,18 +31,73 @@ import { Separator } from '@/components/ui/separator'
 import { WorkbenchHeadingProvider } from './preview/editor-layout.jsx'
 
 /**
+ * How each state reads, and how loudly.
+ *
+ * Only `missing` is tinted. The other three are all *correct* states — a value can be imported,
+ * configured or overridden and be exactly right — so colouring them would turn a provenance
+ * label into a severity signal and teach people to clear the yellow ones.
+ */
+const STATE_TONE = {
+  imported: 'text-muted-foreground',
+  configured: 'text-muted-foreground',
+  overridden: 'text-muted-foreground',
+  missing: 'text-muted-foreground/70',
+  default: 'text-muted-foreground/70',
+}
+
+/**
+ * Where a field's value came from, in three or four words.
+ *
+ * The engine has tracked layers and provenance since the beginning, and none of it was visible
+ * in the editor: every field looked identical whether it had been imported from GitHub, written
+ * in the config file, or typed over the top. That is the difference between "I can change this"
+ * and "I do not know what I am about to lose", and it is the whole reason the claims model
+ * exists — so it belongs on the label, not in a separate provenance screen nobody opens.
+ *
+ * Built from `fieldState`/`presentationState` in `core/identity/explain.js`, which read the
+ * resolver's own ranking. This renders that decision; it never makes one.
+ *
+ * @param {{state: import('@/core/identity/explain.js').FieldState}} props
+ */
+export function StateBadge({ state }) {
+  if (!state) return null
+
+  // Naming the source is the useful half — "Imported" alone still leaves you guessing which of
+  // eleven connected platforms said it.
+  const text = state.source && state.state === 'imported'
+    ? `${state.label} from ${state.source}`
+    : state.label
+
+  return (
+    <span
+      className={cn(
+        'shrink-0 font-mono text-[0.625rem] tracking-wide uppercase select-none',
+        STATE_TONE[state.state] ?? 'text-muted-foreground',
+      )}
+      // The underlying value is the answer to "what happens if I press Revert", which is the
+      // question the button itself cannot answer. Kept as a title rather than always-on text:
+      // it matters at the moment of hesitating, and would be noise on every other field.
+      title={state.underlying ? `Reverting restores: ${state.underlying}` : undefined}
+    >
+      {text}
+    </span>
+  )
+}
+
+/**
  * One labelled control.
  *
  * `overridden` marks a value the user has changed away from what the sources imported, and
  * `onRevert` puts it back — the pair is what keeps "edited by me" distinguishable from
  * "imported", which is the whole reason this engine tracks provenance.
  */
-export function Field({ label, help, children, overridden, onRevert, htmlFor }) {
+export function Field({ label, help, children, overridden, onRevert, htmlFor, state }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={htmlFor} className="text-sm font-medium">
-          {label}
+        <Label htmlFor={htmlFor} className="flex min-w-0 items-baseline gap-2 text-sm font-medium">
+          <span className="truncate">{label}</span>
+          <StateBadge state={state} />
         </Label>
         {overridden && onRevert && (
           <Button
@@ -64,11 +119,11 @@ export function Field({ label, help, children, overridden, onRevert, htmlFor }) 
 }
 
 export function TextField({
-  label, value, onChange, placeholder, help, type = 'text', overridden, onRevert,
+  label, value, onChange, placeholder, help, type = 'text', overridden, onRevert, state,
 }) {
   const id = useId()
   return (
-    <Field label={label} help={help} overridden={overridden} onRevert={onRevert} htmlFor={id}>
+    <Field label={label} help={help} overridden={overridden} onRevert={onRevert} htmlFor={id} state={state}>
       <Input
         id={id}
         type={type}
@@ -81,11 +136,11 @@ export function TextField({
 }
 
 export function TextArea({
-  label, value, onChange, placeholder, help, rows = 4, overridden, onRevert,
+  label, value, onChange, placeholder, help, rows = 4, overridden, onRevert, state,
 }) {
   const id = useId()
   return (
-    <Field label={label} help={help} overridden={overridden} onRevert={onRevert} htmlFor={id}>
+    <Field label={label} help={help} overridden={overridden} onRevert={onRevert} htmlFor={id} state={state}>
       <Textarea
         id={id}
         rows={rows}

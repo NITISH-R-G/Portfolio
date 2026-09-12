@@ -10,6 +10,8 @@
  */
 
 /** Requests that take longer than this are almost certainly not coming back. */
+import { cacheKey, conditionalHeaders, validatorOf } from './cache.js'
+
 const DEFAULT_TIMEOUT_MS = 15_000
 
 /** Network blips and 5xx are retried; nothing else is. */
@@ -31,7 +33,8 @@ const USER_AGENT =
 export class HttpError extends Error {
   /**
    * @param {string} message
-   * @param {{status?: number, url?: string, retryable?: boolean, retryAfterMs?: number}} [info]
+   * @param {{status?: number, url?: string, retryable?: boolean, retryAfterMs?: number,
+   *   rateLimited?: boolean}} [info]
    */
   constructor(message, info = {}) {
     super(message)
@@ -40,6 +43,8 @@ export class HttpError extends Error {
     this.url = info.url
     this.retryable = info.retryable ?? false
     this.retryAfterMs = info.retryAfterMs
+    /** Set only from response evidence — see `isRateLimited`. */
+    this.rateLimited = info.rateLimited ?? false
   }
 }
 
@@ -107,12 +112,41 @@ export function retryAfterMs(headers, now = Date.now()) {
 }
 
 /**
+ * Whether a response is a rate limit, rather than merely a refusal.
+ *
+ * 429 is the unambiguous case. 403 is the one that matters in practice: GitHub — the most
+ * heavily used connector here — signals an exhausted quota with `403`, not `429`, and without
+ * this a rate limit is reported as "refused the request", sending the user to look for a
+ * permissions problem that does not exist.
+ *
+ * The distinction is drawn only from evidence the response actually carries: a quota header
+ * reading zero. A 403 with no such header stays a plain refusal, because that is all it is
+ * known to be.
+ *
+ * @param {number} status
+ * @param {Headers|undefined} headers
+ * @returns {boolean}
+ */
+export function isRateLimited(status, headers) {
+  if (status === 429) return true
+  if (status !== 403) return false
+  // The header must be *present*, not merely coerce to zero: `Number(null)` is 0, so testing
+  // the converted value alone reported every ordinary 403 — a private profile, a permissions
+  // problem — as a rate limit. That is the exact misdiagnosis this function exists to prevent.
+  const raw = headers?.get?.('x-ratelimit-remaining')
+  if (raw === null || raw === undefined || raw === '') return false
+  const remaining = Number(raw)
+  return Number.isFinite(remaining) && remaining === 0
+}
+
+/**
  * @typedef {object} HttpClient
  * @property {(url: string, options?: RequestOptions) => Promise<unknown>} json
  * @property {(url: string, options?: RequestOptions) => Promise<string>} text
  * @property {(url: string, options?: RequestOptions) => Promise<unknown|null>} jsonOrNull
  *   Resolves to `null` on 404 instead of throwing, for "this optional thing may not exist".
  * @property {() => number} requestCount
+ * @property {() => number} revalidatedCount
  */
 
 /**
@@ -134,6 +168,9 @@ export function retryAfterMs(headers, now = Date.now()) {
  * @param {(message: string) => void} [options.log]
  * @param {number} [options.timeoutMs]
  * @param {number} [options.retries]
+ * @param {import('./cache.js').HttpCache} [options.cache]
+ *   When present, responses carrying a validator are revalidated rather than refetched. Absent
+ *   by default, so every existing caller — and every test — behaves exactly as before.
  * @returns {HttpClient}
  */
 export function createHttpClient(options = {}) {
@@ -147,7 +184,9 @@ export function createHttpClient(options = {}) {
     throw new Error('No fetch implementation available. Node 18+ is required.')
   }
 
+  const cache = options.cache
   let requests = 0
+  let revalidated = 0
 
   /**
    * @param {string} url
@@ -160,13 +199,27 @@ export function createHttpClient(options = {}) {
     const retries = opts.retries ?? defaultRetries
     const timeoutMs = opts.timeoutMs ?? defaultTimeout
 
+    // Only ever set from something the provider itself sent. A provider that supplies no
+    // validator gets no conditional header, which is how support is discovered rather than
+    // declared — see `cache.js`.
+    const key = cacheKey(url, opts.method)
+    const cached = cache?.get(key)
+    const revalidating = conditionalHeaders(cached)
+
     let attempt = 0
     // Loop rather than recurse so the retry budget is obvious and bounded.
     for (;;) {
       requests += 1
       let response
       try {
-        response = await withTimeout(doFetch, url, opts, timeoutMs)
+        response = await withTimeout(
+          doFetch,
+          url,
+          Object.keys(revalidating).length
+            ? { ...opts, headers: { ...(opts.headers ?? {}), ...revalidating } }
+            : opts,
+          timeoutMs,
+        )
       } catch (err) {
         const aborted = err?.name === 'AbortError' || err?.name === 'TimeoutError'
         const message = aborted
@@ -178,9 +231,24 @@ export function createHttpClient(options = {}) {
         continue
       }
 
+      // The provider is the authority on whether the cached body is still current. Nothing
+      // here decides that; a 304 is the only thing that reuses it.
+      if (response.status === 304 && cached) {
+        revalidated += 1
+        log(`  ${platform}: unchanged (304)`)
+        return cached.body
+      }
+
       if (response.ok) {
         try {
-          return as === 'json' ? await response.json() : await response.text()
+          const body = as === 'json' ? await response.json() : await response.text()
+          const validator = validatorOf(response.headers)
+          // Stored only when the provider offered a validator — a body with nothing to
+          // revalidate against would be a cache we could never safely use.
+          if (cache && validator) {
+            cache.set(key, { ...validator, body, storedAt: new Date().toISOString() })
+          }
+          return body
         } catch {
           throw new HttpError(`${platform} returned a response that could not be parsed.`, {
             url, status: response.status,
@@ -191,7 +259,8 @@ export function createHttpClient(options = {}) {
       if (nullOn404 && response.status === 404) return null
 
       const wait = retryAfterMs(response.headers, Date.now())
-      const retryable = response.status >= 500 || response.status === 429
+      const rateLimited = isRateLimited(response.status, response.headers)
+      const retryable = response.status >= 500 || rateLimited
 
       if (retryable && attempt < retries) {
         attempt += 1
@@ -205,9 +274,13 @@ export function createHttpClient(options = {}) {
         }
       }
 
-      throw new HttpError(explainStatus(response.status, platform), {
-        url, status: response.status, retryable, retryAfterMs: wait,
-      })
+      throw new HttpError(
+        rateLimited && response.status === 403
+          // The 403 message would otherwise blame configuration for a quota problem.
+          ? `${platform} rate limit reached.${wait ? ` Try again in about ${Math.max(1, Math.round(wait / 60000))} minutes.` : ' Wait a few minutes and run the import again.'}`
+          : explainStatus(response.status, platform),
+        { url, status: response.status, retryable, retryAfterMs: wait, rateLimited },
+      )
     }
   }
 
@@ -216,6 +289,8 @@ export function createHttpClient(options = {}) {
     text: (url, opts = {}) => /** @type {Promise<string>} */ (request(url, opts, 'text', false)),
     jsonOrNull: (url, opts = {}) => /** @type {Promise<unknown|null>} */ (request(url, opts, 'json', true)),
     requestCount: () => requests,
+    /** How many of those requests came back `304 Not Modified`. */
+    revalidatedCount: () => revalidated,
   }
 }
 

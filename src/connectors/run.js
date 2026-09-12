@@ -60,7 +60,10 @@ export async function runConnectors(options) {
   const log = options.log ?? (() => {})
   const env = options.env ?? ((name) => (typeof process !== 'undefined' ? process.env?.[name] : undefined))
 
-  const http = createHttpClient({ fetch: options.fetch, log })
+  // The cache is supplied by the caller — the import script owns the file it lives in, and a
+  // run given none simply fetches everything, which is what every test and every embedded use
+  // of `runConnectors` does.
+  const http = createHttpClient({ fetch: options.fetch, log, cache: options.cache })
   const { sources: configured, unknown } = resolveDataSources(options.dataSources)
 
   const selected = options.only?.length
@@ -98,7 +101,14 @@ export async function runConnectors(options) {
   // when nothing upstream has changed, and the git diff stays meaningful.
   sources.sort((a, b) => a.key.localeCompare(b.key))
 
-  return { sources, status, unknown }
+  return {
+    sources,
+    status,
+    unknown,
+    // How much of this run the providers told us they had already answered.
+    requests: http.requestCount(),
+    revalidated: http.revalidatedCount(),
+  }
 }
 
 /**
@@ -202,7 +212,9 @@ export async function runOne(item, ctx) {
 
     // A rate limit is not a fault and needs no fixing — it needs waiting. Recording when
     // the platform said to come back turns "it failed" into "try again at 14:20".
-    const rateLimited = error?.status === 429
+    // Read from the error rather than re-derived from the status: GitHub reports exhaustion
+    // as 403, and only the response headers can tell that apart from a genuine refusal.
+    const rateLimited = error?.rateLimited === true || error?.status === 429
     const nextRetryAt = error?.retryAfterMs
       ? new Date(ctx.now + error.retryAfterMs).toISOString()
       : undefined

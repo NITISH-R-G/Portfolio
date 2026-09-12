@@ -1,21 +1,22 @@
-'use client'
+"use client"
 
-import { Fragment, useMemo } from 'react'
-import type { RegistryItem } from 'shadcn/schema'
+import { Fragment, useMemo } from "react"
+import type { RegistryItem } from "shadcn/schema"
 
-import { cn } from '@/lib/utils'
-import { SiteFooter } from '@/components/site-footer'
-import { Awards } from '@/features/portfolio/components/awards'
-import { Blocks } from '@/features/portfolio/components/blocks'
-import { Certifications } from '@/features/portfolio/components/certifications'
-import { Education } from '@/features/portfolio/components/education'
-import { Experiences } from '@/features/portfolio/components/experiences'
-import { Overview } from '@/features/portfolio/components/overview'
-import { ProfileHeader } from '@/features/portfolio/components/profile-header'
-import { Showcase } from '@/features/portfolio/components/showcase'
-import { Projects } from '@/features/portfolio/components/projects'
-import { SocialLinks } from '@/features/portfolio/components/social-links'
-import { TechStack } from '@/features/portfolio/components/tech-stack'
+import { cn } from "@/lib/utils"
+import { SiteFooter } from "@/components/site-footer"
+import { Awards } from "@/features/portfolio/components/awards"
+import { Blocks } from "@/features/portfolio/components/blocks"
+import { Certifications } from "@/features/portfolio/components/certifications"
+import { Education } from "@/features/portfolio/components/education"
+import { Experiences } from "@/features/portfolio/components/experiences"
+import { Overview } from "@/features/portfolio/components/overview"
+import { ProfileHeader } from "@/features/portfolio/components/profile-header"
+import { Projects } from "@/features/portfolio/components/projects"
+import { Showcase } from "@/features/portfolio/components/showcase"
+import { SocialLinks } from "@/features/portfolio/components/social-links"
+import { TechStack } from "@/features/portfolio/components/tech-stack"
+import { Timeline } from "@/features/portfolio/components/timeline"
 import {
   toAwards,
   toCertifications,
@@ -28,15 +29,16 @@ import {
   toShowcase,
   toSocialLinks,
   toTechStack,
+  toTimeline,
   toUser,
-} from '@/features/portfolio/data/adapter'
+} from "@/features/portfolio/data/adapter"
 import type {
   EngineConfig,
   EngineProfile,
   PageSectionId,
-} from '@/features/portfolio/data/adapter'
+} from "@/features/portfolio/data/adapter"
 
-import { ThemeScope } from './theme-scope'
+import { ThemeScope } from "./theme-scope"
 
 /**
  * The admin's live preview.
@@ -59,7 +61,7 @@ import { ThemeScope } from './theme-scope'
  * which is the one thing this component exists to avoid, so it is absent and said to be absent.
  */
 
-export type PreviewSection = PageSectionId | 'all' | 'footer'
+export type PreviewSection = PageSectionId | "all" | "footer"
 
 /**
  * What a panel asks to see: everything, one block, or the handful its controls actually reach.
@@ -77,12 +79,12 @@ export type BuiltPortfolio = {
 }
 
 /** His page's own grouping: these follow the block before them with no divider. */
-const NO_SEPARATOR_BEFORE = new Set<PageSectionId>(['overview', 'github'])
+const NO_SEPARATOR_BEFORE = new Set<PageSectionId>(["overview", "github"])
 
 export function PortfolioPreview({
   built,
   theme,
-  section = 'all',
+  section = "all",
   className,
 }: {
   built: BuiltPortfolio
@@ -105,10 +107,11 @@ export function PortfolioPreview({
       showcase: toShowcase(profile),
       awards: toAwards(profile),
       certifications: toCertifications(profile),
+      timeline: toTimeline(profile, config),
       footer: toFooter(config),
       profileOptions: toProfileOptions(config),
     }),
-    [profile, config],
+    [profile, config]
   )
 
   const blocks: Record<PageSectionId, () => React.ReactNode> = {
@@ -134,18 +137,28 @@ export function PortfolioPreview({
     education: () => <Education education={data.education} />,
     projects: () => <Projects projects={data.projects} />,
     awards: () => <Awards awards={data.awards} />,
-    certifications: () => <Certifications certifications={data.certifications} />,
+    certifications: () => (
+      <Certifications certifications={data.certifications} />
+    ),
+    timeline: () => (
+      <Timeline
+        birthYear={data.timeline.birthYear}
+        milestones={data.timeline.milestones}
+      />
+    ),
   }
 
   // Editing a section shows it whether or not it is currently visible — you are looking at it
   // in order to decide, and hiding it from its own editor is unhelpful.
   const requested = Array.isArray(section) ? section : [section]
-  const wantsAll = requested.includes('all')
-  const wantsFooter = wantsAll || requested.includes('footer')
+  const wantsAll = requested.includes("all")
+  const wantsFooter = wantsAll || requested.includes("footer")
 
   const ordered = wantsAll
     ? toPageSections(built.sections)
-    : requested.filter((id): id is PageSectionId => id !== 'all' && id !== 'footer')
+    : requested.filter(
+        (id): id is PageSectionId => id !== "all" && id !== "footer"
+      )
 
   return (
     <ThemeScope
@@ -154,9 +167,9 @@ export function PortfolioPreview({
       className={cn(
         // His page wrapper, verbatim: the panel scroll offset and separator height the sections
         // are drawn against. Without it the screen lines land in the wrong places.
-        'bg-background text-foreground [--separator-height:--spacing(8)]',
-        '**:data-[slot=panel]:scroll-mt-4',
-        className,
+        "bg-background text-foreground [--separator-height:--spacing(8)]",
+        "**:data-[slot=panel]:scroll-mt-4",
+        className
       )}
     >
       <div className="mx-auto md:max-w-3xl">
@@ -178,7 +191,12 @@ export function PortfolioPreview({
 /** His page separator. Copied rather than imported because it is local to his page module. */
 function Separator({ className }: { className?: string }) {
   return (
-    <div className={cn('stripe-divider h-(--separator-height) w-full border-x', className)} />
+    <div
+      className={cn(
+        "stripe-divider h-(--separator-height) w-full border-x",
+        className
+      )}
+    />
   )
 }
 
@@ -186,9 +204,10 @@ function UnavailableSection({ label }: { label: string }) {
   return (
     <div className="border-x border-line px-4 py-6 text-center text-sm text-balance text-muted-foreground">
       <p>
-        <strong className="font-medium text-foreground">{label}</strong> is rendered on the
-        published page but cannot be previewed here — it is fetched on the server at build time,
-        so the browser has no way to produce it.
+        <strong className="font-medium text-foreground">{label}</strong> is
+        rendered on the published page but cannot be previewed here — it is
+        fetched on the server at build time, so the browser has no way to
+        produce it.
       </p>
     </div>
   )

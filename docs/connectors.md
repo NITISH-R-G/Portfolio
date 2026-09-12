@@ -2,6 +2,61 @@
 
 29 integrations, and an honest account of what each one can actually do.
 
+
+## Added in Phase 7
+
+Twelve connectors, chosen by probing each provider's real endpoints on 2026-09-08 rather than
+by assuming an API exists. Seven import data; five contribute a verified link or figures you
+enter, because that is all their provider permits.
+
+### Imports data
+
+| Platform | Interface | Imports | Notes |
+| --- | --- | --- | --- |
+| Codeberg | Forgejo REST, keyless | projects, skills, identity, links | Works for any Forgejo/Gitea host via `host`. Its repo listing is slow — measured 3–25s — so it uses a 45s timeout. |
+| crates.io | Public JSON, keyless | packages, skills, downloads, links | Resolves your numeric id from your login, then lists your crates. |
+| OpenAlex | Public JSON, keyless | publications, citation counts, links | Matched by **ORCID only** — a name search would claim other people's papers. |
+| Crossref | Public JSON, keyless | publications, links | Matched by ORCID. Covers work with a registered DOI; preprints often have none. |
+| arXiv | Atom API, keyless | publications (preprints), links | Matched by **author name** — arXiv indexes no ORCID, so check the results. |
+| Bluesky | Public AppView XRPC, no auth | identity, follower/post counts, links | Profile only. Posts are not imported. |
+| Mastodon | Public REST, no auth | identity, follower count, links | Federated, so the instance is part of your handle. Returns an `ETag`, so it revalidates. |
+
+### Link or manual only
+
+| Platform | Why | Contributes |
+| --- | --- | --- |
+| SourceHut | API is GraphQL and needs a token even for public reads | verified link |
+| CodePen | No public API; the profile RSS paths now 404 | verified link |
+| Behance | Adobe retired the public API in 2020; successor is partner-only | verified link |
+| Dribbble | API is OAuth-only with restricted client registration | verified link |
+| AtCoder | No official API. The kenkoooo.com mirror is third-party, so it is deliberately not used | figures you enter, plus a link |
+
+### Researched and not implemented
+
+| Platform | Reason |
+| --- | --- |
+| Reddit | Returns 403 to non-browser clients; the API requires registered OAuth. |
+| Replicate | Every endpoint needs a token (401 anonymously). Deferred rather than rejected — it would be a credential connector like Kaggle. |
+| Papers with Code | Its API path serves HTML; the service was folded into Hugging Face. No stable interface. |
+| Topcoder | The v5 members endpoint returned 404 for the handles probed; member lookup could not be confirmed. |
+| Credly | The public badge JSON returned 404 for the accounts probed; could not be verified. |
+| Maven Central | The Solr search endpoint did not respond from this environment across repeated attempts; unverified rather than rejected. |
+| Vercel, Netlify, Cloudflare | All require an account token, and describe private deployment infrastructure rather than public portfolio work. |
+| Product Hunt, Indie Hackers | HTML only; Product Hunt's API requires OAuth. |
+
+Nothing above is implemented as a stub. A documented "not implemented" is better than a
+connector that stores a URL while implying it imports data.
+
+### Two rules that keep this honest
+
+**Conditional-request support is discovered, never declared.** No connector states whether its
+provider supports `ETag`; a validator is sent only if that provider previously supplied one.
+
+**Capability determines the action.** A platform with nothing readable cannot render a
+"Connect" button, because `bestMethod` never returns a rung this project can climb for it.
+
+---
+
 ## Capability levels
 
 This is the most important table in the documentation, because it is the one most tools

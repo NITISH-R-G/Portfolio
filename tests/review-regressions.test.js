@@ -338,8 +338,11 @@ describe('the deployed admin knows it can publish', () => {
     // configured production admin looking for a bug that was not there.
     const panel = source('src/admin/panels/ConnectPanel.jsx')
     assert.match(panel, /isConfigured/, 'the panel must know whether publishing is available')
-    assert.match(panel, /publishing && \(/, 'the reassurance must be conditional')
-    assert.match(panel, /Save<\/strong>/, 'it should name the panel that does work')
+    // Asserted as a condition on `publishing` rather than as one particular JSX shape: the
+    // reassurance moved from a block into the warning's own sentence when Connect was rebuilt on
+    // the workbench, and pinning the markup would have failed a change that kept the promise.
+    assert.match(panel, /\{publishing &&/, 'the reassurance must be conditional')
+    assert.match(panel, /see Save|Save<\/strong>/, 'it should name the panel that does work')
   })
 
   test('the dev-server fallback is still there and still unconditional', () => {
@@ -347,7 +350,14 @@ describe('the deployed admin knows it can publish', () => {
     // way and the warning still appears when it is absent.
     const panel = source('src/admin/panels/ConnectPanel.jsx')
     assert.match(panel, /api\.isAvailable\(\)/)
-    assert.match(panel, /if \(live === false\)/)
+    // The condition, not the statement that used to carry it. The panel used to return early on
+    // `if (live === false)`; it now renders the same warning from a guard inside the workbench
+    // layout, because the canvas and inspector both have to exist for the notice to sit in one.
+    // Anchored to the guard that renders the warning, not merely to the expression: `live ===
+    // false` also appears on several `disabled` props, so a looser match stayed green with the
+    // notice ungated entirely.
+    assert.match(panel, /\{live === false && \(/, 'the warning must be rendered only when the API is absent')
+    assert.match(panel, /needs a dev session|dev server/i, 'and it must still say so')
 
     // The route contract is unchanged — `/__portfolio/...` — but the origin is no longer this
     // page's. The API used to be middleware inside the Vite dev server, which a relative path
