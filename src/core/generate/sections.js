@@ -176,6 +176,50 @@ export const SECTION_DEFINITIONS = [
     count: (p) => (p.languages ?? []).length,
   },
   {
+    id: 'github',
+    label: 'GitHub contributions',
+    navLabel: 'GitHub',
+    icon: 'Github',
+    // Not profile content: the graph is fetched at build time for the connected account, so
+    // what justifies the section is having connected one at all.
+    count: (p) => (p.socials?.github ? 1 : 0),
+  },
+  {
+    id: 'showcase',
+    label: 'Showcase',
+    navLabel: 'Showcase',
+    icon: 'LayoutGrid',
+    // Real profile content, so `auto` can answer from the data: the section appears once the
+    // owner has marked a deployed project for it, and disappears when they have not.
+    count: (p) => (p.projects ?? []).filter((project) => project.showcase === true).length,
+  },
+  {
+    id: 'blocks',
+    label: 'Blocks',
+    navLabel: 'Blocks',
+    icon: 'LayoutGrid',
+    // The component registry this application ships. There is no profile data to weigh, so
+    // `auto` cannot answer the question and the default is off — see `defaultConfig`. This
+    // count exists so that turning it on reports a section with something in it.
+    alwaysConsider: true,
+    count: () => 1,
+  },
+  {
+    id: 'timeline',
+    label: 'Timeline',
+    navLabel: 'Timeline',
+    icon: 'GitCommitHorizontal',
+    // Not a collection of its own: a timeline is a *view* of the dated records already held,
+    // so what justifies it is having enough dated things for a strip to read as a life rather
+    // than a single tick. Two is that threshold — one dated record draws a rail with one mark
+    // on it, which looks broken rather than sparse.
+    //
+    // Counted as distinct years, not records, because three jobs started in the same year make
+    // one point on a year-scaled axis.
+    threshold: 2,
+    count: (p) => datedYears(p).size,
+  },
+  {
     id: 'contact',
     label: 'Contact',
     navLabel: 'Contact',
@@ -314,6 +358,39 @@ export function navigationFor(sections) {
   return sections
     .filter((s) => s.visible && s.id !== 'hero')
     .map((s) => ({ id: s.id, label: s.navLabel, icon: s.icon }))
+}
+
+/**
+ * The distinct years the profile has dated records in.
+ *
+ * Kept beside the section definition it serves rather than imported from the adapter: this
+ * module is the engine's, and the adapter is the application's. The adapter derives the
+ * milestones it renders; this only needs to know how many years would appear, and duplicating
+ * that much is cheaper than making the engine depend on the app.
+ *
+ * @param {Profile} p
+ * @returns {Set<number>}
+ */
+function datedYears(p) {
+  /** @type {Set<number>} */
+  const years = new Set()
+  const add = (/** @type {unknown} */ value) => {
+    const iso = typeof value === 'string' ? value : /** @type {{iso?: string}} */ (value)?.iso
+    const year = Number(String(iso ?? '').slice(0, 4))
+    if (Number.isFinite(year) && year > 1900) years.add(year)
+  }
+
+  // `dates` is a DateRange and `date` a PortfolioDate — the normaliser's names, not a
+  // connector's.
+  //
+  // Start dates only, deliberately. The renderer marks the year something *began* and has no
+  // text for an ending, so counting end years would let the threshold pass on years the strip
+  // then draws nothing for — the section would appear, correctly by this count and empty to
+  // the person looking at it. What is counted here has to be what gets drawn.
+  for (const role of p?.experience ?? []) add(role?.dates?.start)
+  for (const study of p?.education ?? []) add(study?.dates?.start)
+  for (const award of p?.achievements ?? []) add(award?.date)
+  return years
 }
 
 /** @param {string} id */

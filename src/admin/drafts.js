@@ -168,10 +168,26 @@ export function mergeOverrides(saved, draft) {
   }
 }
 
+/**
+ * Merge published record patches with drafted ones, per record.
+ *
+ * The depth matters. This used to spread at the collection level, so a drafted patch *replaced*
+ * the published patch for the same record instead of layering onto it — editing a project's
+ * title discarded the `showcase` and `category` already published for it, and the item silently
+ * dropped out of the section it was in. It went unnoticed while `overrides.json` was empty,
+ * because there was never a published patch for a draft to clobber.
+ *
+ * The draft still wins field by field, which is what lets a cleared value override a published
+ * one; it just no longer takes the whole record with it.
+ */
 function mergeBuckets(a, b) {
   const out = { ...(a ?? {}) }
   for (const [collection, patches] of Object.entries(b ?? {})) {
-    out[collection] = { ...(out[collection] ?? {}), ...patches }
+    const bucket = { ...(out[collection] ?? {}) }
+    for (const [id, patch] of Object.entries(patches ?? {})) {
+      bucket[id] = { ...(bucket[id] ?? {}), ...patch }
+    }
+    out[collection] = bucket
   }
   return out
 }

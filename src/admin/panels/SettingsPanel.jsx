@@ -1,149 +1,162 @@
+'use client'
+
 /**
- * SEO, privacy, analytics and deployment.
+ * Site settings.
  *
- * Each of these is small on its own, and grouping them keeps the navigation short. The SEO
- * section shows the generated output rather than asking the user to write it, since it is
- * derived from data they have already provided.
+ * Every field here is consumed by something. That is not a boast, it is the reason the panel is
+ * shorter than it used to be: the previous version offered theme presets, design tokens, a
+ * layout width, an avatar shape, animation intensities and effect parameters, all of which were
+ * read by the presentation layer that the migration to his application replaced. Writing them
+ * still worked; nothing rendered differently. Controls like that are worse than missing ones,
+ * because they answer "did that do anything?" with a convincing yes.
+ *
+ * What each field below reaches:
+ *   site.url         → `SITE.url` — canonical links, Open Graph, `robots.txt`, the sitemap, the
+ *                      `utm_source` on outbound links, and `doctor`'s deployment check.
+ *   site.base        → the static export's base path.
+ *   site.title       → the metadata title and Open Graph site name.
+ *   site.description → the meta description.
+ *   site.language    → `<html lang>`.
+ *   site.ogImage     → the social card image.
+ *   seo.keywords     → the metadata keywords.
+ *   deployment.target → `doctor` and the deploy guard.
  *
  * @module admin/panels/SettingsPanel
  */
 
-import { Panel, TextField, Toggle, SelectField, Note, Grid } from '../fields.jsx'
-import { getPath } from '../state.js'
+import { getPath } from '../drafts.js'
+import { Grid, Note, Panel, SelectField, TextField, Toggle } from '../fields.jsx'
+import { Section } from '../preview/editor-layout.jsx'
+
+const TARGETS = [
+  { value: 'github-pages', label: 'GitHub Pages' },
+  { value: 'vercel', label: 'Vercel' },
+  { value: 'netlify', label: 'Netlify' },
+  { value: 'cloudflare', label: 'Cloudflare Pages' },
+  { value: 'static', label: 'Static files (deploy them yourself)' },
+]
 
 /**
  * @param {{builder: import('../state.js').Builder}} props
  */
 export default function SettingsPanel({ builder }) {
   const { built, configDraft, setConfig } = builder
-  const { config, seo } = built
+  const { config } = built
 
   const value = (path, fallback) => getPath(configDraft, path, getPath(config, path, fallback))
 
   return (
-    <Panel title="Settings" description="Search, privacy, analytics and where this will be published.">
-      <h3 className="admin-subheading">Site</h3>
-      <Grid>
-        <TextField
-          label="Site URL"
-          value={value('site.url', '')}
-          onChange={(v) => setConfig('site.url', v)}
-          placeholder="https://you.github.io/portfolio"
-          help="Used for canonical links, social cards and the sitemap. Without it, those are omitted."
-        />
-        <TextField
-          label="Base path"
-          value={value('site.base', '/')}
-          onChange={(v) => setConfig('site.base', v)}
-          placeholder="/"
-          help='"/" for a root domain, "/repo-name/" for a GitHub Pages project site. A wrong value here is the usual cause of a blank deployed page.'
-        />
-      </Grid>
-      <Grid>
-        <TextField
-          label="Title override"
-          value={value('site.title', '')}
-          onChange={(v) => setConfig('site.title', v)}
-          placeholder={seo.title}
-          help="Leave blank to use your name and headline."
-        />
-        <SelectField
-          label="Hosting"
-          value={value('deployment.target', 'static')}
-          onChange={(v) => setConfig('deployment.target', v)}
-          options={[
-            { value: 'github-pages', label: 'GitHub Pages' },
-            { value: 'vercel', label: 'Vercel' },
-            { value: 'netlify', label: 'Netlify' },
-            { value: 'cloudflare', label: 'Cloudflare Pages' },
-            { value: 'static', label: 'Other static host' },
-          ]}
-        />
-      </Grid>
+    <Panel
+      title="Site settings"
+      description="Where this is published, and what search engines and social cards are told about it."
+    >
+      <Section title="Address">
+        <Grid>
+          <TextField
+            label="Site URL"
+            value={value('site.url', '')}
+            onChange={(next) => setConfig('site.url', next)}
+            placeholder="https://you.github.io/portfolio"
+            help="Canonical links, social cards, the sitemap, and the utm_source tagged onto outbound links."
+          />
+          <TextField
+            label="Base path"
+            value={value('site.base', '/')}
+            onChange={(next) => setConfig('site.base', next)}
+            placeholder="/"
+            help={'"/" for a root domain, "/repo-name/" for a GitHub Pages project site. A wrong value here is the usual cause of a blank deployed page.'}
+          />
+        </Grid>
+      </Section>
 
-      <h3 className="admin-subheading">Search and social</h3>
-      <Note icon="Info">
-        These are generated from your data at build time and baked into the HTML, so a link
-        shared to Slack or LinkedIn unfurls correctly without running any JavaScript.
-      </Note>
+      <Section
+        title="Metadata"
+        description="Each of these falls back to your profile when left blank, which is what an unconfigured portfolio uses."
+      >
+        <Grid>
+          <TextField
+            label="Title"
+            value={value('site.title', '')}
+            onChange={(next) => setConfig('site.title', next)}
+            placeholder={built.profile.identity.name || 'Your name'}
+          />
+          <TextField
+            label="Language"
+            value={value('site.language', 'en')}
+            onChange={(next) => setConfig('site.language', next)}
+            placeholder="en"
+            help="A BCP-47 tag. Becomes the page's lang attribute."
+          />
+        </Grid>
 
-      <div className="seo-preview">
-        <p className="seo-preview-title">{seo.title}</p>
-        <p className="seo-preview-url">{seo.canonical || '(no site URL set)'}</p>
-        <p className="seo-preview-description">{seo.description || '(no description — set a summary)'}</p>
-      </div>
-
-      <Grid>
         <TextField
-          label="Extra keywords"
+          label="Description"
+          value={value('site.description', '')}
+          onChange={(next) => setConfig('site.description', next)}
+          placeholder={truncate(built.profile.identity.summary ?? '')}
+          help="The meta description and the Open Graph description."
+        />
+
+        <TextField
+          label="Social card image"
+          value={value('site.ogImage', '')}
+          onChange={(next) => setConfig('site.ogImage', next)}
+          placeholder="assets/og.png"
+          help="A path inside public/, or an absolute URL. Shown when the site is linked on social platforms."
+        />
+
+        <TextField
+          label="Keywords"
           value={(value('seo.keywords', []) ?? []).join(', ')}
-          onChange={(v) => setConfig('seo.keywords', v.split(',').map((s) => s.trim()).filter(Boolean))}
-          placeholder="machine learning, distributed systems"
-          help="Added to the keywords already derived from your skills and projects."
+          onChange={(next) =>
+            setConfig(
+              'seo.keywords',
+              next
+                .split(',')
+                .map((item) => item.trim())
+                .filter(Boolean),
+            )
+          }
+          help="Comma-separated. Blank uses your top twenty skills."
         />
-        <TextField
-          label="X / Twitter handle"
-          value={value('seo.twitterHandle', '')}
-          onChange={(v) => setConfig('seo.twitterHandle', v)}
-          placeholder="@you"
-          help="Attributes shared links to you on X."
+      </Section>
+
+      <Section
+        title="Privacy"
+        description="What the published site and the exported manifest are allowed to carry."
+      >
+        <Toggle
+          label="Hide my email address entirely"
+          checked={value('privacy.hideEmail', false) === true}
+          onChange={(next) => setConfig('privacy.hideEmail', next)}
+          help="Omits it from the overview, from the exported manifest, and therefore from the search index. Readers can still reach you through your profile links."
         />
-      </Grid>
-      <Toggle
-        label="Emit structured data (JSON-LD)"
-        checked={value('seo.structuredData', true)}
-        onChange={(v) => setConfig('seo.structuredData', v)}
-        help="Person, ProfilePage and WebSite schemas, generated from your real records."
-      />
-      <Toggle
-        label="Generate sitemap.xml and robots.txt"
-        checked={value('seo.sitemap', true)}
-        onChange={(v) => setConfig('seo.sitemap', v)}
-      />
+        <Toggle
+          label="Keep it out of the machine-readable manifest"
+          checked={value('privacy.obfuscateEmail', true) === true}
+          onChange={(next) => setConfig('privacy.obfuscateEmail', next)}
+          help="On by default. The page still shows the address, base64-encoded so a naive scraper cannot lift it from the HTML; this decides whether portfolio.json — the most harvestable form there is — carries it too."
+        />
+      </Section>
 
-      <h3 className="admin-subheading">Privacy</h3>
-      <Toggle
-        label="Hide my email entirely"
-        checked={value('privacy.hideEmail', false)}
-        onChange={(v) => setConfig('privacy.hideEmail', v)}
-        help="Removes it from the page, the structured data and the exports."
-      />
-      <Toggle
-        label="Obfuscate my email"
-        checked={value('privacy.obfuscateEmail', true)}
-        onChange={(v) => setConfig('privacy.obfuscateEmail', v)}
-        help="Renders it in a form naive scrapers miss, and keeps it out of the JSON-LD — where a harvester would read it most easily of all."
-      />
-      <Toggle
-        label="Show where data came from"
-        checked={value('privacy.showDataProvenance', true)}
-        onChange={(v) => setConfig('privacy.showDataProvenance', v)}
-        help="Labels each figure as reported by a platform, counted from your records, or stated by you. This is what makes the numbers checkable."
-      />
-      <Toggle
-        label="Show evidence under skills"
-        checked={value('features.evidenceMode', true)}
-        onChange={(v) => setConfig('features.evidenceMode', v)}
-        help='"Python — 24 repositories" rather than a bare tag.'
-      />
+      <Section title="Deployment">
+        <SelectField
+          label="Target"
+          value={value('deployment.target', 'static')}
+          onChange={(next) => setConfig('deployment.target', next)}
+          options={TARGETS}
+          help="Read by npm run doctor and the deploy guard, which check the base path matches."
+        />
+      </Section>
 
-      <h3 className="admin-subheading">Analytics</h3>
-      <Note icon="Shield">
-        No analytics provider is bundled and none is enabled by default. Setting an endpoint
-        posts anonymous page events to a URL you control — no cookies, no third-party script.
+      <Note>
+        Publishing writes these into <code>src/data/config.json</code>. Values you would rather
+        keep in version control can go in <code>portfolio.config.js</code> instead — the two are
+        merged, with the published file winning.
       </Note>
-      <TextField
-        label="Endpoint"
-        value={value('analytics.endpoint', '')}
-        onChange={(v) => setConfig('analytics.endpoint', v)}
-        placeholder="https://analytics.example.com/collect"
-        help="Or set VITE_ANALYTICS_ENDPOINT in .env to keep it out of your committed config."
-      />
-      <Toggle
-        label="Respect Do Not Track"
-        checked={value('analytics.respectDoNotTrack', true)}
-        onChange={(v) => setConfig('analytics.respectDoNotTrack', v)}
-      />
     </Panel>
   )
 }
+
+const truncate = (text, max = 80) =>
+  text.length > max ? `${text.slice(0, max).trimEnd()}…` : text

@@ -178,6 +178,10 @@ function detectConflict({ subject, attribute, bucket, winner, resolution, labels
         source: best.source,
         sourceLabel: labels[best.source] ?? best.source,
         kind: best.kind,
+        // Carried so the conflict can be *explained* rather than only displayed: layer
+        // precedence is the first tiebreak `rankClaims` applies, and without it the reader
+        // cannot be told why one value beat another.
+        layerKind: best.layerKind,
         observedAt: best.observedAt,
         url: best.url,
         // Every source asserting this same value. Without it the reader sees "your config
@@ -201,6 +205,13 @@ function detectConflict({ subject, attribute, bucket, winner, resolution, labels
     label: describe(subject, attribute),
     options,
     chosen: chosen?.source ?? winner.source,
+    // The winning layer, which is *not* always one of the options above. Conflicts are raised
+    // only between evidence layers — two connectors, or a connector and a document — but the
+    // value actually published can come from a layer that outranks both, such as something you
+    // typed in your config. Without this the explanation for that case is unavailable, and the
+    // panel would have to imply the winner was one of the sources shown.
+    chosenLayerKind: chosen?.layerKind ?? winner.layerKind,
+    chosenLabel: labels[chosen?.source ?? winner.source] ?? (chosen?.source ?? winner.source),
     // A stale decision is not a decision: the source it named is gone, so the value now
     // shown is one the owner never chose. Reporting it as resolved would hide that.
     resolved: Boolean(resolution) && !stale,

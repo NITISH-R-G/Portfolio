@@ -582,9 +582,9 @@ describe('build pipeline', () => {
   })
 
   test('surfaces config issues without failing', () => {
-    const built = buildPortfolio({ config: { layout: { shell: 'nope' } }, now: NOW })
-    assert.ok(built.configIssues.some((i) => i.path === 'layout.shell'))
-    assert.equal(built.config.layout.shell, 'sidebar')
+    const built = buildPortfolio({ config: { layout: { navigation: 'nope' } }, now: NOW })
+    assert.ok(built.configIssues.some((i) => i.path === 'layout.navigation'))
+    assert.equal(built.config.layout.navigation, 'minimap')
   })
 
   test('experience sorts current roles first', () => {

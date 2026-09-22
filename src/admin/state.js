@@ -19,14 +19,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildPortfolio } from '../core/generate/build.js'
 import { recordKey } from '../core/schema/merge.js'
 import { applyClears, hasContent, prune, sameDraft, setPath, mergeDeep, mergeOverrides } from './drafts.js'
-import { DRAFT_KEY, CONFIG_DRAFT_KEY, PUBLISHED_KEY, loadFileConfig, loadSourceLayers, loadImportStatus, loadDocuments } from '../core/load.js'
+import {
+  DRAFT_KEY, CONFIG_DRAFT_KEY, PUBLISHED_KEY,
+  loadFileConfig, loadSourceLayers, loadImportStatus, loadDocuments,
+  loadManual, loadSavedOverrides,
+} from '../core/load.browser.js'
 
 /** Vite resolves these at build time; the browser never fetches them. */
-const manualModules = import.meta.glob('/src/data/manual.json', { eager: true })
-const overrideModules = import.meta.glob('/src/data/overrides.json', { eager: true })
 
 /** @param {Record<string, any>} modules @param {string} path */
-const moduleDefault = (modules, path) => modules[path]?.default ?? modules[path]
 
 /**
  * @typedef {object} Builder
@@ -64,8 +65,8 @@ export function useBuilder() {
   const sources = useMemo(() => loadSourceLayers(), [])
   const documents = useMemo(() => loadDocuments(), [])
   const status = useMemo(() => loadImportStatus() ?? {}, [])
-  const manual = useMemo(() => moduleDefault(manualModules, '/src/data/manual.json'), [])
-  const savedOverrides = useMemo(() => moduleDefault(overrideModules, '/src/data/overrides.json'), [])
+  const manual = useMemo(() => loadManual(), [])
+  const savedOverrides = useMemo(() => loadSavedOverrides(), [])
 
   // Persist on every change so a closed tab never loses work. localStorage is synchronous
   // and these documents are small, so there is nothing to debounce.

@@ -198,6 +198,92 @@ every record as updated.
 That answers a question a progress line cannot: a source can succeed having brought back
 nothing new, and without this there is no way to tell that apart from a real update.
 
+## Preview before you apply
+
+An import in the admin runs in two steps. **Fetch & preview** runs the connectors for real —
+fetching, normalising and diffing against what is already on disk — and writes nothing. What
+it reports is what applying would do, because it is the same code path: `npm run import
+--dry-run`, which has always fetched without writing, now also emits its result as JSON.
+
+Only **Apply** writes. Cancelling leaves every generated file byte-identical.
+
+This is deliberately not a cheap metadata check. There is no way to know what a source will
+contribute without asking it, and a "preview" that guessed would be worse than none — so the
+preview costs a real fetch and tells you the truth.
+
+### What a preview cannot tell you
+
+Removals are detected only for sources that were previously imported: there is nothing to
+compare a first import against, so everything in it is an addition. A source that fails
+during preview reports the failure rather than an empty result, because "nothing to update"
+and "could not be read" are opposite answers to the same question.
+
+### Failure is safe
+
+A source that fails leaves the last good import in place. Its `lastSuccessfulAt` is
+preserved, only `lastAttemptedAt` moves, and the file on disk is untouched — so the
+portfolio keeps showing the data that worked while the health view reports the failure.
+
+---
+
+## Staying current
+
+Once a source is connected it refreshes without you. The repository's workflow runs the
+importer **weekly, Mondays at 06:00 UTC**, and again on every push to `main`. That is the
+whole of the automatic schedule.
+
+### There is no per-source cadence
+
+GitHub Actions cannot run independent schedules per source, so one schedule covers every
+source and no per-source cadence is offered. A config value promising `hourly` would be a
+lie the infrastructure could not keep, so none exists.
+
+### What each source can actually do
+
+| Mode | Meaning |
+| --- | --- |
+| `automatic` | Refreshes on the schedule above. 19 of 29 connectors. |
+| `blocked` | Could refresh, but the credential it needs is not set. |
+| `manual` | No readable interface; refreshes when you edit it. |
+| `unsupported` | Contributes a verified link and nothing else. |
+
+Derived from what each connector declares — `availability`, `fetch`, `authEnv` — not from a
+per-connector table that would drift.
+
+### Conditional requests
+
+When a provider returns an `ETag` or `Last-Modified`, it is stored and offered back on the
+next run. If the provider answers `304 Not Modified`, the stored body is reused and nothing
+is refetched — which for GitHub also means the request costs nothing against the rate limit.
+
+**Support is discovered, never declared.** A conditional header is only ever sent if the
+provider itself supplied a validator, so a provider that sends none simply keeps doing full
+fetches and nothing has to know which is which. Verified to return real 304s: GitHub, DEV
+Community, PyPI, and RSS/Atom feeds served with validators. Verified not to send validators:
+Docker Hub, ORCID, npm's search endpoint.
+
+The store lives at `src/data/generated/http-cache.json`, is git-ignored, and can be deleted
+at any time — losing it costs one full fetch per URL, never correctness.
+
+### Rate limits are not failures
+
+A 429 is a rate limit. So is a `403` carrying `x-ratelimit-remaining: 0`, which is how GitHub
+signals an exhausted quota — without that check its rate limit reads as "refused the request"
+and sends you looking for a permissions problem that is not there. A 403 with no such header
+stays an ordinary refusal, because that is all it is known to be.
+
+Rate-limited sources report when to come back and are not marked as needing attention:
+waiting is not something you can do anything about.
+
+### Webhooks
+
+Several providers support them. **This project cannot receive one** — the public site is a
+static export with no server, and the admin API is a loopback process that exists only while
+you are developing. Provider support is recorded so the gap is documented; nothing anywhere
+offers webhook ingestion.
+
+---
+
 ### Staleness is derived, not stored
 
 A source is not *in* a stale state; it is connected, and its data is old. Storing staleness

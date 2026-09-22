@@ -25,6 +25,9 @@ export const PATHS = {
   generated: path.join(ROOT, 'src', 'data', 'generated'),
   sources: path.join(ROOT, 'src', 'data', 'generated', 'sources'),
   status: path.join(ROOT, 'src', 'data', 'generated', 'status.json'),
+  // Validators and bodies from providers that support conditional requests. Generated, and
+  // safe to delete at any time: losing it costs one full fetch per URL, never correctness.
+  httpCache: path.join(ROOT, 'src', 'data', 'generated', 'http-cache.json'),
   // Outside `generated/` deliberately: a connector can always be re-fetched, but an
   // uploaded résumé cannot be re-read, so documents are durable input rather than cache.
   documents: path.join(ROOT, 'src', 'data', 'documents'),

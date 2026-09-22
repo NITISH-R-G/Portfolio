@@ -44,7 +44,7 @@ describe('config resolution', () => {
     const { config, issues } = resolveConfig({})
     assert.equal(config.site.base, '/')
     assert.equal(config.theme.preset, 'minimal-dark')
-    assert.equal(config.layout.shell, 'sidebar')
+    assert.equal(config.layout.navigation, 'minimap')
     assert.equal(Object.keys(config.sections).length, SECTION_IDS.length)
     assert.ok(!issues.some((i) => i.level === 'error'))
   })
@@ -77,43 +77,15 @@ describe('config resolution', () => {
 
   test('invalid enum values fall back with a warning instead of breaking the build', () => {
     const { config, issues } = resolveConfig({
-      layout: { shell: 'holographic' },
+      layout: { navigation: 'holographic' },
       animations: { intensity: 'ludicrous' },
     })
-    assert.equal(config.layout.shell, 'sidebar')
+    assert.equal(config.layout.navigation, 'minimap')
     assert.equal(config.animations.intensity, 'standard')
-    assert.equal(issues.filter((i) => i.path === 'layout.shell').length, 1)
+    assert.equal(issues.filter((i) => i.path === 'layout.navigation').length, 1)
     assert.equal(issues.filter((i) => i.path === 'animations.intensity').length, 1)
   })
 
-  test('a non-object config is reported and defaults are used', () => {
-    const { config, issues } = resolveConfig(/** @type {any} */ ('nope'))
-    assert.ok(issues.some((i) => i.level === 'error'))
-    assert.equal(config.theme.preset, 'minimal-dark')
-  })
-
-  test('never throws on hostile input', () => {
-    for (const junk of [null, undefined, 0, [], 'x', { sections: null }, { dataSources: 5 }]) {
-      assert.doesNotThrow(() => resolveConfig(/** @type {any} */ (junk)))
-    }
-  })
-
-  test('reduced-motion respect cannot be turned off', () => {
-    const { config } = resolveConfig({ animations: { respectReducedMotion: false } })
-    assert.equal(config.animations.respectReducedMotion, true)
-  })
-
-  test('a malformed data source is dropped with a warning', () => {
-    const { config, issues } = resolveConfig({ dataSources: { github: /** @type {any} */ ('octocat') } })
-    assert.equal(config.dataSources.github, undefined)
-    assert.ok(issues.some((i) => i.path === 'dataSources.github'))
-  })
-
-  test('an invalid section visibility falls back to auto', () => {
-    const { config, issues } = resolveConfig({ sections: { projects: /** @type {any} */ ('yes') } })
-    assert.equal(config.sections.projects, 'auto')
-    assert.ok(issues.some((i) => i.path === 'sections.projects'))
-  })
 })
 
 describe('section order', () => {

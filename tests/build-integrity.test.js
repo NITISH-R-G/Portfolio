@@ -38,28 +38,37 @@ function sources(dir = join(ROOT, 'src'), found = []) {
   return found
 }
 
-describe('generated files are never a hard dependency of the build', () => {
-  test('no source file statically or dynamically imports a generated path', () => {
-    // `import.meta.glob` is exempt: it yields an empty map when nothing matches, which is the
-    // whole point. Anything else naming that directory would be resolved eagerly.
-    const offenders = []
+describe('generated files are a guaranteed dependency of the build', () => {
+  /**
+   * This rule inverted with the move to the Next application, and the inversion is the point.
+   *
+   * Under Vite, `import.meta.glob` yielded an empty map when a generated file was missing, so
+   * the build survived without one — and the old rule here forbade any *hard* import, because a
+   * hard import would have failed the build outright.
+   *
+   * Next has no such API. `scripts/compose.mjs` runs as `predev`/`prebuild` and writes those
+   * files unconditionally, so they are always present and importing them directly is correct.
+   * What has to be guaranteed now is the step that creates them — if `prebuild` were dropped, a
+   * clean checkout would fail to build, and it would fail on a missing JSON file three imports
+   * deep rather than saying so.
+   */
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
 
-    for (const file of sources()) {
-      const text = readFileSync(file, 'utf8')
-      for (const line of text.split('\n')) {
-        if (!/data\/generated\//.test(line)) continue
-        if (/import\.meta\.glob/.test(line)) continue
-        // Prose, including the comment in useSearch.js that explains why the glob is there.
-        if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue
-        // `import(...)` or `from '...'` naming the directory.
-        if (/\bimport\s*\(\s*['"][^'"]*data\/generated\//.test(line)
-          || /\bfrom\s+['"][^'"]*data\/generated\//.test(line)) {
-          offenders.push(`${relative(ROOT, file)}: ${line.trim()}`)
-        }
-      }
-    }
+  test('compose runs before both dev and build', () => {
+    assert.match(pkg.scripts.predev ?? '', /compose/, 'predev must compose the portfolio')
+    assert.match(pkg.scripts.prebuild ?? '', /compose/, 'prebuild must compose the portfolio')
+  })
 
-    assert.deepEqual(offenders, [], `use import.meta.glob for generated files:\n${offenders.join('\n')}`)
+  test('compose writes every generated file the app imports', () => {
+    // The importers name these paths directly; compose is the only thing that creates them.
+    const compose = readFileSync(join(ROOT, 'scripts', 'compose.mjs'), 'utf8')
+    assert.match(compose, /generated\/portfolio\.json/)
+    assert.match(compose, /generated\/inputs\.json/)
+
+    const probe = readFileSync(join(ROOT, 'scripts', 'probe-embeddable.mjs'), 'utf8')
+    assert.match(probe, /generated\/embeddable\.json/)
+    assert.match(pkg.scripts.compose ?? '', /probe-embeddable/,
+      'compose must also refresh the framing-policy cache the project previews read')
   })
 })
 
@@ -67,18 +76,30 @@ describe('the deployment workflow refuses to ship a degraded site', () => {
   const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'deploy.yml'), 'utf8')
 
   test('it generates the semantic index before building', () => {
-    const embed = workflow.indexOf('npm run embed')
-    const build = workflow.indexOf('run: npm run build')
+    const embed = workflow.indexOf('run: pnpm embed')
+    const build = workflow.indexOf('run: pnpm build')
     assert.ok(embed > 0, 'the workflow must generate the embedding index')
     assert.ok(embed < build, 'the index must be generated before the build that reads it')
   })
 
   test('it fails rather than deploying without the index', () => {
     // The index is not committed, so this assertion is the only thing between a CDN failure
-    // and a deployment that silently answers every query lexically.
-    assert.match(workflow, /capabilities\.search/)
-    assert.match(workflow, /!= "hybrid-semantic"/)
-    assert.match(workflow, /::error::Built site reports/)
+    // and a deployment that silently answers every query lexically. The guard asserts the
+    // index file rather than a built manifest: Next's static export emits no portfolio.json
+    // to read `capabilities.search` back out of, and that field was derived from this file's
+    // presence in the first place.
+    assert.match(workflow, /! -s src\/data\/generated\/embeddings\.json/)
+    assert.match(workflow, /::error::src\/data\/generated\/embeddings\.json is missing/)
+    assert.match(workflow, /exit 1/)
+  })
+
+  test('it invokes the import script rather than the pnpm built-in', () => {
+    // `pnpm import` is a built-in that generates a lockfile from an npm/yarn one; it shadows
+    // the package script of the same name. The import step is `continue-on-error`, so getting
+    // this wrong is silent: the step fails, the run stays green, and the site deploys with
+    // whatever data was last committed.
+    assert.match(workflow, /run: pnpm run import/)
+    assert.doesNotMatch(workflow, /run: pnpm import$/m)
   })
 
   test('the order is checkout, install, verify, build, deploy', () => {
@@ -90,10 +111,10 @@ describe('the deployment workflow refuses to ship a degraded site', () => {
       assert.ok(index >= 0, `the workflow no longer contains ${needle}`)
       return index
     }
-    assert.ok(at('actions/checkout') < at('npm ci'))
-    assert.ok(at('npm ci') < at('npm test'))
-    assert.ok(at('npm test') < at('run: npm run build'))
-    assert.ok(at('run: npm run build') < at('upload-pages-artifact'))
+    assert.ok(at('actions/checkout') < at('pnpm install --frozen-lockfile'))
+    assert.ok(at('pnpm install --frozen-lockfile') < at('run: pnpm test'))
+    assert.ok(at('run: pnpm test') < at('run: pnpm build'))
+    assert.ok(at('run: pnpm build') < at('upload-pages-artifact'))
     assert.ok(at('upload-pages-artifact') < at('deploy-pages'))
   })
 })

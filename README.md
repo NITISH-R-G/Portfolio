@@ -487,6 +487,7 @@ import script all read the registry, so none of them need changing.
 [Customization](docs/customization.md) ·
 [Deployment](docs/deployment.md) ·
 [Search](docs/search.md) ·
+[Effects](docs/effects.md) ·
 [Publishing](docs/publishing.md) ·
 [Privacy](docs/privacy.md) ·
 [Security](SECURITY.md) ·

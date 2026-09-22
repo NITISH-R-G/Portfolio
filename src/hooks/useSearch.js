@@ -1,28 +1,34 @@
+'use client'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { usePortfolio } from './usePortfolio'
+
+import { PROFILE, SITE_CONFIG } from '@/features/portfolio/data/adapter'
 
 /**
  * The precomputed embedding index, if this build has one.
  *
- * A glob rather than `import('../data/generated/embeddings.json')`, and the difference is not
- * stylistic. `src/data/generated/` is derived output and is gitignored, so a fresh clone does
- * not have that file — and a bare dynamic import is resolved by the bundler at *build* time,
- * which turned "no index yet" into `[UNRESOLVED_IMPORT] Could not resolve` and a build that
- * failed outright. The `.catch()` below was unreachable: nothing was ever built to run it.
+ * `src/data/generated/` is derived output, so a fresh clone may not have this file — which used
+ * to make a bare dynamic import a *build* failure rather than a runtime absence, because the
+ * bundler resolves the specifier whether or not the branch runs. The previous fix was a Vite
+ * glob, which does not exist here.
  *
- * A glob returns an empty map instead of failing to resolve, so the absent file is absent
- * rather than fatal, and the graceful degradation this file documents actually happens. The
- * chunk is still lazy — `eager: false` is the default, so the JSON stays out of the entry
- * bundle exactly as before.
+ * `scripts/compose.mjs` now guarantees the file exists (it writes an empty index when there is
+ * nothing to embed), so the specifier always resolves and the import is a genuine runtime
+ * question again. The catch stays for the case the file is present but unreadable; an empty
+ * index is not an error, it just means lexical search stands alone.
+ *
+ * Still dynamic, so the JSON stays out of the entry bundle.
+ *
+ * @returns {Promise<Record<string, any>|null>}
  */
-const embeddingModules = import.meta.glob('/src/data/generated/embeddings.json')
-
-/** @returns {Promise<Record<string, any>|null>} */
 async function loadEmbeddings() {
-  const load = embeddingModules['/src/data/generated/embeddings.json']
-  if (!load) return null
-  const module = await load()
-  return module?.default ?? module ?? null
+  try {
+    const loaded = await import('../data/generated/embeddings.json')
+    const index = loaded?.default ?? loaded ?? null
+    return index && Object.keys(index).length ? index : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -48,17 +54,28 @@ async function loadEmbeddings() {
  * That deferral is also the only genuine loading state in this interface, which is what makes
  * a spinner here honest rather than theatre.
  *
+ * The returned shape had drifted from what the hook actually returns — `semanticSearch`,
+ * `understand` and `semanticState` were all missing from it, so a TypeScript consumer was told
+ * they did not exist. They do; this is the real list.
+ *
  * @returns {{
  *   ready: boolean,
  *   loading: boolean,
  *   error: string|null,
  *   prepare: () => void,
  *   search: (query: string) => import('@portfolio-engine/agent').SearchResult[],
- *   manifest: Record<string, any>|null,
+ *   semanticSearch: (query: string) =>
+ *     Promise<import('@portfolio-engine/agent').SearchResult[]>,
+ *   understand: (query: string) => Record<string, any>|null,
+ *   semanticState: 'idle'|'loading'|'ready'|'unavailable',
  * }}
  */
 export function useSearch() {
-  const { profile, config } = usePortfolio()
+  // The committed profile, straight from the composed build. Upstream of the migration this
+  // came from `usePortfolio()`, which re-ran the whole pipeline in the browser through a loader
+  // that no longer works here — and never needed to, because search reads the published facts.
+  const profile = PROFILE
+  const config = SITE_CONFIG
   const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -149,10 +166,9 @@ export function useSearch() {
     return agentRef.current.understand(query)
   }, [])
 
-  return {
-    ready, loading, error, prepare, search, semanticSearch, understand,
-    semanticState, manifest: manifestRef.current,
-  }
+  // `manifest` used to be returned here, read off a ref during render. Nothing consumed it,
+  // and a ref read at render time is stale by construction — so it is gone rather than fixed.
+  return { ready, loading, error, prepare, search, semanticSearch, understand, semanticState }
 }
 
 /**

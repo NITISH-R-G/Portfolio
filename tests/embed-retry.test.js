@@ -369,19 +369,18 @@ describe('installation is scoped and reversible', () => {
 
 describe('a failed embedding build still fails the deploy closed', () => {
   // The property the retry must not erode: retries buy patience, never permission to ship a
-  // worse site. If the model is genuinely unreachable the index is absent, the manifest says
-  // so, and the workflow refuses to deploy.
+  // worse site. If the model is genuinely unreachable the index is absent and the workflow
+  // refuses to deploy.
   const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'deploy.yml'), 'utf8')
 
-  test('the guard still reads the manifest and rejects a degraded build', () => {
-    assert.match(workflow, /capabilities\.search/)
-    assert.match(workflow, /!= "hybrid-semantic"/)
-    assert.match(workflow, /::error::Built site reports/)
+  test('the guard still detects a missing index and rejects a degraded build', () => {
+    assert.match(workflow, /! -s src\/data\/generated\/embeddings\.json/)
+    assert.match(workflow, /::error::src\/data\/generated\/embeddings\.json is missing/)
     assert.match(workflow, /exit 1/)
   })
 
   test('the index is still generated before the build that reads it', () => {
-    assert.ok(workflow.indexOf('npm run embed') < workflow.indexOf('run: npm run build'))
+    assert.ok(workflow.indexOf('run: pnpm embed') < workflow.indexOf('run: pnpm build'))
   })
 
   test('embed still skips rather than crashing when the model is unavailable', () => {

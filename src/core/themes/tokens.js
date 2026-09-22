@@ -147,9 +147,14 @@ export const BASE_TOKENS = {
   },
 
   layout: {
-    /** Content column cap. Overridden by `layout.maxWidth`. */
-    maxWidth: '760px',
-    sidebarWidth: 'clamp(320px, 26vw, 380px)',
+    /**
+     * The content column's cap, overridden by `layout.maxWidth`.
+     *
+     * 768px is Tailwind's `max-w-3xl`, which is the width the ported layout is built at — his
+     * `md:max-w-3xl`. The column reads this token rather than hard-coding the class, so the
+     * setting genuinely moves the page instead of emitting a variable nothing consumes.
+     */
+    maxWidth: '768px',
     sectionGap: 'var(--space-8)',
   },
 }
@@ -161,11 +166,16 @@ export const DENSITY_SCALE = {
   spacious: 1.35,
 }
 
-/** Content-width values for `layout.maxWidth`. */
+/**
+ * Content-width values for `layout.maxWidth`.
+ *
+ * `default` is his `max-w-3xl`; the others are the neighbouring Tailwind steps, so every choice
+ * lands on a width the rest of the type and spacing scale was designed against.
+ */
 export const MAX_WIDTHS = {
-  narrow: '620px',
-  default: '760px',
-  wide: '960px',
+  narrow: '640px',
+  default: '768px',
+  wide: '896px',
   full: '100%',
 }
 

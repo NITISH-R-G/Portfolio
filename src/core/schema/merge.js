@@ -178,6 +178,22 @@ export function mergeProfiles(...layers) {
  * @param {Overrides|undefined|null} overrides
  * @returns {Profile}
  */
+/**
+ * The fields a normalizer treats as a record's identity.
+ *
+ * Only these are copied onto a patch before it is normalized — never the whole record, which
+ * would turn a one-field patch into a full copy and defeat the point of storing patches at all.
+ *
+ * @param {Record<string, any>} record
+ */
+function identityOf(record) {
+  const out = /** @type {Record<string, string>} */ ({})
+  for (const field of ['name', 'title', 'institution', 'company', 'platform']) {
+    if (typeof record[field] === 'string' && record[field]) out[field] = record[field]
+  }
+  return out
+}
+
 export function applyOverrides(profile, overrides) {
   if (!overrides || typeof overrides !== 'object') return profile
 
@@ -209,11 +225,22 @@ export function applyOverrides(profile, overrides) {
     if (isPlainObject(patches)) {
       // Normalize the patch through the schema so an override cannot smuggle in a
       // `javascript:` URL or an unmodelled field.
+      //
+      // Each patch is seeded with the identifying field of the record it targets. Most
+      // normalizers drop a record that has no name or title — reasonably, since an unnamed
+      // record is not one — and a patch that changes only, say, a skill's category carries
+      // neither. Without the seed those patches normalized to `null` and vanished before they
+      // could be applied, which is what made every skill and language override a no-op.
+      const byKey = new Map(next.map((record) => [recordKey(collection, record), record]))
       const normalizedPatches = normalizeProfile({
-        [collection]: Object.entries(patches).map(([id, patch]) => ({
-          ...(isPlainObject(patch) ? patch : {}),
-          id,
-        })),
+        [collection]: Object.entries(patches).map(([id, patch]) => {
+          const target = /** @type {Record<string, any>} */ (byKey.get(id) ?? {})
+          return {
+            ...identityOf(target),
+            ...(isPlainObject(patch) ? patch : {}),
+            id,
+          }
+        }),
       })[/** @type {keyof Profile} */ (collection)]
 
       /** @type {Map<string, Record<string, any>>} */

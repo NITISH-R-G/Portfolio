@@ -10,6 +10,7 @@
  */
 
 import { PATHS, fs } from './portfolio.mjs'
+import { editConfigSource } from './configEdit.mjs'
 
 /**
  * Render a config object as the full file.
@@ -42,13 +43,57 @@ export default defineConfig(${js(config, 0)})
  * @returns {{written: string, backup?: string}}
  */
 export function writeConfigFile(config) {
-  let backup
-  if (fs.existsSync(PATHS.config)) {
-    backup = `${PATHS.config}.backup`
-    fs.copyFileSync(PATHS.config, backup)
-  }
+  const backup = backupConfig()
   fs.writeFileSync(PATHS.config, renderConfigFile(config), 'utf8')
   return { written: PATHS.config, backup }
+}
+
+/**
+ * Apply a patch to the config *file*, keeping everything the patch does not mention.
+ *
+ * This is the path the admin takes, and it exists because the one above cannot be it. That
+ * one renders a whole file from a config object — and by the time an object exists the source
+ * text is gone, so every save erased the comments, blank lines and key order of a file whose
+ * entire purpose is to be edited by hand. Connecting one account rewrote all of it.
+ *
+ * So the patch is applied to the source, not to a value: `editConfigSource` splices only the
+ * byte ranges of the values being changed. Nothing is executed to do it.
+ *
+ * Falls back to the whole-file render when the file does not exist yet (nothing to preserve),
+ * or when the edit cannot be made and verified. That fallback is lossy and deliberate — it is
+ * the same behaviour as before this function existed, and a config that lost its comments is
+ * recoverable in a way that a config with wrong values is not. `preserved` says which happened
+ * so a caller can tell the user.
+ *
+ * @param {Record<string, unknown>} patch    The same shape `deepMerge` takes; `null` removes.
+ * @param {Record<string, unknown>} merged   The fully merged config, for the fallback render.
+ * @returns {{written: string, backup?: string, preserved: boolean, reason?: string}}
+ */
+export function patchConfigFile(patch, merged) {
+  if (!fs.existsSync(PATHS.config)) {
+    const { backup } = writeConfigFile(merged)
+    return { written: PATHS.config, backup, preserved: false, reason: 'There was no config file to edit.' }
+  }
+
+  const source = fs.readFileSync(PATHS.config, 'utf8')
+  const edited = editConfigSource(source, patch)
+
+  if (!edited.ok) {
+    const { backup } = writeConfigFile(merged)
+    return { written: PATHS.config, backup, preserved: false, reason: edited.reason }
+  }
+
+  const backup = backupConfig()
+  fs.writeFileSync(PATHS.config, edited.source, 'utf8')
+  return { written: PATHS.config, backup, preserved: true }
+}
+
+/** @returns {string|undefined} */
+function backupConfig() {
+  if (!fs.existsSync(PATHS.config)) return undefined
+  const backup = `${PATHS.config}.backup`
+  fs.copyFileSync(PATHS.config, backup)
+  return backup
 }
 
 /**

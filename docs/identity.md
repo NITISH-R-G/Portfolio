@@ -320,3 +320,41 @@ source type — API, feed, document, manual — converges on the same claim mode
 | `src/data/overrides.json` | Your decisions |
 
 Tests: `tests/identity.test.js`.
+
+---
+
+## Why a value won
+
+The conflict view explains its own decision rather than only stating it. The explanation
+names the rule `rankClaims` actually applied, in the order it applies them:
+
+| Reported as | Meaning |
+| --- | --- |
+| `user` | You chose this. Re-importing will not undo it. |
+| `authored` | Neither source is used — a value you set outranks both. |
+| `layer` | One source sits on a stronger layer than the other. |
+| `recency` | Equal authority, so the most recently observed value is used. |
+| `kind` | Equal authority and age; a stronger kind of claim wins. |
+| `name` | Indistinguishable by every rule; ordered by name to stay stable. |
+
+Only `recency` and `name` are flagged as needing attention. A conflict settled by layer
+precedence is *decided* — your config beating a connector is the system working as designed,
+not a question — and nagging about it would bury the ones that are genuinely a coin toss.
+
+The explanation never computes a winner of its own. If it and `rankClaims` disagree, the
+explanation is wrong, which is why its tests assert against the resolver's own output.
+
+## Completeness
+
+`assessProfile` reports what a portfolio still lacks. Every check declares whether it
+*applies*: a collection counts against you only once a connected source can produce it — read
+from that connector's own `supportedData` — or you already have some of it. Publications are
+`not-applicable` to someone with no research source connected, not a gap.
+
+States are `complete`, `partial`, `missing`, `not-applicable` and `review`. The score is
+`(complete + partial/2) / applicable`, where `applicable` excludes `not-applicable` entirely,
+and it is always shown beside the counts it came from — a single number cannot say which
+thing to go and fix.
+
+A portfolio configured to hide its email is not incomplete for hiding it; `privacy.hideEmail`
+makes the contact check not-applicable rather than a gap.

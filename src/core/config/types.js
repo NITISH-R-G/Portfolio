@@ -35,8 +35,8 @@
 /**
  * @typedef {object} LayoutConfig
  * @property {'narrow'|'default'|'wide'|'full'} [maxWidth]
- * @property {'sidebar'|'stacked'} [shell]
- * @property {'dock'|'top'|'none'} [navigation]
+ * @property {'column'|'sidebar'|'stacked'} [shell]
+ * @property {'minimap'|'none'} [navigation]
  * @property {'carousel'|'grid'|'list'} [projectLayout]
  * @property {'cards'|'timeline'} [experienceLayout]
  * @property {'circle'|'rounded'|'square'} [avatarStyle]

@@ -125,6 +125,19 @@ export function buildPortfolio(input = {}) {
   /* 5. Derive. --------------------------------------------------------------- */
 
   profile.skills = deriveSkills(profile)
+
+  /**
+   * Skill overrides are re-applied here, after derivation, for the same reason ordering is
+   * re-applied after ranking: the step in between rebuilds the collection.
+   *
+   * `skills` is the one collection the pipeline *derives* rather than imports. Most of it comes
+   * from evidence — a topic on three repositories, a language across two projects — so a skill
+   * an owner edits usually does not exist yet when the earlier override pass runs, and a patch
+   * against it had nothing to attach to. It was then dropped as an unnamed orphan, which is why
+   * changing a skill's logo, link or category appeared to save and changed nothing.
+   */
+  profile = applyOverrides(profile, skillOverrides(input.overrides))
+
   profile.stats = { entries: deriveStats(profile) }
 
   profile.meta = {
@@ -233,6 +246,31 @@ function overrideLayer(overrides) {
  *
  * @param {import('../schema/merge.js').Overrides|undefined} overrides
  */
+/**
+ * The overrides that only make sense once `skills` exists.
+ *
+ * Narrowed to that one collection so re-running `applyOverrides` cannot disturb anything the
+ * earlier passes already settled — every other collection sees an empty patch set and is
+ * returned untouched.
+ *
+ * @param {import('../schema/merge.js').Overrides} [overrides]
+ */
+function skillOverrides(overrides) {
+  if (!overrides) return undefined
+  const records = overrides.records?.skills
+  const hidden = overrides.hidden?.skills
+  // `order` belongs here for the same reason as the other two, and for one more: derivation
+  // sorts by evidence weight, so even a pin that survived the earlier pass would be undone by
+  // the ranking a few lines above. Reordering the stack only holds if it is applied last.
+  const order = overrides.order?.skills
+  if (!records && !hidden && !order) return undefined
+  return {
+    ...(records ? { records: { skills: records } } : {}),
+    ...(hidden ? { hidden: { skills: hidden } } : {}),
+    ...(order ? { order: { skills: order } } : {}),
+  }
+}
+
 function structuralOverrides(overrides) {
   if (!overrides) return undefined
   const { hidden, order } = overrides

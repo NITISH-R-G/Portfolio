@@ -13,9 +13,11 @@
  * @module scripts/doctor
  */
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { CONNECTORS, resolveDataSources, checkSource } from '../src/connectors/index.js'
 import { getSectionDefinition } from '../src/core/generate/sections.js'
-import { listPresetIds } from '../src/core/themes/presets.js'
 import { loadBuiltPortfolio, loadEnv, readJson, PATHS, relative, fs } from './lib/portfolio.mjs'
 import {
   bold, dim, green, yellow, red, say, ok, warn, fail, info, rule,
@@ -336,15 +338,53 @@ function reportSections(sections, profile) {
   }
 }
 
+/**
+ * The theme in force.
+ *
+ * `sourceTheme` names one of the registry themes the application ships — the same list the admin
+ * offers and the block previews use. Empty means the design system's own defaults, which is a
+ * complete configuration and what an unmodified fork looks like, so it is reported rather than
+ * flagged.
+ *
+ * The old `theme.preset` / `theme.density` pair is deliberately not checked here. It configured
+ * the token system that the migration to the upstream application replaced, and reporting a
+ * value nothing renders is worse than reporting nothing.
+ */
 function checkTheme(config) {
-  const presets = listPresetIds()
-  if (!presets.includes(config.theme.preset)) {
+  const name = config.sourceTheme
+  if (!name) {
+    ok('Theme: the design system defaults')
+    return
+  }
+
+  const available = listSourceThemeNames()
+  if (available.length && !available.includes(name)) {
     problem(
-      `Theme preset "${config.theme.preset}" does not exist.`,
-      `Available: ${presets.join(', ')}`,
+      `Theme "${name}" is not in the theme registry.`,
+      `Available: ${available.join(', ')}`,
     )
   } else {
-    ok(`Theme: ${config.theme.preset} (${config.theme.density})`)
+    ok(`Theme: ${name}`)
+  }
+}
+
+/**
+ * The registry theme names, read from the source of truth rather than restated.
+ *
+ * `(preview)/lib/shadcn.ts` is TypeScript, which this Node script cannot import, so the names are
+ * read out of the file. A regex over source is a poor way to know a fact — so when it finds
+ * nothing it returns an empty list and the check downgrades to "cannot verify" rather than
+ * claiming a valid theme is invalid.
+ */
+function listSourceThemeNames() {
+  try {
+    const file = readFileSync(
+      join(process.cwd(), 'src/app/(preview)/lib/shadcn.ts'),
+      'utf8',
+    )
+    return [...file.matchAll(/^\s{4}name: "([a-z0-9-]+)",$/gm)].map((match) => match[1])
+  } catch {
+    return []
   }
 }
 

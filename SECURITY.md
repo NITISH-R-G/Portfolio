@@ -29,9 +29,9 @@ time measured in days, not hours.
   could retrieve it.
 - A private field (`identity.contact.phone`, an unpublished document) ending up in generated
   output — `dist/`, an export, or a JSON-LD block — despite not being configured to appear.
-- A path-traversal or injection issue in the local dev-server write API
-  (`scripts/lib/devApi.mjs`), which only listens on `localhost` but should still not trust
-  its input.
+- A path-traversal or injection issue in the local admin write API
+  (`scripts/lib/adminApi.mjs`, served in development by `scripts/dev-api.mjs`), which binds
+  to loopback only but should still not trust its input.
 
 ## What is not a project vulnerability
 

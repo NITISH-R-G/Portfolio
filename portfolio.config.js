@@ -40,12 +40,13 @@ export default defineConfig({
     preset: 'minimal-dark',
   },
   layout: {
-    shell: 'sidebar',
-    navigation: 'dock',
-    projectLayout: 'carousel',
-    experienceLayout: 'cards',
+    navigation: 'minimap',
   },
-  sections: {},
+  sections: {
+    // The component registry this application ships. Not profile data, so it is off by
+    // default; this portfolio shows it deliberately.
+    blocks: true,
+  },
   dataSources: {
     github: {
       enabled: true,
