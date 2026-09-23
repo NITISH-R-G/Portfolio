@@ -390,8 +390,11 @@ export const PAGE_SECTIONS: PageSectionId[] = toPageSections(
 export const TOC_ITEMS = toTocItems(PAGE_SECTIONS)
 
 /** `layout.navigation`: the right-margin section minimap (`'minimap'`, the default) or none. */
-export const LAYOUT_NAVIGATION: 'minimap' | 'none' =
-  (config as { layout?: { navigation?: string } }).layout?.navigation === 'none' ? 'none' : 'minimap'
+export function toLayoutNavigation(c: EngineConfig): 'minimap' | 'none' {
+  return (c as { layout?: { navigation?: string } }).layout?.navigation === 'none' ? 'none' : 'minimap'
+}
+
+export const LAYOUT_NAVIGATION = toLayoutNavigation(config)
 
 /* -------------------------------------------------------------------------- */
 /* Collections                                                                 */

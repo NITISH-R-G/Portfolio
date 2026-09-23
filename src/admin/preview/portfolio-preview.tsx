@@ -18,14 +18,17 @@ import { Showcase } from "@/features/portfolio/components/showcase"
 import { SocialLinks } from "@/features/portfolio/components/social-links"
 import { TechStack } from "@/features/portfolio/components/tech-stack"
 import { Timeline } from "@/features/portfolio/components/timeline"
+import { TOCMinimap } from "@/components/toc-minimap"
 import {
   toAwards,
   toCertifications,
   toEducation,
   toExperiences,
   toFooter,
+  toLayoutNavigation,
   toPageSections,
   toProfileOptions,
+  toTocItems,
   toProjects,
   toShowcase,
   toSocialLinks,
@@ -39,6 +42,8 @@ import type {
   PageSectionId,
 } from "@/features/portfolio/data/adapter"
 
+import type { CanvasRegion } from "./canvas-regions"
+import { REGION_LABELS } from "./canvas-regions"
 import { ThemeScope } from "./theme-scope"
 
 /**
@@ -86,11 +91,18 @@ export function PortfolioPreview({
   built,
   theme,
   section = "all",
+  regions = false,
   className,
 }: {
   built: BuiltPortfolio
   theme?: RegistryItem
   section?: PreviewSections
+  /**
+   * Mark each block as a selectable canvas region (`SelectableCanvas`). Its contents become
+   * `inert`: on a canvas a click selects the block rather than following a link inside it, and
+   * the whole page is one tab stop instead of every link in it.
+   */
+  regions?: boolean
   className?: string
 }) {
   const { profile, config } = built
@@ -162,6 +174,21 @@ export function PortfolioPreview({
         (id): id is PageSectionId => id !== "all" && id !== "footer"
       )
 
+  const region = (id: CanvasRegion, node: React.ReactNode) =>
+    regions ? (
+      <div data-canvas-region={id} data-canvas-label={REGION_LABELS[id]}>
+        <div inert>{node}</div>
+      </div>
+    ) : (
+      node
+    )
+
+  // The page's section minimap, as the published page draws it in its right margin. Only for
+  // the whole page, and only where the frame is wide enough to have a margin — a container
+  // query, since the frame's width is the viewport being previewed, not the admin's window.
+  const minimapItems =
+    wantsAll && toLayoutNavigation(config) === "minimap" ? toTocItems(ordered) : []
+
   return (
     <ThemeScope
       theme={theme}
@@ -169,24 +196,56 @@ export function PortfolioPreview({
       className={cn(
         // His page wrapper, verbatim: the panel scroll offset and separator height the sections
         // are drawn against. Without it the screen lines land in the wrong places.
-        "bg-background text-foreground [--separator-height:--spacing(8)]",
+        "@container bg-background text-foreground [--separator-height:--spacing(8)]",
         "**:data-[slot=panel]:scroll-mt-4",
         className
       )}
     >
+      {minimapItems.length >= 2 && <PreviewMinimap items={minimapItems} />}
+
       <div className="mx-auto md:max-w-3xl">
         {ordered.map((id, index) => (
           <Fragment key={id}>
             {index > 0 && !NO_SEPARATOR_BEFORE.has(id) && <Separator />}
-            {blocks[id]()}
+            {region(id, blocks[id]())}
           </Fragment>
         ))}
 
         {ordered.length > 0 && <Separator />}
       </div>
 
-      {wantsFooter && <SiteFooter footer={data.footer} social={data.social} />}
+      {wantsFooter &&
+        region("footer", <SiteFooter footer={data.footer} social={data.social} />)}
     </ThemeScope>
+  )
+}
+
+/**
+ * The minimap, pinned to the frame's right edge instead of the window's.
+ *
+ * The published page fixes it to the viewport; inside the admin that would sit over the
+ * inspector. Here it is sticky within the frame's own scroll, zero-height so it takes no room
+ * in the flow. Its links are intercepted: they would otherwise write `#stack` into the admin's
+ * URL, where the hash names the open panel.
+ */
+function PreviewMinimap({ items }: { items: { title: string; url: string; depth: number }[] }) {
+  return (
+    <div className="pointer-events-none sticky top-3 z-20 hidden h-0 @[64rem]:block">
+      <div
+        className="pointer-events-auto ml-auto w-fit"
+        onClickCapture={(event) => {
+          const anchor = (event.target as Element).closest?.("a[href^='#']")
+          if (!anchor) return
+          event.preventDefault()
+          event.stopPropagation()
+          document
+            .getElementById(anchor.getAttribute("href")!.slice(1))
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }}
+      >
+        <TOCMinimap items={items} options={{ threshold: 0, rootMargin: "-20% 0% -60% 0%" }} />
+      </div>
+    </div>
   )
 }
 
