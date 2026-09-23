@@ -1,9 +1,13 @@
+packages:
+  - packages/*
 allowBuilds:
   core-js: false
   msw: false
+  onnxruntime-node: false
   protobufjs: false
   puppeteer: false
   sharp: false
+  unrs-resolver: false
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - shadcn

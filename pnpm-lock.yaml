@@ -51,6 +51,9 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@portfolio-engine/agent':
+        specifier: workspace:*
+        version: link:packages/agent
       '@remixicon/react':
         specifier: ^4.9.0
         version: 4.9.0(react@19.2.8)
@@ -322,6 +325,8 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.11(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3)(jiti@2.7.0)(yaml@2.9.0))
+
+  packages/agent: {}
 
 packages:
 

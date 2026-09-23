@@ -62,7 +62,7 @@
     "test:engine": "node --test \"tests/*.test.js\"",
     "compose": "node scripts/compose.mjs && node scripts/probe-embeddable.mjs",
     "predev": "node scripts/compose.mjs",
-    "prebuild": "node scripts/compose.mjs",
+    "prebuild": "node scripts/compose.mjs && node scripts/probe-embeddable.mjs",
     "probe:embeddable": "node scripts/probe-embeddable.mjs"
   },
   "dependencies": {
@@ -78,6 +78,7 @@
     "@number-flow/react": "^0.6.0",
     "@openpanel/web": "^1.4.1",
     "@phosphor-icons/react": "^2.1.10",
+    "@portfolio-engine/agent": "workspace:*",
     "@remixicon/react": "^4.9.0",
     "@rexa-developer/tiks": "^0.1.9",
     "@tabler/icons-react": "^3.42.0",
