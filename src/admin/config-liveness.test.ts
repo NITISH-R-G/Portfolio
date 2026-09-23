@@ -7,8 +7,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   toFooter,
+  toLayoutNavigation,
   toProfileOptions,
   toTimeline,
+  toUser,
 } from "@/features/portfolio/data/adapter"
 
 /**
@@ -213,10 +215,28 @@ const PROBES: Record<string, () => void> = {
     changesTheAdapter(toFooter, "footer.showSocialLinks", false),
   "footer.showSourceCode": () =>
     changesTheAdapter(toFooter, "footer.showSourceCode", false),
+  // `FooterWordmark` in `SiteFooter` renders `footer.wordmark`; `false` removes it.
+  "footer.wordmark": () => {
+    changesTheAdapter(toFooter, "footer.wordmark", "ENGINE")
+    changesTheAdapter(toFooter, "footer.wordmark", false)
+  },
+
+  /* Layout — `toLayoutNavigation` → the page's `TOC` minimap ------------------ */
+  "layout.navigation": () =>
+    changesTheAdapter(toLayoutNavigation, "layout.navigation", "none"),
 
   /* Profile header — `toProfileOptions` → `ProfileHeader`'s `flipInterval` ---- */
   "profile.flipInterval": () =>
     changesTheAdapter(toProfileOptions, "profile.flipInterval", 9),
+  // `toUser(...).monogram` → the header's `SpotlightMark`.
+  "profile.monogram": () => {
+    const profile = profileFor(structuredClone(BASE))
+    changesTheAdapter(
+      (config: never) => toUser(profile as never, config),
+      "profile.monogram",
+      "AE"
+    )
+  },
 
   /* Timeline — `toTimeline` → the `Timescale` strip -------------------------- */
   "timeline.birthYear": () => {

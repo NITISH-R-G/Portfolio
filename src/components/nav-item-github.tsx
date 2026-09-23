@@ -9,9 +9,13 @@ const getStargazerCount = unstable_cache(
       const response = await fetch(
         `https://api.github.com/repos/${SOURCE_CODE_GITHUB_REPO}`,
         {
+          // No token is a normal build, not an error: the public endpoint answers anonymously.
+          // Sending "Bearer undefined" made GitHub refuse it, and the count read 0 regardless.
           headers: {
             Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${process.env.GITHUB_API_TOKEN}`,
+            ...(process.env.GITHUB_API_TOKEN
+              ? { Authorization: `Bearer ${process.env.GITHUB_API_TOKEN}` }
+              : {}),
             "X-GitHub-Api-Version": "2026-03-10",
           },
         }

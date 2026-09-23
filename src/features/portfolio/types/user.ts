@@ -32,6 +32,8 @@ export type User = {
   }[]
   /** Rich about section; supports Markdown */
   about: string
+  /** Up to four letters drawn in the hero's spotlight mark — configured, or the name's initials. */
+  monogram: string
   /** Public URL to avatar image */
   avatar: string
   /** Different avatar variants based on theme and lighting */

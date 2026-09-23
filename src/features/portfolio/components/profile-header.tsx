@@ -2,6 +2,8 @@ import { USER } from "@/features/portfolio/data/user"
 import type { User } from "@/features/portfolio/types/user"
 
 import { FlipSentences } from "./flip-sentences"
+import { HandwrittenArrow, HandwrittenNote } from "./handwritten-note"
+import { ProfileCoverArt } from "./profile-cover-art"
 import { VerifiedIcon } from "./verified-icon"
 
 export function ProfileHeader({
@@ -14,8 +16,28 @@ export function ProfileHeader({
 }) {
   return (
     <div className="screen-line-bottom grid grid-cols-[auto_1fr] grid-rows-[1fr_auto] overflow-y-clip border-x screen-line-bottom-border after:z-1">
-      <figure className="relative col-span-2 p-2 sm:col-span-1 sm:col-start-2 sm:p-4">
+      {/* His figure slot, which held his own mark. It now holds the owner's: the dot grid and
+          spotlight monogram, the note he annotates it with, and his "Fig. 1." caption. */}
+      <figure className="relative col-span-2 flex min-h-36 items-center p-2 sm:col-span-1 sm:col-start-2 sm:min-h-44 sm:p-4">
+        <ProfileCoverArt monogram={user.monogram} />
 
+        {/* w-36 needs ~1088px before the gutter can hold it without clipping, and the mark
+            ignores coarse pointers, so there is nothing to annotate there. */}
+        <HandwrittenNote
+          className="bottom-20 left-full hidden w-36 flex-col items-start pointer-fine:xl:flex"
+          aria-hidden
+        >
+          <HandwrittenArrow className="-scale-y-100 -rotate-6" />
+          <span className="ml-3 -rotate-6">
+            follows your cursor
+            <span className="block" />
+            click for a sound
+          </span>
+        </HandwrittenNote>
+
+        <figcaption className="pointer-events-none absolute right-2 bottom-2 text-sm/none tracking-wide text-[color-mix(in_oklab,var(--muted-foreground)_60%,var(--background))] tabular-nums select-none sm:right-4 sm:bottom-4">
+          Fig. 1.
+        </figcaption>
       </figure>
 
       <div className="flex flex-col sm:row-span-2 sm:row-start-1">

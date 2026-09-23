@@ -66,7 +66,8 @@ export const metadata: Metadata = {
     firstName: USER.firstName,
     lastName: USER.lastName,
     username: USER.username,
-    gender: USER.gender,
+    // No `gender`: nothing in the portfolio's data states one, and the adapter's placeholder
+    // would publish a claim about a real person that they never made.
     images: [
       {
         url: SITE_INFO.ogImage,

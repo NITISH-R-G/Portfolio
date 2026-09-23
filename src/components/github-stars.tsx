@@ -15,6 +15,12 @@ type GitHubStarsProps = {
 }
 
 export function GitHubStars({ repo, stargazersCount }: GitHubStarsProps) {
+  // His repository has thousands of stars; a new portfolio's has none, and a bare "0" beside the
+  // GitHub mark reads as broken rather than modest. With nothing to count, the button says what
+  // it links to instead.
+  const hasStars = stargazersCount > 0
+  const label = hasStars ? "GitHub stars" : "Source code on GitHub"
+
   return (
     <Tooltip>
       <TooltipTrigger
@@ -37,21 +43,23 @@ export function GitHubStars({ repo, stargazersCount }: GitHubStarsProps) {
                   />
                 </svg>
 
-                <span
-                  className="text-[0.8125rem]/none text-muted-foreground tabular-nums"
-                  style={{ textBox: "trim-end cap alphabetic" }}
-                >
-                  {formatCompactNumber(stargazersCount).toLowerCase()}
-                </span>
+                {hasStars && (
+                  <span
+                    className="text-[0.8125rem]/none text-muted-foreground tabular-nums"
+                    style={{ textBox: "trim-end cap alphabetic" }}
+                  >
+                    {formatCompactNumber(stargazersCount).toLowerCase()}
+                  </span>
+                )}
 
-                <span className="sr-only">GitHub stars</span>
+                <span className="sr-only">{label}</span>
               </a>
             }
           />
         }
       />
       <TooltipContent className="tabular-nums">
-        {formatNumber(stargazersCount)} stars
+        {hasStars ? `${formatNumber(stargazersCount)} stars` : label}
       </TooltipContent>
     </Tooltip>
   )

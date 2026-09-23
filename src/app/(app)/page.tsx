@@ -1,33 +1,41 @@
 import { Fragment } from "react"
 import type { Metadata } from "next"
-import type { ProfilePage, WithContext } from "schema-dts"
-
-import { JSON_LD_ID } from "@/config/json-ld"
 import { JsonLdScript } from "@/lib/json-ld"
-import { absoluteUrl, cn } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import { Awards } from "@/features/portfolio/components/awards"
 import { Blocks } from "@/features/portfolio/components/blocks"
 import { Certifications } from "@/features/portfolio/components/certifications"
 import { Education } from "@/features/portfolio/components/education"
 import { Experiences } from "@/features/portfolio/components/experiences"
 import { GitHubContributions } from "@/features/portfolio/components/github-contributions"
+import { Hello } from "@/features/portfolio/components/hello"
 import { Overview } from "@/features/portfolio/components/overview"
+import { PageActions } from "@/features/portfolio/components/page-actions"
 import { ProfileHeader } from "@/features/portfolio/components/profile-header"
 import { Projects } from "@/features/portfolio/components/projects"
 import { Showcase } from "@/features/portfolio/components/showcase"
 import { SocialLinks } from "@/features/portfolio/components/social-links"
 import { TechStack } from "@/features/portfolio/components/tech-stack"
+import { TOC } from "@/features/portfolio/components/toc"
 import { Timeline } from "@/features/portfolio/components/timeline"
 import {
+  LAYOUT_NAVIGATION,
   PAGE_SECTIONS,
   PROFILE_OPTIONS,
+  TOC_ITEMS,
 } from "@/features/portfolio/data/adapter"
 import type { PageSectionId } from "@/features/portfolio/data/adapter"
-import { USER } from "@/features/portfolio/data/user"
+import { PORTFOLIO_DOCUMENT_DATA } from "@/features/portfolio/llms/data"
+import {
+  toProfilePageJsonLd,
+  toProjectsJsonLd,
+} from "@/features/portfolio/seo/structured-data"
 
 export const metadata: Metadata = {
   alternates: {
     canonical: "/",
+    // The same page as Markdown (src/app/(llms)), announced so an agent can find it.
+    types: { "text/markdown": "/index.md" },
   },
 }
 
@@ -46,6 +54,7 @@ export const metadata: Metadata = {
  */
 const SECTIONS: Record<PageSectionId, () => React.ReactNode> = {
   profile: () => <ProfileHeader flipInterval={PROFILE_OPTIONS.flipInterval} />,
+  hello: () => <Hello actions={<PageActions />} />,
   overview: () => (
     <>
       <Overview />
@@ -76,7 +85,9 @@ export default function HomePage() {
 
   return (
     <>
-      <JsonLdScript data={getProfilePageJsonLd()} />
+      <JsonLdScript data={toProfilePageJsonLd(PORTFOLIO_DOCUMENT_DATA, new Date())} />
+      {PROJECTS_JSON_LD && <JsonLdScript data={PROJECTS_JSON_LD} />}
+      {LAYOUT_NAVIGATION === "minimap" && <TOC items={TOC_ITEMS} />}
 
       <div className="[--separator-height:--spacing(8)] **:data-[slot=panel]:scroll-mt-[calc(var(--header-height)+var(--separator-height))]">
         <div className="mx-auto md:max-w-3xl">
@@ -94,18 +105,8 @@ export default function HomePage() {
   )
 }
 
-function getProfilePageJsonLd(): WithContext<ProfilePage> {
-  return {
-    "@context": "https://schema.org",
-    "@type": "ProfilePage",
-    "@id": absoluteUrl("/"),
-    dateCreated: new Date(USER.dateCreated).toISOString(),
-    dateModified: new Date().toISOString(),
-    // Reference the Person defined in the WebSite node (rendered globally in
-    // the root layout) so both blocks resolve to the same entity.
-    mainEntity: { "@id": JSON_LD_ID.person },
-  }
-}
+/** Projects with a public repository, as `SoftwareSourceCode`; null when there are none. */
+const PROJECTS_JSON_LD = toProjectsJsonLd(PORTFOLIO_DOCUMENT_DATA)
 
 function Separator({ className }: { className?: string }) {
   return (

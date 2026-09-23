@@ -200,6 +200,7 @@ export function toUser(p: EngineProfile, c: EngineConfig): User {
         experienceId: slug(role.company, 'experience'),
       })),
     about: identity.summary ?? '',
+    monogram: String(c.profile?.monogram ?? '').trim() || initials(identity.name),
     avatar: asset(identity.avatar),
     // His avatar-lights variants are his own artwork; a fork supplies none and the component
     // falls back to the plain avatar.
@@ -252,10 +253,20 @@ export type FooterConfig = {
   showSourceCode: boolean
   showDmca: boolean
   items: FooterItem[]
+  /** The pointer-reactive word across the foot of the page, or `false` for none. */
+  wordmark: string | false
 }
 
-export function toFooter(c: EngineConfig): FooterConfig {
+/**
+ * `p` is optional because the wordmark is the only field that needs the profile: by default it
+ * is the owner's first name, set in capitals the way the component is designed to be read.
+ */
+export function toFooter(c: EngineConfig, p?: EngineProfile): FooterConfig {
+  const configured = c.footer?.wordmark
+  const firstName = String(p?.identity?.name ?? '').trim().split(/\s+/)[0] ?? ''
   return {
+    wordmark:
+      configured === false ? false : String(configured ?? '').trim() || firstName.toUpperCase(),
     enabled: c.footer?.enabled !== false,
     showSocialLinks: c.footer?.showSocialLinks !== false,
     showSourceCode: c.footer?.showSourceCode !== false,
@@ -266,7 +277,7 @@ export function toFooter(c: EngineConfig): FooterConfig {
   }
 }
 
-export const FOOTER: FooterConfig = toFooter(config)
+export const FOOTER: FooterConfig = toFooter(config, profile)
 
 /**
  * The profile header's one configurable parameter.
@@ -299,6 +310,7 @@ export const PROFILE_OPTIONS = toProfileOptions(config)
  */
 export type PageSectionId =
   | 'profile'
+  | 'hello'
   | 'overview'
   | 'github'
   | 'showcase'
@@ -313,6 +325,7 @@ export type PageSectionId =
 
 export const PAGE_SECTION_BY_ENGINE_ID: Record<string, PageSectionId> = {
   hero: 'profile',
+  about: 'hello',
   contact: 'overview',
   github: 'github',
   showcase: 'showcase',
@@ -336,9 +349,52 @@ export function toPageSections(sections: EngineSection[] | undefined): PageSecti
     .filter((id): id is PageSectionId => Boolean(id))
 }
 
+/**
+ * The in-page anchor and heading of each section that has one — the ids his panels already
+ * declare, and the titles their headings print. Overview, social links and the contribution
+ * graph are one unheaded band beneath the hero, so they have no entry.
+ */
+export const PAGE_SECTION_ANCHORS: Partial<Record<PageSectionId, { id: string; title: string }>> = {
+  hello: { id: 'hello', title: 'About' },
+  stack: { id: 'stack', title: 'Stack' },
+  showcase: { id: 'showcase', title: 'Showcase' },
+  blocks: { id: 'blocks', title: 'Blocks' },
+  experience: { id: 'experience', title: 'Experience' },
+  education: { id: 'education', title: 'Education' },
+  projects: { id: 'projects', title: 'Projects' },
+  awards: { id: 'awards', title: 'Awards' },
+  certifications: { id: 'certs', title: 'Certifications' },
+  timeline: { id: 'timeline', title: 'Timeline' },
+}
+
+/**
+ * The section minimap's entries: every rendered section that has an anchor, in page order.
+ *
+ * Derived from the same list the page renders, so the minimap cannot name a section that is not
+ * on the page — which is exactly what the hard-coded list it replaces did (his Components, Blog,
+ * Sponsors…). `layout.navigation` decides whether it is drawn at all.
+ */
+export function toTocItems(
+  sections: PageSectionId[],
+): { title: string; url: string; depth: number }[] {
+  return sections.flatMap((id) => {
+    const anchor = PAGE_SECTION_ANCHORS[id]
+    return anchor ? [{ title: anchor.title, url: `#${anchor.id}`, depth: 2 }] : []
+  })
+}
+
 export const PAGE_SECTIONS: PageSectionId[] = toPageSections(
   (composed as { sections?: EngineSection[] }).sections,
 )
+
+export const TOC_ITEMS = toTocItems(PAGE_SECTIONS)
+
+/** `layout.navigation`: the right-margin section minimap (`'minimap'`, the default) or none. */
+export function toLayoutNavigation(c: EngineConfig): 'minimap' | 'none' {
+  return (c as { layout?: { navigation?: string } }).layout?.navigation === 'none' ? 'none' : 'minimap'
+}
+
+export const LAYOUT_NAVIGATION = toLayoutNavigation(config)
 
 /* -------------------------------------------------------------------------- */
 /* Collections                                                                 */
@@ -555,6 +611,8 @@ export function toTechStack(p: EngineProfile): TechStack[] {
     return base
   }
 
+  // Already in category reading order (the engine's `sortSkillsByCategory`), with any order
+  // the owner pinned applied on top; his component groups by first appearance.
   return (p.skills ?? []).map((s: EngineRecord, i: number) => ({
     key: keyFor(s.name, i),
     title: s.name,
@@ -751,3 +809,18 @@ function yearOf(value: unknown): number | undefined {
 export const TIMELINE = toTimeline(profile, config)
 export const TIMELINE_BIRTH_YEAR = TIMELINE.birthYear
 export const TIMELINE_MILESTONES = TIMELINE.milestones
+
+/**
+ * The initials a monogram is drawn from: the first letter of each part of a name, where dots
+ * separate parts as well as spaces ("Ada K. Lovelace" and "Ada K.L." both give "AKL"). At most
+ * three, so an unusually long name still reads as a monogram.
+ */
+export function initials(name: unknown): string {
+  return String(name ?? '')
+    .split(/[\s.]+/)
+    .map((part) => part.match(/\p{L}/u)?.[0] ?? '')
+    .filter(Boolean)
+    .slice(0, 3)
+    .join('')
+    .toUpperCase()
+}

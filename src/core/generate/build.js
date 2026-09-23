@@ -17,7 +17,7 @@ import { validateProfile } from '../schema/validate.js'
 import { resolveConfig, configProfileLayer } from '../config/resolve.js'
 import { resolveTheme } from '../themes/apply.js'
 import { rankProjects, sortByDateDesc } from './scoring.js'
-import { deriveSkills } from './skills.js'
+import { deriveSkills, sortSkillsByCategory } from './skills.js'
 import { deriveStats } from './stats.js'
 import { resolveSections, navigationFor } from './sections.js'
 import { generateSeo } from './seo.js'
@@ -137,6 +137,12 @@ export function buildPortfolio(input = {}) {
    * changing a skill's logo, link or category appeared to save and changed nothing.
    */
   profile = applyOverrides(profile, skillOverrides(input.overrides))
+
+  // Category reading order comes after the patches above, since they can change a category,
+  // and before the owner's pins are re-applied — an explicit order always wins.
+  profile.skills = sortSkillsByCategory(profile.skills)
+  const skillOrder = input.overrides?.order?.skills
+  if (skillOrder) profile = applyOverrides(profile, { order: { skills: skillOrder } })
 
   profile.stats = { entries: deriveStats(profile) }
 

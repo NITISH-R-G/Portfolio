@@ -46,6 +46,7 @@ import {
   WorkbenchChromeProvider,
 } from './preview/editor-layout.jsx'
 import { useBuilder } from './state.js'
+import CanvasPanel from './panels/CanvasPanel.jsx'
 import ConnectPanel from './panels/ConnectPanel.jsx'
 import SourcesPanel from './panels/SourcesPanel.jsx'
 import ConflictsPanel from './panels/ConflictsPanel.jsx'
@@ -66,13 +67,15 @@ import ExportPanel from './panels/ExportPanel.jsx'
 
 /**
  * The sections, in the order an owner works through them: connect the sources, correct what came
- * back, decide how it looks, publish.
+ * back, decide how it looks, publish — after the canvas, which is where the editor opens: the
+ * whole page, selected a block at a time, with every other panel one click from a selection.
  *
  * `canvas` marks the panels that render the real portfolio. Those get the playground layout; the
  * rest are documents — connecting a source, reading import health, publishing — and are laid out
  * as a reading column, because inventing a preview for them would mean inventing a component.
  */
 const SECTIONS = [
+  { id: 'canvas', title: 'Canvas', component: CanvasPanel, canvas: true },
   { id: 'connect', title: 'Connect', component: ConnectPanel },
   { id: 'sources', title: 'Imports', component: SourcesPanel },
   { id: 'conflicts', title: 'Conflicts', component: ConflictsPanel },
@@ -99,7 +102,7 @@ const NAV_ITEMS = SECTIONS.map((section) => ({
 
 export default function AdminEditor() {
   const builder = useBuilder()
-  const [active, setActive] = useState('connect')
+  const [active, setActive] = useState('canvas')
   const [menuOpen, setMenuOpen] = useState(false)
   /**
    * Immersive mode: the portfolio with none of the editor in front of it.
@@ -114,7 +117,7 @@ export default function AdminEditor() {
   // `window` does not exist there. The hash keeps a panel linkable and survives a reload, which
   // matters because reloading is how the owner checks a draft actually took effect.
   useEffect(() => {
-    const fromHash = () => setActive(window.location.hash.slice(1) || 'connect')
+    const fromHash = () => setActive(window.location.hash.slice(1) || 'canvas')
     fromHash()
     window.addEventListener('hashchange', fromHash)
     return () => window.removeEventListener('hashchange', fromHash)
@@ -290,7 +293,7 @@ export default function AdminEditor() {
             !section.canvas && !immersive && 'md:max-w-3xl',
           )}
         >
-          <Panel builder={builder} />
+          <Panel builder={builder} navigate={go} />
         </main>
       </div>
 
