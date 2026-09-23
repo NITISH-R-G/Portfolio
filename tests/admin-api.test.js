@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 import {
@@ -13,6 +14,7 @@ import {
   redact,
 } from '../scripts/lib/adminApi.mjs'
 import { allowedOriginsFor, createDevApiServer } from '../scripts/dev-api.mjs'
+import { PATHS } from '../scripts/lib/portfolio.mjs'
 
 /**
  * The local admin write API.
@@ -460,5 +462,75 @@ describe('connect and disconnect actually change the config on disk', () => {
     const res = await post('/config', { config: 'nope' })
     assert.equal(res.status, 500)
     assert.match((await res.json()).error, /Expected a `config` object/)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* /state before and after an import                                          */
+/* -------------------------------------------------------------------------- */
+
+describe('/state reports import status whether or not an import has run', () => {
+  /** @type {import('node:http').Server} */
+  let server
+  /** @type {string} */
+  let base
+  /** @type {string} */
+  let dir
+  const realStatusPath = PATHS.status
+
+  before(async () => {
+    // The status file is repointed in *this process* only. The real `status.json` is shared
+    // with other suites that node runs in parallel processes, so moving it aside on disk would
+    // race them — the same hazard `config-edit.test.js` has with the real config.
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-state-'))
+    server = createDevApiServer({ allowedOrigins: ALLOWED })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    base = `http://127.0.0.1:${server.address().port}/__portfolio`
+  })
+
+  after(async () => {
+    PATHS.status = realStatusPath
+    fs.rmSync(dir, { recursive: true, force: true })
+    await new Promise((resolve) => server.close(resolve))
+  })
+
+  const readState = async () => {
+    const res = await fetch(`${base}/state`, { headers: { origin: ORIGIN, [ADMIN_HEADER]: '1' } })
+    assert.equal(res.status, 200)
+    return res.json()
+  }
+
+  /** The expression ConnectPanel and SourcesPanel use to read it, verbatim. */
+  const connectorsSeenByPanels = (state, fallback) => state?.status?.connectors ?? fallback ?? {}
+
+  test('before any import, status is present and null rather than missing', async () => {
+    // A clean checkout has no status file. `readJson` returns undefined for it, and JSON drops
+    // undefined keys — so the field vanished from the response instead of saying "none yet".
+    PATHS.status = path.join(dir, 'never-written.json')
+    const state = await readState()
+    assert.ok('status' in state, 'the status key is missing from /state')
+    assert.equal(state.status, null)
+  })
+
+  test('the admin panels fall back exactly as they did when the key was absent', async () => {
+    PATHS.status = path.join(dir, 'never-written.json')
+    const fromBuild = { github: { state: 'ok' } }
+    assert.deepEqual(connectorsSeenByPanels(await readState(), fromBuild), fromBuild)
+    assert.deepEqual(connectorsSeenByPanels({}, fromBuild), fromBuild, 'baseline: key absent')
+  })
+
+  test('after an import, status is the file exactly as written', async () => {
+    // The shape `scripts/import.mjs` writes. Unchanged by the fix: only the missing case moved.
+    const written = {
+      generatedAt: '2026-09-01T06:00:00.000Z',
+      connectors: {
+        github: { connector: 'github', state: 'ok', recordsImported: 12, account: 'ada' },
+      },
+    }
+    PATHS.status = path.join(dir, 'status.json')
+    fs.writeFileSync(PATHS.status, JSON.stringify(written))
+    const state = await readState()
+    assert.deepEqual(state.status, written)
+    assert.deepEqual(connectorsSeenByPanels(state, {}), written.connectors)
   })
 })

@@ -14,7 +14,7 @@ import portfolioConfig from "./portfolio.config.js"
  * cleanly. A missing or malformed file is simply no layer, because a fork that has never
  * published is the normal case rather than an error.
  */
-type PublishedConfig = { site?: { base?: string } }
+type PublishedConfig = { site?: { base?: string; url?: string } }
 
 function publishedConfig(): PublishedConfig {
   try {
@@ -92,6 +92,20 @@ const basePath = (
   "/"
 ).replace(/\/+$/, "")
 
+/**
+ * The site's canonical origin, including its base path, from the same layers as `basePath`.
+ *
+ * `absoluteUrl()` builds JSON-LD ids, the sitemap and share links as this plus a base-less path,
+ * so it must carry the base itself — `site.url` already does ("https://…/Portfolio"). Upstream
+ * this came from an env file; a clean checkout has none, and every absolute URL was published
+ * as `undefined/…`. Trimmed the way `basePath` is, so "/" appends cleanly.
+ */
+const siteUrl = (
+  publishedConfig()?.site?.url ??
+  portfolioConfig?.site?.url ??
+  ""
+).replace(/\/+$/, "")
+
 const nextConfig: NextConfig = {
   /**
    * This fork deploys to GitHub Pages, which serves files and runs nothing. Every route in the
@@ -121,6 +135,19 @@ const nextConfig: NextConfig = {
      * 404s on a project site — verified: `/preview/hero-01/` is a 404 under `/Portfolio`.
      */
     NEXT_PUBLIC_BASE_PATH: basePath,
+
+    /** See `siteUrl` above. Configured, never a placeholder. */
+    NEXT_PUBLIC_APP_URL: siteUrl,
+
+    /**
+     * The public contributions API the GitHub graph is fetched from at build time, on the home
+     * page and in the registry preview. Not a secret — it is the value `.env.example` ships.
+     * It lived only in env files, so a clean checkout failed prerendering with "is not set".
+     * An environment value still overrides it.
+     */
+    NEXT_PUBLIC_GITHUB_CONTRIBUTIONS_API_URL:
+      process.env.NEXT_PUBLIC_GITHUB_CONTRIBUTIONS_API_URL ||
+      "https://github-contributions-api.jogruber.de/v4",
 
     /**
      * Where the admin's local write API is, during development only.

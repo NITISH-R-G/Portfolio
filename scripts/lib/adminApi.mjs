@@ -194,7 +194,7 @@ async function readState() {
         counts: countOf(v.profile),
       })),
     })),
-    status: readJson(PATHS.status),
+    status: readJson(PATHS.status) ?? null,
   }
 }
 
