@@ -7,6 +7,7 @@ import { siPython, siTensorflow } from "simple-icons"
 import { describe, expect, it } from "vitest"
 
 import { GitHubStars } from "@/components/github-stars"
+import { ReactIcon, TsIcon } from "@/components/icons"
 import {
   toPageSections,
   toTechStack,
@@ -73,9 +74,10 @@ describe("the Stack reads like his", () => {
   })
 
   it("keeps his own marks ahead of any other set", () => {
-    // TypeScript is his own TsIcon; Simple Icons must never replace one of his.
-    expect(iconMarkup("TypeScript")).not.toBe("")
-    expect(iconMarkup("TypeScript")).not.toContain("simple")
+    // His TsIcon draws the same path Simple Icons ships, so markup cannot tell them apart; the
+    // element's component can.
+    expect(techIcon("TypeScript")?.type).toBe(TsIcon)
+    expect(techIcon("React")?.type).toBe(ReactIcon)
   })
 
   it("resolves the names imported data actually uses", () => {

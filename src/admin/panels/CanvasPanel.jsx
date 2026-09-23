@@ -142,6 +142,8 @@ function RegionInspector({ builder, region, onOpen, onClear }) {
   const section = engineId ? built.sections?.find((entry) => entry.id === engineId) : null
   const order = built.config.sectionOrder ?? []
   const setting = engineId ? built.config.sections?.[engineId] : undefined
+  const visible = new Set((built.sections ?? []).filter((entry) => entry.visible).map((entry) => entry.id))
+  const move = (delta) => moveInOrder(order, engineId, delta, visible)
 
   return (
     <>
@@ -162,8 +164,8 @@ function RegionInspector({ builder, region, onOpen, onClear }) {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={moveInOrder(order, engineId, -1).join() === order.join()}
-              onClick={() => setConfig('sectionOrder', moveInOrder(order, engineId, -1))}
+              disabled={move(-1).join() === order.join()}
+              onClick={() => setConfig('sectionOrder', move(-1))}
             >
               <ChevronUpIcon />
               Move up
@@ -172,8 +174,8 @@ function RegionInspector({ builder, region, onOpen, onClear }) {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={moveInOrder(order, engineId, 1).join() === order.join()}
-              onClick={() => setConfig('sectionOrder', moveInOrder(order, engineId, 1))}
+              disabled={move(1).join() === order.join()}
+              onClick={() => setConfig('sectionOrder', move(1))}
             >
               <ChevronDownIcon />
               Move down

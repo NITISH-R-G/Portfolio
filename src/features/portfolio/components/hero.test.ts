@@ -101,6 +101,16 @@ describe("the About section", () => {
     expect(greeting![0]).not.toContain("About")
   })
 
+  it("renders the same server markup whatever the reader's motion preference", async () => {
+    // The server cannot know the preference; if the first client render acted on it, the
+    // strokes would hydrate drawn over markup that has them undrawn.
+    reducedMotion.value = false
+    const moving = await render(createElement(Hello, { user: userFor() }))
+    reducedMotion.value = true
+    const still = await render(createElement(Hello, { user: userFor() }))
+    expect(still).toBe(moving)
+  })
+
   it("writes the complete English word at once under reduced motion", async () => {
     reducedMotion.value = true
     const html = await render(createElement(Hello, { user: userFor() }))

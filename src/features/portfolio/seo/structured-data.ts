@@ -53,8 +53,13 @@ export function toPersonJsonLd(d: PortfolioDocumentData): Person {
   const ids = jsonLdIds(d.siteUrl)
   const { user } = d
 
-  const current = d.experiences.filter((company) => company.isCurrentEmployer)
-  const schools = unique(d.education.map((entry) => entry.school))
+  // Only what the page shows: a hidden section's records are not claimed here either.
+  const shown = new Set(d.sections)
+  const current = shown.has("experience")
+    ? d.experiences.filter((company) => company.isCurrentEmployer)
+    : []
+  const schools = shown.has("education") ? unique(d.education.map((entry) => entry.school)) : []
+  const stack = shown.has("stack") ? d.stack : []
 
   return {
     "@type": "Person",
@@ -83,7 +88,7 @@ export function toPersonJsonLd(d: PortfolioDocumentData): Person {
           })),
         }
       : {}),
-    ...(d.stack.length ? { knowsAbout: unique(d.stack.map((item) => item.title)) } : {}),
+    ...(stack.length ? { knowsAbout: unique(stack.map((item) => item.title)) } : {}),
     // Only the profiles the owner marked as their own (`sameAs`), never every link on the page.
     sameAs: d.socialLinks.filter((link) => link.sameAs).map((link) => link.href),
   }
@@ -112,10 +117,11 @@ export function toProfilePageJsonLd(
  * The projects whose link is a public GitHub repository, as `SoftwareSourceCode`.
  *
  * Only those: a project without a repository is not source code anyone can read, and calling it
- * that would be the kind of claim structured data must not make. `null` when there are none, so
- * the page renders no empty list.
+ * that would be the kind of claim structured data must not make. `null` when there are none, or
+ * when the Projects section is hidden, so the page renders no list it does not show.
  */
 export function toProjectsJsonLd(d: PortfolioDocumentData): WithContext<ItemList> | null {
+  if (!d.sections.includes("projects")) return null
   const ids = jsonLdIds(d.siteUrl)
   const repos = d.projects.flatMap((project) => {
     const codeRepository = repositoryUrl(project.link)

@@ -78,12 +78,21 @@ export function stepRegion(
 /**
  * Swap a region's engine section with its neighbour in `sectionOrder`.
  *
- * Moves among the sections this application renders, skipping engine sections it has no
- * renderer for — otherwise "move down" would sometimes appear to do nothing, having swapped with
- * an invisible neighbour. Returns the order unchanged when there is nowhere to go.
+ * Moves among the sections that are actually on the page — skipping engine sections this
+ * application has no renderer for and, when `visible` is given, sections currently hidden —
+ * otherwise "move down" would sometimes appear to do nothing, having swapped with an invisible
+ * neighbour. The moved section itself always counts, since a hidden block can stay selected.
+ * Returns the order unchanged when there is nowhere to go.
  */
-export function moveInOrder(order: readonly string[], engineId: string, delta: 1 | -1): string[] {
-  const rendered = order.filter((id) => PAGE_SECTION_BY_ENGINE_ID[id])
+export function moveInOrder(
+  order: readonly string[],
+  engineId: string,
+  delta: 1 | -1,
+  visible?: ReadonlySet<string>
+): string[] {
+  const rendered = order.filter(
+    (id) => PAGE_SECTION_BY_ENGINE_ID[id] && (!visible || visible.has(id) || id === engineId)
+  )
   const at = rendered.indexOf(engineId)
   const target = rendered[at + delta]
   if (at === -1 || target === undefined) return [...order]

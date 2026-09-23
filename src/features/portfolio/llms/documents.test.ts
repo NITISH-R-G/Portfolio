@@ -110,6 +110,17 @@ describe("the page as Markdown", () => {
     expect(md).toContain("- [Bernoulli numbers](https://cert.example/g) — Royal Society · 1843-01-01")
   })
 
+  it("keeps a link intact when its URL has spaces or parentheses", () => {
+    const md = pageMarkdown(
+      data({
+        experiences: [
+          { id: "x", companyName: "Odd Co", companyWebsite: "https://odd.example/a b)", positions: [] },
+        ],
+      })
+    )
+    expect(md).toContain("### [Odd Co](<https://odd.example/a b)>)")
+  })
+
   it("never carries the email address or phone number", () => {
     const everything = [
       pageMarkdown(data()),

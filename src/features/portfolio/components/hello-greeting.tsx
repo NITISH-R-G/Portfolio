@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, useReducedMotion } from "motion/react"
 
+import { useIsClient } from "@/hooks/use-is-client"
+
 import { AppleHelloEffectEnglish } from "@/registry/components/apple-hello-effect/apple-hello-effect-english"
 import { AppleHelloEffectHindi } from "@/registry/components/apple-hello-effect/apple-hello-effect-hindi"
 import { AppleHelloEffectSpanish } from "@/registry/components/apple-hello-effect/apple-hello-effect-spanish"
@@ -22,6 +24,10 @@ import { AppleHelloEffectVietnamese } from "@/registry/components/apple-hello-ef
  *
  * With reduced motion there is no sequence and no drawing — the English word appears complete
  * (its strokes at zero duration), so the panel keeps its shape and its greeting.
+ *
+ * The preference is read only after mount. The server cannot know it, so the first client
+ * render has to match the server's; acting on it earlier drew the strokes already complete on
+ * the client while the server's markup had them undrawn — a hydration mismatch.
  */
 
 const SEQUENCE = [
@@ -35,7 +41,9 @@ const SEQUENCE = [
 const HOLD_MS = 900
 
 export function HelloGreeting() {
-  const reduceMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion()
+  const isClient = useIsClient()
+  const reduceMotion = isClient && Boolean(prefersReducedMotion)
   const [index, setIndex] = useState(0)
   const [settled, setSettled] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)

@@ -292,7 +292,7 @@ const nextConfig: NextConfig = {
         // only ever ran in dev, where they shadowed the files the export publishes.
         {
           source: "/",
-          destination: "/llms.txt",
+          destination: "/index.md",
           has: [
             {
               type: "header",

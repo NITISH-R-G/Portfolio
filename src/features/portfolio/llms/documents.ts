@@ -59,9 +59,17 @@ function text(value: unknown): string {
     .trim()
 }
 
+/**
+ * A Markdown link. A destination with whitespace, parentheses or angle brackets — imported URLs
+ * occasionally have them — is wrapped in `<…>`, the CommonMark form that can hold them.
+ */
 function link(label: unknown, href?: string): string {
   const t = text(label)
-  return href ? `[${t}](${href})` : t
+  if (!href) return t
+  const target = /[\s()<>]/.test(href)
+    ? `<${href.replace(/[<>]/g, (c) => encodeURIComponent(c))}>`
+    : href
+  return `[${t}](${target})`
 }
 
 function period(range?: { start?: string; end?: string }): string {

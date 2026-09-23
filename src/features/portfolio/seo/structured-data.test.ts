@@ -36,7 +36,7 @@ const data = (overrides: Partial<PortfolioDocumentData> = {}): PortfolioDocument
     emailB64: Buffer.from(EMAIL).toString("base64"),
   } as unknown as User,
   siteUrl: "https://ada.example/Portfolio",
-  sections: [],
+  sections: ["profile", "hello", "stack", "experience", "education", "projects"],
   socialLinks: [
     { name: "github", title: "GitHub", handle: "ada", href: "https://github.com/ada", sameAs: true },
     { name: "blog", title: "Blog", handle: "", href: "https://someone-else.example" },
@@ -106,6 +106,16 @@ describe("the Person node", () => {
     for (const key of ["jobTitle", "worksFor", "alumniOf", "knowsAbout", "image", "homeLocation"]) {
       expect(bare, key).not.toHaveProperty(key)
     }
+  })
+})
+
+describe("a hidden section", () => {
+  it("is not claimed in structured data either", () => {
+    const person = toPersonJsonLd(data({ sections: ["profile", "hello"] })) as unknown as Record<string, unknown>
+    for (const key of ["knowsAbout", "worksFor", "alumniOf"]) {
+      expect(person, key).not.toHaveProperty(key)
+    }
+    expect(toProjectsJsonLd(data({ sections: ["profile", "hello"] }))).toBeNull()
   })
 })
 

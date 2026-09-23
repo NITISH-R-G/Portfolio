@@ -93,6 +93,15 @@ describe("moving a block", () => {
     expect(moveInOrder(order, "about", -1)).toEqual(["about", "hero", "publications", "skills"])
   })
 
+  it("skips hidden neighbours, so a move always changes what is on the page", () => {
+    // Blocks is hidden: moving Showcase down past it alone would look like nothing happened.
+    const order = ["showcase", "blocks", "experience"]
+    const visible = new Set(["showcase", "experience"])
+    expect(moveInOrder(order, "showcase", 1, visible)).toEqual(["experience", "blocks", "showcase"])
+    // A hidden block that is still selected can itself be moved.
+    expect(moveInOrder(order, "blocks", 1, visible)).toEqual(["showcase", "experience", "blocks"])
+  })
+
   it("leaves the order alone at the ends", () => {
     const order = ["hero", "about"]
     expect(moveInOrder(order, "hero", -1)).toEqual(order)
