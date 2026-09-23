@@ -146,7 +146,11 @@ describe("the page as a canvas", () => {
 
   it("is one labelled, focusable group with a live selection announcement", () => {
     const html = renderToStaticMarkup(
-      createElement(SelectableCanvas, { selected: "hello", onSelect: () => {}, children: "page" })
+      createElement(
+        SelectableCanvas,
+        { selected: "hello", onSelect: () => {} } as unknown as Parameters<typeof SelectableCanvas>[0],
+        "page"
+      )
     )
     expect(html).toContain('tabindex="0"')
     expect(html).toContain('role="group"')
