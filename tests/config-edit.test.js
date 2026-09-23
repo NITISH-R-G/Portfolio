@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
-import { describe, test } from 'node:test'
+import { after, before, describe, test } from 'node:test'
 
 import fs from 'node:fs'
 
 import { editConfigSource, readLiteral } from '../scripts/lib/configEdit.mjs'
 import { patchConfigFile, renderConfigFile } from '../scripts/lib/configFile.mjs'
-import { PATHS } from '../scripts/lib/portfolio.mjs'
+import { isolateConfig } from './helpers/isolated-config.js'
 
 /**
  * Editing `portfolio.config.js` without destroying it.
@@ -323,7 +323,21 @@ describe('an admin save preserves the comments in the file on disk', () => {
   // admin actually calls — because that is where the bug lived: the editor did not exist, and
   // `saveConfig` handed a merged object to a whole-file renderer. An implementation that
   // reverted to that would pass every test above and fail this one.
-  const CONFIG_PATH = PATHS.config
+  //
+  // On this process's own copy of the config, not the repository's: `admin-api.test.js` saves
+  // through the same writer in a parallel process, and the two used to overwrite each other.
+  /** @type {string} */
+  let CONFIG_PATH
+  /** @type {() => void} */
+  let restore
+
+  before(() => {
+    const isolated = isolateConfig()
+    CONFIG_PATH = isolated.path
+    restore = isolated.restore
+  })
+
+  after(() => restore())
 
   /** @param {Record<string, unknown>} patch @param {Record<string, unknown>} merged */
   const save = (patch, merged) => {

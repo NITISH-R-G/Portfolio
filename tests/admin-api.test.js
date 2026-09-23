@@ -15,6 +15,7 @@ import {
 } from '../scripts/lib/adminApi.mjs'
 import { allowedOriginsFor, createDevApiServer } from '../scripts/dev-api.mjs'
 import { PATHS } from '../scripts/lib/portfolio.mjs'
+import { isolateConfig } from './helpers/isolated-config.js'
 
 /**
  * The local admin write API.
@@ -34,26 +35,12 @@ import { PATHS } from '../scripts/lib/portfolio.mjs'
 const ORIGIN = 'http://localhost:3000'
 const ALLOWED = [ORIGIN, 'http://127.0.0.1:3000']
 
-const CONFIG_PATH = path.join(process.cwd(), 'portfolio.config.js')
-
-/**
- * Snapshot `portfolio.config.js` and hand back its restorer.
- *
- * The handlers write to the real checkout, which is the point — a test against a mocked
- * filesystem would not have caught the transport being missing either. Note that a config
- * write re-serialises the file from the parsed object, so comments do not survive one: the
- * snapshot is the original *text*, not the parsed value.
+/*
+ * The handlers write a real config file, which is the point — a test against a mocked
+ * filesystem would not have caught the transport being missing either. It is this process's
+ * own copy (`isolateConfig`), never the repository's: `config-edit.test.js` saves through the
+ * same writer in a parallel process, and restoring snapshots of one shared file raced.
  */
-function snapshotConfig() {
-  const original = fs.readFileSync(CONFIG_PATH, 'utf8')
-  return () => {
-    fs.writeFileSync(CONFIG_PATH, original)
-    // `writeConfigFile` keeps a `.backup` beside the config, which is the right behaviour for
-    // a real save and litter after a test — it is not ignored by git, so leaving one behind
-    // would show up as untracked noise in every checkout that ran the suite.
-    fs.rmSync(`${CONFIG_PATH}.backup`, { force: true })
-  }
-}
 
 /* -------------------------------------------------------------------------- */
 /* Admission — pure, exhaustive                                               */
@@ -242,10 +229,10 @@ describe('the sidecar, over a real socket', () => {
 
   before(async () => {
     // This suite POSTs to `/config` to prove those posts are *refused*. If a refusal ever
-    // regresses, the write lands on the real checkout — so the file is snapshotted here rather
-    // than only in the suite that mutates on purpose. Found the hard way: mutation-testing the
-    // origin check let one of these through and rewrote `portfolio.config.js`.
-    restoreConfig = snapshotConfig()
+    // regresses, the write lands on the config — so it is isolated here too, not only in the
+    // suite that mutates on purpose. Found the hard way: mutation-testing the origin check let
+    // one of these through and rewrote `portfolio.config.js`.
+    restoreConfig = isolateConfig().restore
     server = createDevApiServer({ allowedOrigins: ALLOWED })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
     base = `http://127.0.0.1:${server.address().port}/__portfolio`
@@ -369,7 +356,7 @@ describe('connect and disconnect actually change the config on disk', () => {
   let restoreConfig
 
   before(async () => {
-    restoreConfig = snapshotConfig()
+    restoreConfig = isolateConfig().restore
 
     server = createDevApiServer({ allowedOrigins: ALLOWED })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -400,7 +387,7 @@ describe('connect and disconnect actually change the config on disk', () => {
     // The effect, read back through the API the admin uses, not the response body.
     assert.deepEqual((await readConfig()).dataSources.npm, { username: 'test-user' })
     // And it reached the file, which is what an import will later read.
-    assert.match(fs.readFileSync(CONFIG_PATH, 'utf8'), /test-user/)
+    assert.match(fs.readFileSync(PATHS.config, 'utf8'), /test-user/)
   })
 
   test('connecting a second source leaves the first alone', async () => {
@@ -444,7 +431,7 @@ describe('connect and disconnect actually change the config on disk', () => {
     // against the editor, because the bug was never in an editor — `saveConfig` handed a
     // merged *object* to a whole-file renderer, and the source text was gone before any patch
     // was applied. A regression there would pass every unit test and fail this one.
-    const before = fs.readFileSync(CONFIG_PATH, 'utf8')
+    const before = fs.readFileSync(PATHS.config, 'utf8')
     const comments = (source) => source.match(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g) ?? []
     assert.ok(comments(before).length > 0, 'the fixture config must have comments to lose')
 
@@ -453,7 +440,7 @@ describe('connect and disconnect actually change the config on disk', () => {
     const payload = await res.json()
     assert.equal(payload.preserved, true, `the save fell back: ${payload.preservedReason ?? ''}`)
 
-    const after = fs.readFileSync(CONFIG_PATH, 'utf8')
+    const after = fs.readFileSync(PATHS.config, 'utf8')
     assert.deepEqual(comments(after), comments(before), 'a comment was lost')
     assert.match(after, /dockerhub/, 'and the change still landed')
   })
