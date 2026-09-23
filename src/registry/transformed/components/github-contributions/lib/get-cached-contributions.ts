@@ -13,7 +13,14 @@ export const getCachedContributions = unstable_cache(
       throw new Error("NEXT_PUBLIC_GITHUB_CONTRIBUTIONS_API_URL is not set")
     }
 
-    const res = await fetch(`${apiUrl}/${username}?y=last`)
+    let res: Response
+    try {
+      res = await fetch(`${apiUrl}/${username}?y=last`)
+    } catch {
+      // Unreachable is treated like an error response: an empty graph, not a failed build.
+      // A thrown fetch otherwise aborts static generation of every page that renders this.
+      return []
+    }
     if (!res.ok) {
       return []
     }
