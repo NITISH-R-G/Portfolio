@@ -31,6 +31,11 @@ export function isolateConfig() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-config-'))
   const copy = path.join(dir, 'portfolio.config.js')
 
+  // The repository's package.json is what makes the original an ES module. The copy lives
+  // outside it, so the same scope is declared here rather than left to syntax detection —
+  // which Node only enables by default from 22.7, while `engines` admits any 22.x.
+  fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}\n')
+
   fs.copyFileSync(real, copy)
   const types = path.join(dir, 'src', 'core', 'config', 'types.js')
   fs.mkdirSync(path.dirname(types), { recursive: true })

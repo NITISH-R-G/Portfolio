@@ -215,37 +215,52 @@ describe('merging a config patch', () => {
   })
 })
 
+/**
+ * A running sidecar for one suite, saving to this process's own copy of the config.
+ *
+ * Call it at the top of a `describe`: it registers that suite's `before` and `after`. `after` runs
+ * whether or not the tests passed, and is guarded so a setup that failed partway still restores
+ * `PATHS.config` and removes the copy. `base` is filled in by `before`, so read it inside a test,
+ * never while the suite is being defined.
+ *
+ * @returns {{base: string}}
+ */
+function useSidecar() {
+  /** @type {import('node:http').Server | undefined} */
+  let server
+  /** @type {(() => void) | undefined} */
+  let restoreConfig
+  const sidecar = { base: '' }
+
+  before(async () => {
+    restoreConfig = isolateConfig().restore
+    server = createDevApiServer({ allowedOrigins: ALLOWED })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    sidecar.base = `http://127.0.0.1:${server.address().port}/__portfolio`
+  })
+
+  after(async () => {
+    restoreConfig?.()
+    if (server) await new Promise((resolve) => server.close(resolve))
+  })
+
+  return sidecar
+}
+
 /* -------------------------------------------------------------------------- */
 /* Over a real socket                                                         */
 /* -------------------------------------------------------------------------- */
 
 describe('the sidecar, over a real socket', () => {
-  /** @type {import('node:http').Server} */
-  let server
-  /** @type {string} */
-  let base
-  /** @type {() => void} */
-  let restoreConfig
-
-  before(async () => {
-    // This suite POSTs to `/config` to prove those posts are *refused*. If a refusal ever
-    // regresses, the write lands on the config — so it is isolated here too, not only in the
-    // suite that mutates on purpose. Found the hard way: mutation-testing the origin check let
-    // one of these through and rewrote `portfolio.config.js`.
-    restoreConfig = isolateConfig().restore
-    server = createDevApiServer({ allowedOrigins: ALLOWED })
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
-    base = `http://127.0.0.1:${server.address().port}/__portfolio`
-  })
-
-  after(async () => {
-    restoreConfig()
-    await new Promise((resolve) => server.close(resolve))
-  })
+  // This suite POSTs to `/config` to prove those posts are *refused*. If a refusal ever
+  // regresses, the write lands on the config — so it is isolated here too, not only in the
+  // suite that mutates on purpose. Found the hard way: mutation-testing the origin check let
+  // one of these through and rewrote `portfolio.config.js`.
+  const sidecar = useSidecar()
 
   /** @param {string} route @param {RequestInit} [init] */
   const send = (route, init = {}) =>
-    fetch(`${base}${route}`, {
+    fetch(`${sidecar.base}${route}`, {
       ...init,
       headers: { origin: ORIGIN, [ADMIN_HEADER]: '1', ...(init.headers ?? {}) },
     })
@@ -260,7 +275,7 @@ describe('the sidecar, over a real socket', () => {
   })
 
   test('answers a preflight for the admin origin', async () => {
-    const res = await fetch(`${base}/config`, {
+    const res = await fetch(`${sidecar.base}/config`, {
       method: 'OPTIONS',
       headers: { origin: ORIGIN, 'access-control-request-method': 'POST' },
     })
@@ -270,7 +285,7 @@ describe('the sidecar, over a real socket', () => {
   })
 
   test('refuses a preflight from anywhere else, and grants no CORS header', async () => {
-    const res = await fetch(`${base}/config`, {
+    const res = await fetch(`${sidecar.base}/config`, {
       method: 'OPTIONS',
       headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' },
     })
@@ -288,7 +303,7 @@ describe('the sidecar, over a real socket', () => {
   })
 
   test('refuses a POST carrying no admin header', async () => {
-    const res = await fetch(`${base}/config`, {
+    const res = await fetch(`${sidecar.base}/config`, {
       method: 'POST',
       headers: { origin: ORIGIN, 'content-type': 'application/json' },
       body: JSON.stringify({ config: {} }),
@@ -348,36 +363,18 @@ describe('the sidecar, over a real socket', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('connect and disconnect actually change the config on disk', () => {
-  /** @type {import('node:http').Server} */
-  let server
-  /** @type {string} */
-  let base
-  /** @type {() => void} */
-  let restoreConfig
-
-  before(async () => {
-    restoreConfig = isolateConfig().restore
-
-    server = createDevApiServer({ allowedOrigins: ALLOWED })
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
-    base = `http://127.0.0.1:${server.address().port}/__portfolio`
-  })
-
-  after(async () => {
-    restoreConfig()
-    await new Promise((resolve) => server.close(resolve))
-  })
+  const sidecar = useSidecar()
 
   /** @param {unknown} body */
   const post = (route, body) =>
-    fetch(`${base}${route}`, {
+    fetch(`${sidecar.base}${route}`, {
       method: 'POST',
       headers: { origin: ORIGIN, [ADMIN_HEADER]: '1', 'content-type': 'application/json' },
       body: JSON.stringify(body),
     })
 
   const readConfig = async () =>
-    (await (await fetch(`${base}/state`, { headers: { origin: ORIGIN, [ADMIN_HEADER]: '1' } })).json()).config
+    (await (await fetch(`${sidecar.base}/state`, { headers: { origin: ORIGIN, [ADMIN_HEADER]: '1' } })).json()).config
 
   test('connecting a source writes it, and reading state reflects it', async () => {
     const res = await post('/config', { config: { dataSources: { npm: { username: 'test-user' } } } })
