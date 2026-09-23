@@ -17,15 +17,26 @@ const ID = "hello"
  * `user` is a prop, defaulting to the built portfolio, so the admin preview renders this same
  * component over its draft. Nothing renders without a summary: a heading over empty space reads
  * as a broken section, not a sparse one.
+ *
+ * `actions` sits beside the greeting, where his doc pages put "Copy page": the public page passes
+ * its page actions, and the admin preview passes none, since they would read the published site
+ * rather than the draft being edited.
  */
-export function Hello({ user = USER }: { user?: User }) {
+export function Hello({
+  user = USER,
+  actions,
+}: {
+  user?: User
+  actions?: React.ReactNode
+}) {
   if (!user.about) return null
 
   return (
     <Panel id={ID} className="screen-line-bottom-none">
-      <PanelHeader>
+      <PanelHeader className="flex items-center justify-between gap-4">
         <h2 className="sr-only">About</h2>
         <HelloGreeting />
+        {actions && <div className="shrink-0">{actions}</div>}
       </PanelHeader>
 
       <PanelContent>

@@ -13,6 +13,7 @@ import { Experiences } from "@/features/portfolio/components/experiences"
 import { GitHubContributions } from "@/features/portfolio/components/github-contributions"
 import { Hello } from "@/features/portfolio/components/hello"
 import { Overview } from "@/features/portfolio/components/overview"
+import { PageActions } from "@/features/portfolio/components/page-actions"
 import { ProfileHeader } from "@/features/portfolio/components/profile-header"
 import { Projects } from "@/features/portfolio/components/projects"
 import { Showcase } from "@/features/portfolio/components/showcase"
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
  */
 const SECTIONS: Record<PageSectionId, () => React.ReactNode> = {
   profile: () => <ProfileHeader flipInterval={PROFILE_OPTIONS.flipInterval} />,
-  hello: () => <Hello />,
+  hello: () => <Hello actions={<PageActions />} />,
   overview: () => (
     <>
       <Overview />
