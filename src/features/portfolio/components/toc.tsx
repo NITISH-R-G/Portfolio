@@ -3,36 +3,40 @@
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { TOCMinimap } from "@/components/toc-minimap"
 
-export function TOC() {
-  const isDesktop = useMediaQuery("(min-width: 64rem)") // xl breakpoint
+type TocItem = { title: string; url: string; depth: number }
 
-  if (!isDesktop) {
+/**
+ * His section minimap, in the right margin on wide screens.
+ *
+ * Upstream this file hard-coded his own page's anchors — Components, Blog, Sponsors, Bookmarks —
+ * and nothing rendered it, so the `layout.navigation: 'minimap'` setting it stood for did
+ * nothing. The items are now the page's own sections (`toTocItems`), passed in by the page, so
+ * the minimap always names what is actually there.
+ *
+ * Only where the margin can hold it: below 64rem the column fills the width and a fixed rail
+ * would sit on the content. It is a navigation aid, never the only way to a section — every
+ * entry is also a heading in the page.
+ */
+export function TOC({ items }: { items: TocItem[] }) {
+  const isDesktop = useMediaQuery("(min-width: 64rem)")
+
+  if (!isDesktop || items.length < 2) {
     return null
   }
 
   return (
-    <div className="fixed top-[calc(var(--header-height)+var(--cover-height)+(--spacing(3))+1px)] right-0 z-50">
+    <nav
+      aria-label="Sections"
+      className="fixed top-[calc(var(--header-height)+--spacing(3)+1px)] right-0 z-50"
+    >
       <TOCMinimap
-        className="transition-opacity duration-200 data-[active-anchor=components]:opacity-30"
-        items={[
-          { title: "Hello", url: "#hello", depth: 2 },
-          { title: "Components", url: "#components", depth: 2 },
-          { title: "Blog", url: "#blog", depth: 2 },
-          { title: "Sponsors", url: "#sponsors", depth: 2 },
-          { title: "Experience", url: "#experience", depth: 2 },
-          { title: "Projects", url: "#projects", depth: 2 },
-          { title: "Awards", url: "#awards", depth: 2 },
-          { title: "Certifications", url: "#certs", depth: 2 },
-          { title: "Intellectual property", url: "#ip", depth: 2 },
-          { title: "Bookmarks", url: "#bookmarks", depth: 2 },
-          { title: "Insights", url: "#insights", depth: 2 },
-        ]}
+        items={items}
         options={{
           threshold: 0,
           rootMargin: "-20% 0% -60% 0%",
         }}
       />
-    </div>
+    </nav>
   )
 }
 

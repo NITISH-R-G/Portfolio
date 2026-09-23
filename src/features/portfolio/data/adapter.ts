@@ -349,9 +349,49 @@ export function toPageSections(sections: EngineSection[] | undefined): PageSecti
     .filter((id): id is PageSectionId => Boolean(id))
 }
 
+/**
+ * The in-page anchor and heading of each section that has one — the ids his panels already
+ * declare, and the titles their headings print. Overview, social links and the contribution
+ * graph are one unheaded band beneath the hero, so they have no entry.
+ */
+export const PAGE_SECTION_ANCHORS: Partial<Record<PageSectionId, { id: string; title: string }>> = {
+  hello: { id: 'hello', title: 'About' },
+  stack: { id: 'stack', title: 'Stack' },
+  showcase: { id: 'showcase', title: 'Showcase' },
+  blocks: { id: 'blocks', title: 'Blocks' },
+  experience: { id: 'experience', title: 'Experience' },
+  education: { id: 'education', title: 'Education' },
+  projects: { id: 'projects', title: 'Projects' },
+  awards: { id: 'awards', title: 'Awards' },
+  certifications: { id: 'certs', title: 'Certifications' },
+  timeline: { id: 'timeline', title: 'Timeline' },
+}
+
+/**
+ * The section minimap's entries: every rendered section that has an anchor, in page order.
+ *
+ * Derived from the same list the page renders, so the minimap cannot name a section that is not
+ * on the page — which is exactly what the hard-coded list it replaces did (his Components, Blog,
+ * Sponsors…). `layout.navigation` decides whether it is drawn at all.
+ */
+export function toTocItems(
+  sections: PageSectionId[],
+): { title: string; url: string; depth: number }[] {
+  return sections.flatMap((id) => {
+    const anchor = PAGE_SECTION_ANCHORS[id]
+    return anchor ? [{ title: anchor.title, url: `#${anchor.id}`, depth: 2 }] : []
+  })
+}
+
 export const PAGE_SECTIONS: PageSectionId[] = toPageSections(
   (composed as { sections?: EngineSection[] }).sections,
 )
+
+export const TOC_ITEMS = toTocItems(PAGE_SECTIONS)
+
+/** `layout.navigation`: the right-margin section minimap (`'minimap'`, the default) or none. */
+export const LAYOUT_NAVIGATION: 'minimap' | 'none' =
+  (config as { layout?: { navigation?: string } }).layout?.navigation === 'none' ? 'none' : 'minimap'
 
 /* -------------------------------------------------------------------------- */
 /* Collections                                                                 */
@@ -568,6 +608,8 @@ export function toTechStack(p: EngineProfile): TechStack[] {
     return base
   }
 
+  // Already in category reading order (the engine's `sortSkillsByCategory`), with any order
+  // the owner pinned applied on top; his component groups by first appearance.
   return (p.skills ?? []).map((s: EngineRecord, i: number) => ({
     key: keyFor(s.name, i),
     title: s.name,

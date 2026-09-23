@@ -368,6 +368,40 @@ function singular(label) {
   return label
 }
 
+/** Known categories in a deliberate reading order; anything user-defined follows. */
+const PREFERRED_CATEGORIES = ['Languages', 'AI & ML', 'Frontend', 'Backend', 'Data', 'Infrastructure']
+
+/**
+ * Where a category sits: the preferred ones in order, then user-defined ones alphabetically,
+ * then the catch-all "Other" last.
+ *
+ * @param {string} a
+ * @param {string} b
+ */
+function compareCategories(a, b) {
+  const rank = (/** @type {string} */ c) => {
+    if (c === 'Other') return PREFERRED_CATEGORIES.length + 1
+    const at = PREFERRED_CATEGORIES.indexOf(c)
+    return at === -1 ? PREFERRED_CATEGORIES.length : at
+  }
+  return rank(a) - rank(b) || (rank(a) === PREFERRED_CATEGORIES.length ? a.localeCompare(b) : 0)
+}
+
+/**
+ * Skills in category reading order, keeping the evidence ranking within each category.
+ *
+ * Renderers group by first appearance, so without this whichever skill ranked first decided
+ * the first category — for an imported stack that was often "Other", a bucket of repository
+ * topics, heading the section. The sort is stable.
+ *
+ * @param {SkillItem[]} skills
+ * @returns {SkillItem[]}
+ */
+export function sortSkillsByCategory(skills) {
+  return [...(skills ?? [])].sort((a, b) =>
+    compareCategories(a.category || 'Other', b.category || 'Other'))
+}
+
 /**
  * Group skills by category for rendering, dropping empty groups.
  *
@@ -384,13 +418,7 @@ export function groupSkills(skills) {
     bucket.push(skill)
   }
 
-  // Present known categories in a deliberate order; anything user-defined follows.
-  const preferred = ['Languages', 'AI & ML', 'Frontend', 'Backend', 'Data', 'Infrastructure']
-  const ordered = [
-    ...preferred.filter((c) => groups.has(c)),
-    ...[...groups.keys()].filter((c) => !preferred.includes(c) && c !== 'Other').sort(),
-    ...(groups.has('Other') ? ['Other'] : []),
-  ]
+  const ordered = [...groups.keys()].sort(compareCategories)
 
   return ordered.map((category) => ({
     category,

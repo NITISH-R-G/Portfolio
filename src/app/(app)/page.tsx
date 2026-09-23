@@ -18,10 +18,13 @@ import { Projects } from "@/features/portfolio/components/projects"
 import { Showcase } from "@/features/portfolio/components/showcase"
 import { SocialLinks } from "@/features/portfolio/components/social-links"
 import { TechStack } from "@/features/portfolio/components/tech-stack"
+import { TOC } from "@/features/portfolio/components/toc"
 import { Timeline } from "@/features/portfolio/components/timeline"
 import {
+  LAYOUT_NAVIGATION,
   PAGE_SECTIONS,
   PROFILE_OPTIONS,
+  TOC_ITEMS,
 } from "@/features/portfolio/data/adapter"
 import type { PageSectionId } from "@/features/portfolio/data/adapter"
 import { USER } from "@/features/portfolio/data/user"
@@ -79,6 +82,7 @@ export default function HomePage() {
   return (
     <>
       <JsonLdScript data={getProfilePageJsonLd()} />
+      {LAYOUT_NAVIGATION === "minimap" && <TOC items={TOC_ITEMS} />}
 
       <div className="[--separator-height:--spacing(8)] **:data-[slot=panel]:scroll-mt-[calc(var(--header-height)+var(--separator-height))]">
         <div className="mx-auto md:max-w-3xl">
