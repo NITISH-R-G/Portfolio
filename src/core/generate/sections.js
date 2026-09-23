@@ -28,6 +28,9 @@
  *   user in the admin *why* a section is hidden.
  * @property {number} [threshold]      Minimum count for `auto` to show it. Default 1.
  * @property {boolean} [alwaysConsider] Show even with zero items (hero, contact).
+ * @property {(config: import('../config/types.js').PortfolioConfig) => boolean} [autoRequires]
+ *   An extra condition for `auto` beyond the count: configuration the section needs before it
+ *   can mean anything. Never consulted when the section is forced on or off.
  */
 
 /** @type {SectionDefinition[]} */
@@ -218,6 +221,14 @@ export const SECTION_DEFINITIONS = [
     // one point on a year-scaled axis.
     threshold: 2,
     count: (p) => datedYears(p).size,
+    // Dated records alone are not enough for `auto`. The strip is a life on an age axis, and
+    // without an anchor it has neither: the age column counts from the first record (so a
+    // student's first year reads "age 0"), and every entry repeats a role or degree the
+    // Experience and Education sections already show. It appears on its own once the owner
+    // anchors it — a birth year, or milestones they wrote — and can always be forced on.
+    autoRequires: (config) =>
+      Number.isFinite(Number(config?.timeline?.birthYear)) && Number(config?.timeline?.birthYear) > 0 ||
+      (Array.isArray(config?.timeline?.milestones) && config.timeline.milestones.length > 0),
   },
   {
     id: 'contact',
@@ -311,7 +322,8 @@ export function resolveSections(profile, config) {
     }
 
     const threshold = definition.threshold ?? 1
-    const meetsThreshold = definition.alwaysConsider ? count > 0 : count >= threshold
+    const meetsThreshold = (definition.alwaysConsider ? count > 0 : count >= threshold) &&
+      (definition.autoRequires ? definition.autoRequires(config) : true)
     const visible = setting === true ? true : setting === false ? false : meetsThreshold
 
     resolved.push({

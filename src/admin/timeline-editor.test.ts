@@ -30,7 +30,7 @@ import { toTimeline } from "@/features/portfolio/data/adapter"
 type Built = {
   profile: { identity: Record<string, unknown> } & Record<string, unknown>
   config: Record<string, unknown>
-  sections: { id: string; visible: boolean; count: number }[]
+  sections: { id: string; visible: boolean; count: number; reason: string }[]
   evidence: Map<string, unknown[]>
 }
 
@@ -141,9 +141,12 @@ describe("the timeline is derived from records the normaliser actually produces"
 })
 
 describe("the timeline section appears only when it has something to draw", () => {
-  const section = (profile: Record<string, unknown>) => {
+  const section = (
+    profile: Record<string, unknown>,
+    config: Record<string, unknown> = {}
+  ) => {
     const built = buildPortfolio({
-      config: { identity: { name: "Ada" } },
+      config: { identity: { name: "Ada" }, ...config },
       sources: [
         { key: "github", profile: { identity: { name: "Ada" }, ...profile } },
       ],
@@ -186,13 +189,37 @@ describe("the timeline section appears only when it has something to draw", () =
     expect(oneRoleThatEnded.visible).toBe(false)
   })
 
-  it("appears once two different years carry an entry", async () => {
+  const twoYears = {
+    experience: [{ company: "Acme", role: "X", startDate: "2020-01-01" }],
+    achievements: [{ title: "Prize", date: "2022" }],
+  }
+
+  it("stays hidden on dated records alone, with no anchor", async () => {
+    // The regression this rule exists for: two derived years drew a strip whose age column
+    // read 0 and 1 (counting from the first record) and whose entries repeated Experience and
+    // Education. Enough dates is not enough meaning.
+    const hidden = section(twoYears)
+    expect(hidden.count).toBe(2)
+    expect(hidden.visible, "an unanchored strip rendered").toBe(false)
+  })
+
+  it("appears once a birth year anchors the age column", async () => {
+    expect(section(twoYears, { timeline: { birthYear: 2000 } }).visible).toBe(true)
+  })
+
+  it("appears once the owner writes their own milestones", async () => {
     expect(
-      section({
-        experience: [{ company: "Acme", role: "X", startDate: "2020-01-01" }],
-        achievements: [{ title: "Prize", date: "2022" }],
+      section(twoYears, {
+        timeline: { milestones: [{ year: 2020, content: "Began." }] },
       }).visible
     ).toBe(true)
+  })
+
+  it("still renders when forced on, anchor or not", async () => {
+    // Engine capability is unchanged: `auto` got stricter, the owner's choice did not.
+    const forced = section(twoYears, { sections: { timeline: true } })
+    expect(forced.visible).toBe(true)
+    expect(forced.reason).toBe("forced-on")
   })
 })
 

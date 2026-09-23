@@ -10,6 +10,7 @@ import { Blocks } from "@/features/portfolio/components/blocks"
 import { Certifications } from "@/features/portfolio/components/certifications"
 import { Education } from "@/features/portfolio/components/education"
 import { Experiences } from "@/features/portfolio/components/experiences"
+import { Hello } from "@/features/portfolio/components/hello"
 import { Overview } from "@/features/portfolio/components/overview"
 import { ProfileHeader } from "@/features/portfolio/components/profile-header"
 import { Projects } from "@/features/portfolio/components/projects"
@@ -108,7 +109,7 @@ export function PortfolioPreview({
       awards: toAwards(profile),
       certifications: toCertifications(profile),
       timeline: toTimeline(profile, config),
-      footer: toFooter(config),
+      footer: toFooter(config, profile),
       profileOptions: toProfileOptions(config),
     }),
     [profile, config]
@@ -121,6 +122,7 @@ export function PortfolioPreview({
         flipInterval={data.profileOptions.flipInterval}
       />
     ),
+    hello: () => <Hello user={data.user} />,
     overview: () => (
       <>
         <Overview user={data.user} />

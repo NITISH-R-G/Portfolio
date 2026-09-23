@@ -405,7 +405,20 @@ function resolveFooter(config, issues) {
     }
   }
 
-  config.footer = { enabled, showSocialLinks, showSourceCode, showDmca, items }
+  // A string, or `false` to omit it. Anything else is a mistake worth saying out loud rather
+  // than rendering: the wordmark is the largest text on the page.
+  let wordmark = defaults.wordmark
+  if (given.wordmark === false) {
+    wordmark = false
+  } else if (given.wordmark !== undefined) {
+    if (typeof given.wordmark === 'string') {
+      wordmark = given.wordmark.trim()
+    } else {
+      issues.push({ level: 'warning', path: 'footer.wordmark', message: 'Expected a string or false; using your first name.' })
+    }
+  }
+
+  config.footer = { enabled, showSocialLinks, showSourceCode, showDmca, items, wordmark }
 }
 
 /**
@@ -449,7 +462,19 @@ function resolveProfile(config, issues) {
     flipInterval = defaults.flipInterval
   }
 
-  config.profile = { flipInterval }
+  // At most four letters: the mark is drawn as one line at display size, and anything longer
+  // stops reading as a monogram. Longer input falls back to the derived initials.
+  let monogram = defaults.monogram
+  if (given.monogram !== undefined) {
+    const value = typeof given.monogram === 'string' ? given.monogram.trim() : ''
+    if (typeof given.monogram !== 'string' || value.length > 4) {
+      issues.push({ level: 'warning', path: 'profile.monogram', message: 'Expected up to four characters; using your initials.' })
+    } else {
+      monogram = value
+    }
+  }
+
+  config.profile = { flipInterval, monogram }
 }
 
 function resolveNavigation(config, issues) {

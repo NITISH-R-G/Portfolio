@@ -200,6 +200,7 @@ export function toUser(p: EngineProfile, c: EngineConfig): User {
         experienceId: slug(role.company, 'experience'),
       })),
     about: identity.summary ?? '',
+    monogram: String(c.profile?.monogram ?? '').trim() || initials(identity.name),
     avatar: asset(identity.avatar),
     // His avatar-lights variants are his own artwork; a fork supplies none and the component
     // falls back to the plain avatar.
@@ -252,10 +253,20 @@ export type FooterConfig = {
   showSourceCode: boolean
   showDmca: boolean
   items: FooterItem[]
+  /** The pointer-reactive word across the foot of the page, or `false` for none. */
+  wordmark: string | false
 }
 
-export function toFooter(c: EngineConfig): FooterConfig {
+/**
+ * `p` is optional because the wordmark is the only field that needs the profile: by default it
+ * is the owner's first name, set in capitals the way the component is designed to be read.
+ */
+export function toFooter(c: EngineConfig, p?: EngineProfile): FooterConfig {
+  const configured = c.footer?.wordmark
+  const firstName = String(p?.identity?.name ?? '').trim().split(/\s+/)[0] ?? ''
   return {
+    wordmark:
+      configured === false ? false : String(configured ?? '').trim() || firstName.toUpperCase(),
     enabled: c.footer?.enabled !== false,
     showSocialLinks: c.footer?.showSocialLinks !== false,
     showSourceCode: c.footer?.showSourceCode !== false,
@@ -266,7 +277,7 @@ export function toFooter(c: EngineConfig): FooterConfig {
   }
 }
 
-export const FOOTER: FooterConfig = toFooter(config)
+export const FOOTER: FooterConfig = toFooter(config, profile)
 
 /**
  * The profile header's one configurable parameter.
@@ -299,6 +310,7 @@ export const PROFILE_OPTIONS = toProfileOptions(config)
  */
 export type PageSectionId =
   | 'profile'
+  | 'hello'
   | 'overview'
   | 'github'
   | 'showcase'
@@ -313,6 +325,7 @@ export type PageSectionId =
 
 export const PAGE_SECTION_BY_ENGINE_ID: Record<string, PageSectionId> = {
   hero: 'profile',
+  about: 'hello',
   contact: 'overview',
   github: 'github',
   showcase: 'showcase',
@@ -751,3 +764,18 @@ function yearOf(value: unknown): number | undefined {
 export const TIMELINE = toTimeline(profile, config)
 export const TIMELINE_BIRTH_YEAR = TIMELINE.birthYear
 export const TIMELINE_MILESTONES = TIMELINE.milestones
+
+/**
+ * The initials a monogram is drawn from: the first letter of each part of a name, where dots
+ * separate parts as well as spaces ("Ada K. Lovelace" and "Ada K.L." both give "AKL"). At most
+ * three, so an unusually long name still reads as a monogram.
+ */
+export function initials(name: unknown): string {
+  return String(name ?? '')
+    .split(/[\s.]+/)
+    .map((part) => part.match(/\p{L}/u)?.[0] ?? '')
+    .filter(Boolean)
+    .slice(0, 3)
+    .join('')
+    .toUpperCase()
+}

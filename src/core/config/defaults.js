@@ -30,6 +30,10 @@ export const SECTION_IDS = /** @type {const} */ ([
   // components — see `PAGE_SECTION_BY_ENGINE_ID` in the portfolio adapter — so this list is
   // the page's default reading order, not an abstract one.
   'hero',
+  // His About panel (`Hello`): the summary under a decorative multilingual greeting. Second,
+  // so the greeting plays in the first viewport and the summary is the first prose a crawler
+  // meets after the name.
+  'about',
   'contact',
   'github',
   'skills',
@@ -44,7 +48,6 @@ export const SECTION_IDS = /** @type {const} */ ([
   // Known to the engine, imported and ranked, but with no component in this application that
   // draws them. They stay in the taxonomy because the data is real and an exported
   // `portfolio.json` or `resume.json` still carries it.
-  'about',
   'stats',
   'openSource',
   'competitive',
@@ -140,6 +143,11 @@ export function defaultConfig() {
      */
     footer: {
       enabled: true,
+      /**
+       * The large pointer-reactive word across the foot of the page (`FluidGradientText`).
+       * Empty means your first name. Set it to `false` to leave it out.
+       */
+      wordmark: '',
       /** The social icon row beneath the list. Drawn from the imported `socials`. */
       showSocialLinks: true,
       /** The "Source code / GitHub" row. Off for a portfolio whose repository is private. */
@@ -165,6 +173,11 @@ export function defaultConfig() {
      */
     profile: {
       flipInterval: 3,
+      /**
+       * The letters drawn in the hero's spotlight mark. Empty means the initials of your name,
+       * so a fork shows its owner's monogram rather than anyone else's artwork.
+       */
+      monogram: '',
     },
 
     /**

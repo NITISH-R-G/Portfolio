@@ -230,7 +230,9 @@ export default function TimelinePanel({ builder }) {
                     ? 'Unavailable.'
                     : section.visible
                       ? 'The timeline is shown on your portfolio.'
-                      : `Hidden — a timeline needs dated records in at least two different years, and ${section.count === 1 ? 'only one year has' : `${section.count} years have`} one so far. You can turn it on anyway from Navigation.`}
+                      : section.count < 2
+                        ? `Hidden — a timeline needs dated records in at least two different years, and ${section.count === 1 ? 'only one year has' : `${section.count} years have`} one so far. You can turn it on anyway from Navigation.`
+                        : 'Hidden — it needs an anchor: set a birth year above, or write your own milestones. Without one the age column counts from your first record and every entry repeats your Experience and Education. You can turn it on anyway from Navigation.'}
                 </p>
               </Field>
             </Section>
