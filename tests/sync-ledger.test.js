@@ -6,6 +6,7 @@ import { createMemoryStore } from '../src/core/sync/store.js'
 import { createRepositoryDispatchPublisher, EVENT_TYPE } from '../src/core/sync/publish.js'
 import { createSyncService, MAX_BODY_BYTES } from '../src/core/sync/service.js'
 import { signSha256 } from '../src/core/sync/signature.js'
+import { GITHUB_CHANGE_KINDS, parseGitHubWebhook } from '../src/core/sync/github.js'
 import { classify } from '../src/core/sync/policy.js'
 
 /**
@@ -382,6 +383,82 @@ describe('publishing policy', () => {
         assert.ok(['now', 'defer', 'ignore'].includes(classify(change({ kind, weight }))), `${kind}/${weight}`)
       }
     }
+  })
+
+  test('every kind the parsers can produce is acted on, by the weight the parser gave it', () => {
+    const repo = { full_name: 'ada/engine', owner: { login: 'ada' }, default_branch: 'main', private: false }
+    const parse = (event, payload) =>
+      parseGitHubWebhook({ event, delivery: 'd-1', payload: { repository: repo, ...payload }, now: new Date(T0).toISOString(), account: 'ada' })
+
+    const emitted = [
+      parse('push', { ref: 'refs/heads/main' }),
+      parse('fork', {}),
+      parse('public', {}),
+      ...['created', 'deleted', 'publicized', 'privatized', 'renamed', 'edited', 'transferred', 'archived', 'unarchived']
+        .map((action) => parse('repository', { action })),
+      ...['published', 'unpublished', 'deleted'].map((action) => parse('release', { action, release: {} })),
+      ...['created', 'deleted'].map((action) => parse('star', { action })),
+    ].map((outcome) => outcome.change)
+
+    assert.equal(emitted.length, 17)
+    for (const emittedChange of emitted) {
+      assert.ok(GITHUB_CHANGE_KINDS.has(emittedChange?.kind), `${emittedChange?.kind} missing from GITHUB_CHANGE_KINDS`)
+      assert.equal(classify(emittedChange), emittedChange.weight === 'structural' ? 'now' : 'defer', emittedChange.kind)
+    }
+  })
+
+  test('a kind no parser produces is ignored, whatever weight it claims', () => {
+    for (const weight of ['structural', 'activity']) {
+      assert.equal(classify(change({ kind: 'repository.exploded', weight })), 'ignore', weight)
+    }
+    // Inherited object keys and look-alikes are not kinds.
+    for (const kind of ['__proto__', 'constructor', 'Push', 'push ', '', undefined, null, 7]) {
+      assert.equal(classify(change({ kind, weight: 'activity' })), 'ignore', String(kind))
+    }
+  })
+
+  test('a change from a source this service does not understand is ignored', () => {
+    assert.equal(classify(change({ source: 'gitlab' })), 'ignore')
+    assert.equal(classify(change({ source: undefined })), 'ignore')
+  })
+
+  test('a weight that is neither of the two is ignored rather than guessed at', () => {
+    assert.equal(classify(change({ weight: 'urgent' })), 'ignore')
+    assert.equal(classify(change({ weight: undefined })), 'ignore')
+  })
+
+  test('malformed input never throws', () => {
+    for (const input of [undefined, null, {}, [], 'push', 7]) {
+      assert.equal(classify(input), 'ignore')
+    }
+  })
+
+  test('an unrecognised change publishes nothing, is counted, and is still deduplicated', async () => {
+    const { ledger, calls } = harness()
+    const unknown = change({ kind: 'repository.exploded', weight: 'structural' })
+
+    const [first] = await ledger.handle([unknown])
+    assert.equal(first.outcome, 'ignored')
+    assert.equal(calls.length, 0)
+
+    const [again] = await ledger.handle([unknown])
+    assert.equal(again.outcome, 'duplicate')
+
+    const status = await ledger.status()
+    assert.equal(calls.length, 0)
+    assert.equal(status.counters.ignored, 1)
+    assert.equal(status.counters.accepted, 0)
+    assert.equal(status.pending, null)
+  })
+
+  test('an ignored change does not disturb a publish that was already waiting', async () => {
+    const { ledger, calls } = harness()
+    await ledger.handle([activity()])
+    const before = (await ledger.status()).pending
+
+    await ledger.handle([change({ kind: 'repository.exploded' })])
+    assert.deepEqual((await ledger.status()).pending, before)
+    assert.equal(calls.length, 0)
   })
 })
 

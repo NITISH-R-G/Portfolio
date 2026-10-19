@@ -10,6 +10,7 @@ is for deploying and operating it.
 - [What you get, and what you do not](#what-you-get-and-what-you-do-not)
 - [The minimum deployable backend](#the-minimum-deployable-backend)
 - [Setup](#setup)
+- [What triggers a rebuild](#what-triggers-a-rebuild)
 - [Configuration reference](#configuration-reference)
 - [Checking that it works](#checking-that-it-works)
 - [Operating it](#operating-it)
@@ -141,6 +142,23 @@ cannot be mistaken for yours.
 
 Set `sync.endpoint` (Admin â†’ Sources, or `src/data/config.json`) to the Worker URL. That is what
 lets the admin show the live status; it enables nothing on its own.
+
+## What triggers a rebuild
+
+An event is only a signal that something may have changed; nothing in it is ever written into
+your profile, because every rebuild re-reads the providers. So the policy in
+[`src/core/sync/policy.js`](../src/core/sync/policy.js) decides *when* to rebuild, never *what
+the profile says*.
+
+| Change | Decision |
+| --- | --- |
+| A repository is created, made public or private, renamed, edited, archived, transferred or deleted; a release is published, unpublished or deleted | **now** (after the cooldown) |
+| A push to the default branch, a star, a fork | **deferred** five minutes, so a burst becomes one build |
+| Anything else: another source, a kind no parser produces, an unrecognised weight | **ignored** — counted in `/sync/status`, never published for |
+
+Before a change reaches that table it has been signature-verified (fail closed), parsed by an
+allowlist, matched to the configured account and repository, stripped of private repositories
+and deduplicated. Ignoring costs freshness only: the weekly run still picks the change up.
 
 ## Configuration reference
 

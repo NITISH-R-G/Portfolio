@@ -54,6 +54,23 @@ const REPOSITORY_ACTIONS = new Set([
   'created', 'deleted', 'publicized', 'privatized', 'renamed', 'edited',
   'transferred', 'archived', 'unarchived',
 ])
+const RELEASE_ACTIONS = ['published', 'unpublished', 'deleted']
+const STAR_ACTIONS = ['created', 'deleted']
+
+/**
+ * Every `kind` a parser in this file can produce, and no other.
+ *
+ * Built from the same constants the parsers check, so adding an action to a parser adds its kind
+ * here without a second edit. `policy.js` treats anything outside this set as unknown and never
+ * publishes for it.
+ */
+export const GITHUB_CHANGE_KINDS = Object.freeze(new Set([
+  'push',
+  'fork',
+  ...[...REPOSITORY_ACTIONS].map((action) => `repository.${action}`),
+  ...RELEASE_ACTIONS.map((action) => `release.${action}`),
+  ...STAR_ACTIONS.map((action) => `star.${action}`),
+]))
 
 /** @param {unknown} value @returns {string|undefined} */
 const iso = (value) => {
@@ -174,7 +191,7 @@ export function parseGitHubWebhook({ event, delivery, payload, now, account, wor
       return change({ kind: 'repository.publicized', weight: 'structural', occurredAt: iso(repository?.updated_at) })
 
     case 'release': {
-      if (!['published', 'unpublished', 'deleted'].includes(payload.action)) {
+      if (!RELEASE_ACTIONS.includes(payload.action)) {
         return { type: 'ignored', reason: 'release-action' }
       }
       return change({
@@ -185,7 +202,7 @@ export function parseGitHubWebhook({ event, delivery, payload, now, account, wor
     }
 
     case 'star': {
-      if (!['created', 'deleted'].includes(payload.action)) return { type: 'ignored', reason: 'star-action' }
+      if (!STAR_ACTIONS.includes(payload.action)) return { type: 'ignored', reason: 'star-action' }
       return change({ kind: `star.${payload.action}`, weight: 'activity', occurredAt: iso(payload.starred_at) })
     }
 

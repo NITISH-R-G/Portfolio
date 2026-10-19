@@ -16,8 +16,22 @@
  * It is a function of the change alone, on purpose: policy that depended on service state
  * would be policy nobody could reason about from the event in front of them.
  *
+ * ## What this decides, and what it cannot
+ *
+ * Only *when to rebuild*. An event is an invalidation signal, not data: nothing in a change is
+ * ever written into the profile, because every rebuild re-reads the providers. So no answer
+ * here can corrupt profile data, and `'ignore'` can cost only freshness (the weekly run still
+ * picks the change up). That is why an unrecognised change is ignored rather than guessed at:
+ * the cost of being wrong is a late rebuild, never a wrong profile.
+ *
+ * By the time a change reaches this function it has already been verified (HMAC, fail closed),
+ * parsed by an allowlist, matched to the configured account and repository, stripped of private
+ * repositories, and deduplicated. This function is the last check, not the first.
+ *
  * @module core/sync/policy
  */
+
+import { GITHUB_CHANGE_KINDS } from './github.js'
 
 /** How long `'defer'`ed changes wait for company, measured from the first of them. */
 export const DEFER_MS = 5 * 60_000
@@ -27,16 +41,15 @@ export const DEFER_MS = 5 * 60_000
  * @returns {'now'|'defer'|'ignore'}
  */
 export function classify(change) {
-  // TODO(human): decide what each kind of change is worth.
-  //
-  // The default below is the simplest defensible rule — structural changes (a repository
-  // appearing, going private, a release) publish now, and activity (pushes, stars, forks)
-  // is folded together and published DEFER_MS after the first of them.
-  //
-  // Consider: should a star ever publish on its own? Is a fork worth a build, or is it only
-  // worth riding along with the next one? Should a push on its own be ignored entirely —
-  // the weekly run will pick it up anyway? `change.kind` is e.g. 'push', 'star.created',
-  // 'fork', 'release.published', 'repository.renamed'; `change.via` says whether it arrived by
-  // webhook or by polling.
-  return change.weight === 'structural' ? 'now' : 'defer'
+  // Explicit matching: a change is acted on only if its source is one this service understands
+  // and its kind is one that source's parser can produce. A new kind therefore does nothing
+  // until it is added to the parser, instead of inheriting a default.
+  if (change?.source !== 'github' || !GITHUB_CHANGE_KINDS.has(change.kind)) return 'ignore'
+
+  // A visitor would notice a structural change missing; activity is folded into one build.
+  // Stars, forks and pushes are deliberately not ignored: sync-service.md promises they are
+  // noticed, and a late build is the cheap way to honour that.
+  if (change.weight === 'structural') return 'now'
+  if (change.weight === 'activity') return 'defer'
+  return 'ignore'
 }
