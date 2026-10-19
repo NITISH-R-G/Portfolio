@@ -126,7 +126,9 @@ Keep the App's other permissions as they were. `repository_dispatch` needs only 
 App's webhooks only for repositories where it is installed. The admin README installs the App on
 the portfolio repository alone, so with that setup the service sees events from *that repository
 only* — pushes, stars and forks on your other repositories never arrive, and polling is then the
-only way their activity is noticed. To have the webhook cover the repositories your portfolio
+only way anything on them is noticed — and polling sees only what *your account did* (public
+pushes, new repositories, releases), never stars or forks by other people, which only a webhook
+delivers. To have the webhook cover the repositories your portfolio
 shows, change the installation to **All repositories**, or select each of them.
 
 The trade-off is real: a wider installation gives the App `Contents: write` on every repository

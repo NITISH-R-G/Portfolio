@@ -75,7 +75,7 @@ export default function SourcesPanel({ builder }) {
     api.isAvailable().then((available) => {
       setLive(available)
       if (available) void refresh()
-    })
+    }).catch(() => setLive(false))
   }, [refresh])
 
   const config = state?.config ?? built.config
