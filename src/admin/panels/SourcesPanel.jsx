@@ -28,12 +28,16 @@ import { getConnector } from '../../connectors/index.js'
 import { deriveHealth, summarize, isSuccess, HEALTH_STATES, describeAge } from '../../core/sources/health.js'
 import { capabilitiesFor } from '../../core/sources/capabilities.js'
 import { refreshPolicyFor, summarizeRefresh, SCHEDULE } from '../../core/sources/refresh.js'
+import { describeSync } from '../../core/sync/capability.js'
+import { observedFrom, syncDeploymentOf } from '../../core/sync/status.js'
+import { getPath } from '../drafts.js'
 import { Panel, Note } from '../fields.jsx'
 import { EditorLayout, Section } from '../preview/editor-layout.jsx'
 import * as api from '../api.js'
 import { Meta, SourceMark, StatusDot } from './source-ui.jsx'
 import { methodLabel } from './source-catalogue.js'
 import { ChangeReview } from './change-review.jsx'
+import { SyncMechanisms, SyncServiceSection, useSyncStatus } from './sync-status.jsx'
 
 /**
  * @param {{builder: import('../state.js').Builder}} props
@@ -102,9 +106,19 @@ export default function SourcesPanel({ builder }) {
   // `env` is deliberately not consulted from the browser — a credential's *presence* is a
   // server-side fact, so a source needing one reports `blocked` here until an import proves
   // otherwise, rather than the admin guessing at the environment it cannot see.
-  const policies = configured.map(([key]) => refreshPolicyFor(getConnector(key)))
+  // The sync service, if the owner has deployed one and said where. `deployment` is the engine's
+  // validated address (never the half-typed one); the draft is only for the text box, so typing
+  // is not snapped to "" while the URL is still incomplete.
+  const deployment = syncDeploymentOf(built.config)
+  const sync = useSyncStatus(deployment.endpoint)
+  const draftedEndpoint = getPath(builder.configDraft, 'sync.endpoint')
+  const endpointDraft = typeof draftedEndpoint === 'string' ? draftedEndpoint : (built.config.sync?.endpoint ?? '')
+  const syncFor = (key) =>
+    describeSync(getConnector(key), { deployment, observed: observedFrom(sync.status) })
+
+  const policies = configured.map(([key]) => refreshPolicyFor(getConnector(key), undefined, deployment))
   const automation = summarizeRefresh(policies)
-  const policyFor = (key) => refreshPolicyFor(getConnector(key))
+  const policyFor = (key) => refreshPolicyFor(getConnector(key), undefined, deployment)
 
   const docs = state?.documents ?? documents ?? []
 
@@ -217,11 +231,19 @@ export default function SourcesPanel({ builder }) {
                     GitHub Actions cannot run independent per-source schedules, so there is no
                     per-source cadence to offer and none is pretended. */}
                 <p className="text-xs text-pretty text-muted-foreground">
-                  One schedule covers every source — the repository&apos;s workflow. Per-source
-                  cadence is not offered because nothing here could honour it.
+                  One schedule covers every source — the repository&apos;s workflow. There is no
+                  per-source cadence. A source can additionally update when it changes, but only if
+                  the sync service below is running and the source declares how (today, GitHub).
                 </p>
               </Section>
             )}
+
+            <SyncServiceSection
+              endpointDraft={endpointDraft}
+              endpoint={deployment.endpoint}
+              onEndpointChange={(value) => builder.setConfig('sync.endpoint', value)}
+              sync={sync}
+            />
 
             {live === false && (
               <Section title="Not running">
@@ -242,7 +264,12 @@ export default function SourcesPanel({ builder }) {
             )}
 
             {active && !pending && (
-              <SourceInspector health={active} policy={policyFor(active.key)} onClose={() => setSelected(null)} />
+              <SourceInspector
+                health={active}
+                policy={policyFor(active.key)}
+                sync={syncFor(active.key)}
+                onClose={() => setSelected(null)}
+              />
             )}
 
             {log && (
@@ -404,7 +431,7 @@ function SourceRow({ health, selected, live, refreshing, disabled, onSelect, onR
  * wrong live — the failed attempt that did not replace the last success, the retry time, the
  * warnings a partial import produced.
  */
-function SourceInspector({ health, policy, onClose }) {
+function SourceInspector({ health, policy, sync, onClose }) {
   const info = HEALTH_STATES[health.state] ?? HEALTH_STATES.error
   const capability = capabilitiesFor(health.key)
   const connector = getConnector(health.key)
@@ -433,6 +460,8 @@ function SourceInspector({ health, policy, onClose }) {
           </p>
         )}
       </Section>
+
+      <SyncMechanisms description={sync} />
 
       <Section title="Last run">
         <Meta

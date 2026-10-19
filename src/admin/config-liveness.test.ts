@@ -1,11 +1,20 @@
 import fs from "node:fs"
 import path from "node:path"
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
+import { resolveConfig } from "@/core/config/resolve.js"
+import { getConnector } from "@/connectors/index.js"
+import { refreshPolicyFor } from "@/core/sources/refresh.js"
+import { describeSync } from "@/core/sync/capability.js"
+import { syncDeploymentOf } from "@/core/sync/status.js"
 import { buildPortfolio } from "@/core/generate/build.js"
 import type { Profile } from "@/core/schema/types.js"
 import { toPublicManifest } from "@/core/standard/public.js"
 import { describe, expect, it } from "vitest"
 
+import { Composed } from "@/features/portfolio/components/composed"
 import {
+  toComposed,
   toFooter,
   toLayoutNavigation,
   toProfileOptions,
@@ -228,6 +237,48 @@ const PROBES: Record<string, () => void> = {
   /* Profile header — `toProfileOptions` → `ProfileHeader`'s `flipInterval` ---- */
   "profile.flipInterval": () =>
     changesTheAdapter(toProfileOptions, "profile.flipInterval", 9),
+  /* The sync service's address — engine → `syncDeploymentOf` → refresh policy ---------- */
+  // Nothing about the *page* changes when this is set, by design: it only tells the admin where
+  // to read status from. So the observable effect is on what the admin can honestly say about a
+  // source — whether a webhook is *ingestible*, and what `describeSync` reports as the way it
+  // updates. The last assertion makes sure the panel really takes it from the config.
+  "sync.endpoint": () => {
+    const github = getConnector("github")
+    const deployment = (endpoint: string) =>
+      syncDeploymentOf(
+        resolveConfig(at(structuredClone(BASE) as Record<string, unknown>, "sync.endpoint", endpoint) as never).config
+      )
+
+    const without = refreshPolicyFor(github, undefined, deployment("")).webhook.ingestible
+    const withEndpoint = refreshPolicyFor(github, undefined, deployment("https://sync.example")).webhook.ingestible
+    expect(withEndpoint, "setting the address changes nothing the admin says").not.toBe(without)
+
+    const described = (endpoint: string) => describeSync(github, { deployment: deployment(endpoint) }).mechanisms.map((m) => m.status)
+    expect(described("https://sync.example")).not.toEqual(described(""))
+
+    readBy("src/admin/panels/SourcesPanel.jsx", /syncDeploymentOf\(built\.config\)/)
+  },
+
+  /* Components placed from the builder — engine `composed` section → `Composed` ------- */
+  // The strongest probe in this file, because the weak one would pass for the wrong reason:
+  // the engine's section count changes whenever an instance exists, even if nothing ever
+  // draws it. So this follows the whole chain — config, engine, adapter, the component the
+  // page renders — and requires the placed component to actually be in the markup.
+  "components.instances": () => {
+    const placed = [{ id: "ci_probe", component: "shimmering-text", version: 1, props: { text: "Probe text" } }]
+    changesTheBuild("components.instances", placed)
+
+    const { config } = resolveConfig(
+      at(structuredClone(BASE) as Record<string, unknown>, "components.instances", placed) as never
+    )
+    const html = renderToStaticMarkup(createElement(Composed, { instances: toComposed(config as never) }))
+    expect(html, "a placed component is not drawn on the page").toContain('data-instance="ci_probe"')
+    expect(html).toContain("Probe text")
+
+    const none = renderToStaticMarkup(createElement(Composed, { instances: toComposed(resolveConfig({}).config as never) }))
+    expect(none, "nothing placed must draw nothing").toBe("")
+  },
+
   // `toUser(...).monogram` → the header's `SpotlightMark`.
   "profile.monogram": () => {
     const profile = profileFor(structuredClone(BASE))

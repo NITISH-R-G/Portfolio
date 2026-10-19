@@ -23,9 +23,10 @@
  * @property {string} label            Heading text.
  * @property {string} navLabel         Shorter label for the dock.
  * @property {string} icon             Icon name resolved by `components/Icon`.
- * @property {(profile: Profile) => number} count
+ * @property {(profile: Profile, config: import('../config/types.js').PortfolioConfig) => number} count
  *   How many items this section would render. Used both for the threshold and to tell the
- *   user in the admin *why* a section is hidden.
+ *   user in the admin *why* a section is hidden. Most sections count records in the profile and
+ *   ignore `config`; a section built from configuration (composed components) counts that.
  * @property {number} [threshold]      Minimum count for `auto` to show it. Default 1.
  * @property {boolean} [alwaysConsider] Show even with zero items (hero, contact).
  * @property {(config: import('../config/types.js').PortfolioConfig) => boolean} [autoRequires]
@@ -49,6 +50,17 @@ export const SECTION_DEFINITIONS = [
     navLabel: 'About',
     icon: 'User',
     count: (p) => (p.identity?.summary ? 1 : 0),
+  },
+  {
+    id: 'composed',
+    label: 'Components',
+    navLabel: 'Components',
+    icon: 'Blocks',
+    // Counted from configuration, not from the profile: what justifies this section is the
+    // owner having placed something, and that is the one thing no connector can supply. With
+    // none placed it is simply absent, which is why adding the section to the default order
+    // changes nothing for a portfolio that does not use the builder.
+    count: (_profile, config) => config?.components?.instances?.length ?? 0,
   },
   {
     id: 'stats',
@@ -316,7 +328,7 @@ export function resolveSections(profile, config) {
 
     let count = 0
     try {
-      count = definition.count(profile) || 0
+      count = definition.count(profile, config) || 0
     } catch {
       count = 0
     }

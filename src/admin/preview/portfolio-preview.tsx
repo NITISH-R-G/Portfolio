@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { Awards } from "@/features/portfolio/components/awards"
 import { Blocks } from "@/features/portfolio/components/blocks"
 import { Certifications } from "@/features/portfolio/components/certifications"
+import { Composed } from "@/features/portfolio/components/composed"
 import { Education } from "@/features/portfolio/components/education"
 import { Experiences } from "@/features/portfolio/components/experiences"
 import { Hello } from "@/features/portfolio/components/hello"
@@ -22,6 +23,7 @@ import { TOCMinimap } from "@/components/toc-minimap"
 import {
   toAwards,
   toCertifications,
+  toComposed,
   toEducation,
   toExperiences,
   toFooter,
@@ -120,6 +122,7 @@ export function PortfolioPreview({
       showcase: toShowcase(profile),
       awards: toAwards(profile),
       certifications: toCertifications(profile),
+      composed: toComposed(config),
       timeline: toTimeline(profile, config),
       footer: toFooter(config, profile),
       profileOptions: toProfileOptions(config),
@@ -135,6 +138,7 @@ export function PortfolioPreview({
       />
     ),
     hello: () => <Hello user={data.user} />,
+    composed: () => <Composed instances={data.composed} />,
     overview: () => (
       <>
         <Overview user={data.user} />

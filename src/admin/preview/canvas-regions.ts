@@ -15,6 +15,7 @@ export type CanvasRegion = PageSectionId | "footer"
 export const REGION_LABELS: Record<CanvasRegion, string> = {
   profile: "Header",
   hello: "About",
+  composed: "Components",
   overview: "Contact & links",
   github: "Contributions",
   stack: "Stack",
@@ -33,6 +34,8 @@ export const REGION_LABELS: Record<CanvasRegion, string> = {
 export const REGION_PANEL: Record<CanvasRegion, string> = {
   profile: "profile",
   hello: "profile",
+  // Edited in place by the canvas inspector, so the "full editor" is the canvas itself.
+  composed: "canvas",
   overview: "profile",
   github: "sources",
   stack: "skills",
