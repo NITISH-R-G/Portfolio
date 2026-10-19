@@ -72,6 +72,7 @@ export const STALE_AFTER_DAYS = 14
  * @property {string} [error]
  * @property {number} [recordsImported]
  * @property {{added: number, removed: number, updated: number}} [recordsChanged]
+ * @property {boolean} [servingLastKnownGood]  Failing, but the site still shows its previous data.
  * @property {Record<string, number>} [counts]
  * @property {string[]} [warnings]
  * @property {number} [durationMs]
@@ -156,6 +157,7 @@ export function deriveHealth({ key, connector, status, config, now = Date.now(),
     error: status?.error,
     recordsImported: status?.recordsImported ?? totalOf(status?.counts),
     recordsChanged: status?.recordsChanged,
+    servingLastKnownGood: Boolean(status?.servingLastKnownGood),
     counts: status?.counts,
     warnings: status?.warnings,
     durationMs: status?.durationMs,

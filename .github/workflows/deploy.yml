@@ -8,6 +8,11 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+  # Sent by the optional sync service (workers/sync, docs/sync-service.md) when a connected
+  # source changes. It needs only `contents: write`, which the admin's GitHub App already holds.
+  # With no sync service deployed nothing ever sends it and this line does nothing.
+  repository_dispatch:
+    types: [profile-changed]
   # A portfolio should not go stale because its owner stopped running `pnpm run import`.
   # This refreshes the data weekly. Remove the block if you prefer to import by hand.
   schedule:
@@ -48,6 +53,51 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      # What the previous run learned, so this one starts from it instead of from nothing.
+      #
+      # Without this every run begins with an empty `src/data/generated/`, which has two
+      # consequences. A source that fails during a deploy has no earlier data to fall back on, so
+      # one provider's bad minute removes its section from the live site (`applyLastKnownGood`
+      # needs the previous profiles to keep). And every record looks newly added, so the refresh
+      # summary reports "+N added" on every run whatever actually changed.
+      #
+      # Restored *after* the tests, so they still run on exactly the tree they always did, and
+      # only these three paths — the embeddings, composed portfolio and embeddable probe are all
+      # recomputed below and must never be served stale. The key is unique per run so a fresh
+      # entry is saved each time; `restore-keys` picks the most recent. A cache can only be
+      # written by a run on this branch, so nothing a pull request does can plant data in it.
+      - name: Restore sync state
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/data/generated/sources
+            src/data/generated/status.json
+            src/data/generated/http-cache.json
+          key: sync-state-${{ github.run_id }}
+          restore-keys: |
+            sync-state-
+
+      # Why this run started, on the run page. The trigger is passed through the environment and
+      # never interpolated into the script: a dispatch payload is input from outside this file.
+      - name: Note what started this run
+        env:
+          EVENT: ${{ github.event_name }}
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+        run: |
+          {
+            echo "## What started this run"
+            echo
+            echo "Trigger: \`$EVENT\`"
+            if [ "$EVENT" = "repository_dispatch" ]; then
+              echo
+              echo "The sync service reported a change:"
+              echo
+              echo '~~~json'
+              echo "${PAYLOAD//\~/}"
+              echo '~~~'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Every secret below is optional. A connector with no credential either runs on its
       # public rate limit or reports itself unavailable — neither fails the build.

@@ -71,6 +71,28 @@ const github = {
   supportedData: ['projects', 'skills', 'stats', 'identity', 'socials'],
   authEnv: ['GITHUB_TOKEN'],
   rateLimit: '60 requests/hour unauthenticated, 5,000 with a token.',
+  // Checked against the real API: `/users/{u}/events/public` returns an ETag and
+  // `X-Poll-Interval: 60`, and is cached by GitHub for 300 seconds (`Cache-Control: max-age=300`)
+  // — so the latency below is the provider's, not ours. See `core/sync/github.js`.
+  sync: {
+    mechanisms: [
+      {
+        kind: 'webhook',
+        latency: 'GitHub delivers within seconds; the site is live about three minutes later.',
+        setup:
+          'Enable the GitHub App webhook, point it at the sync service, and subscribe to push, ' +
+          'repository, star, release, public, fork and workflow_run.',
+      },
+      {
+        kind: 'events-poll',
+        minIntervalSeconds: 60,
+        latency:
+          'One to six minutes to notice — GitHub caches this feed for five minutes — then about ' +
+          'three more for the site to rebuild.',
+        blindTo: ['stars and forks by other people'],
+      },
+    ],
+  },
   fields: [
     { key: 'username', label: 'GitHub username', required: true, placeholder: 'octocat' },
     { key: 'includeForks', label: 'Include forked repositories', type: 'boolean', help: 'Off by default — forks are rarely your own work.' },

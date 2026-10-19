@@ -236,10 +236,11 @@ describe('one source failing leaves the others alone', () => {
     assert.notEqual(status.pypi.lastAttemptedAt, status.pypi.lastSuccessfulAt)
   })
 
-  test('a failed source contributes no profile, so its previous data is left in place', async () => {
+  test('a failed source contributes no profile of its own', async () => {
     const { sources } = await run()
-    // The importer only overwrites files for sources that produced something; a source absent
-    // from this list keeps whatever is on disk.
+    // `runConnectors` alone contributes nothing for a failed source. Keeping its previous data
+    // is a separate step, `applyLastKnownGood`, because the importer's cleanup deletes the file
+    // of any source that "produced nothing" on a full run — see `sync-lastgood.test.js`.
     assert.ok(!sources.some((source) => source.key === 'pypi'), 'a failed source must not be written')
   })
 })

@@ -20,13 +20,17 @@
  * promise nothing would keep. A config value claiming `refreshEvery: 'hourly'` would be a lie
  * told once and believed forever, so no such value exists.
  *
- * ## Webhooks are described, not offered
+ * ## Webhooks are offered only where something can receive them
  *
- * Several providers do support webhooks. This project has nowhere to receive one: the public
- * site is a static export with no server, and the admin API is a loopback process that exists
- * only while a developer is running it. `webhook.ingestible` is therefore `false` everywhere,
- * and `webhook.providerSupports` records the provider's side purely so the gap is documented
- * rather than forgotten.
+ * Several providers do support webhooks. The public site is a static export with no server, and
+ * the admin API is a loopback process that exists only while a developer is running it, so by
+ * default there is nowhere to receive one and `webhook.ingestible` is `false`.
+ *
+ * It becomes `true` in exactly one case: the owner has deployed the optional sync service
+ * (`workers/sync`, see `docs/sync-service.md`), recorded its address as `sync.endpoint`, **and**
+ * the connector declares a webhook mechanism of its own. Whether that webhook is actually
+ * *delivering* is a different question, answered by `describeSync` from what the service has
+ * observed — this field says only that the path exists.
  *
  * @module core/sources/refresh
  */
@@ -70,15 +74,18 @@ const PROVIDER_WEBHOOKS = new Set(['github', 'gitlab', 'bitbucket', 'dockerhub']
  *
  * @param {import('../../connectors/types.js').Connector|undefined} connector
  * @param {(name: string) => string|undefined} [env]  Reads a credential's presence, never its value.
+ * @param {{endpoint?: string}} [deployment]  The sync service, if one is deployed.
  * @returns {RefreshPolicy}
  */
-export function refreshPolicyFor(connector, env = () => undefined) {
+export function refreshPolicyFor(connector, env = () => undefined, deployment) {
   const fetches = typeof connector?.fetch === 'function'
   const credentials = connector?.authEnv ?? []
   // `token` availability means the API returns nothing at all without a credential. Anything
   // else with an `authEnv` merely works better with one, and must not be reported as blocked.
   const requiresCredential = connector?.availability === 'token'
   const missing = credentials.filter((name) => !env(name))
+  const declaresWebhook = Boolean(connector?.sync?.mechanisms?.some((m) => m.kind === 'webhook'))
+  const ingestible = declaresWebhook && Boolean(deployment?.endpoint)
 
   const base = {
     requiresCredential,
@@ -89,9 +96,13 @@ export function refreshPolicyFor(connector, env = () => undefined) {
     // rather than asserted here — see `connectors/cache.js`.
     conditional: fetches ? 'discovered' : 'none',
     webhook: {
-      providerSupports: PROVIDER_WEBHOOKS.has(connector?.id ?? ''),
-      ingestible: false,
-      reason: 'Nothing in this project can receive a webhook: the site is a static export and the admin API is local-only.',
+      providerSupports: declaresWebhook || PROVIDER_WEBHOOKS.has(connector?.id ?? ''),
+      ingestible,
+      reason: ingestible
+        ? "A sync service is configured to receive this provider's webhooks."
+        : declaresWebhook
+          ? 'This provider can send webhooks, but no sync service is configured. Deploy workers/sync and set sync.endpoint.'
+          : 'Nothing in this project can receive a webhook: the site is a static export and the admin API is local-only.',
     },
   }
 
