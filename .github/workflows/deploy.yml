@@ -7,6 +7,11 @@ name: Deploy portfolio
 on:
   push:
     branches: ["main"]
+  # Builds and tests the change without publishing it. A pull request used to get no build at all
+  # here, so a workflow edit could only be validated by merging it. The `deploy` job below is
+  # skipped for this event, and the github-pages environment only admits `main` regardless.
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
   # Sent by the optional sync service (workers/sync, docs/sync-service.md) when a connected
   # source changes. It needs only `contents: write`, which the admin's GitHub App already holds.
@@ -193,6 +198,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     environment:

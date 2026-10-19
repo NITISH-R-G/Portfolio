@@ -76,6 +76,12 @@ describe('the deploy workflow, as the sync service depends on it', () => {
     assert.match(text, /\n {2}schedule:\n {4}- cron: "0 6 \* \* 1"/)
   })
 
+  test('builds on pull requests but never publishes them', () => {
+    assert.match(text, /\n {2}pull_request:\n {4}branches: \["main"\]/)
+    const deploy = text.slice(text.indexOf('\n  deploy:'))
+    assert.match(deploy, /\n {4}if: github\.event_name != 'pull_request'/)
+  })
+
   test('keeps the concurrency group that makes a burst of dispatches coalesce', () => {
     // At most one run in progress and one pending; a newer pending run replaces an older one.
     // The ledger's cooldown reduces how often this is exercised, but this is what makes it safe
