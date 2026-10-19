@@ -74,7 +74,7 @@ export default function SourcesPanel({ builder }) {
   useEffect(() => {
     api.isAvailable().then((available) => {
       setLive(available)
-      if (available) refresh()
+      if (available) void refresh()
     })
   }, [refresh])
 

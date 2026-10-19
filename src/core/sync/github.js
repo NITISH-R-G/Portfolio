@@ -85,10 +85,10 @@ const sameAccount = (a, b) => !a || !b || a.toLowerCase() === b.toLowerCase()
  * Interpret one webhook delivery.
  *
  * @param {{event: string|null|undefined, delivery: string|null|undefined, payload: any,
- *   now: string, account?: string, workflowPath?: string}} input
+ *   now: string, account?: string, workflowPath?: string, repository?: string}} input
  * @returns {WebhookOutcome}
  */
-export function parseGitHubWebhook({ event, delivery, payload, now, account, workflowPath = 'deploy.yml' }) {
+export function parseGitHubWebhook({ event, delivery, payload, now, account, workflowPath = 'deploy.yml', repository: expectedRepository }) {
   if (event === 'ping') return { type: 'ping' }
   if (!event || !payload || typeof payload !== 'object') {
     return { type: 'ignored', reason: 'malformed' }
@@ -97,6 +97,11 @@ export function parseGitHubWebhook({ event, delivery, payload, now, account, wor
   if (event === 'workflow_run') {
     const run = payload.workflow_run
     if (payload.action !== 'completed' || !run) return { type: 'ignored', reason: 'workflow-not-completed' }
+    // With the App installed on more repositories (to see their stars and forks), a deploy.yml in
+    // another repository would otherwise be recorded as this service's publish.
+    if (expectedRepository && String(payload.repository?.full_name ?? '').toLowerCase() !== expectedRepository.toLowerCase()) {
+      return { type: 'ignored', reason: 'other-repository' }
+    }
     if (!String(run.path ?? '').endsWith(workflowPath)) return { type: 'ignored', reason: 'other-workflow' }
     const branch = payload.repository?.default_branch
     if (branch && run.head_branch !== branch) return { type: 'ignored', reason: 'other-branch' }
@@ -149,7 +154,10 @@ export function parseGitHubWebhook({ event, delivery, payload, now, account, wor
       return change({
         kind: 'push',
         weight: 'activity',
-        occurredAt: iso(payload.head_commit?.timestamp) ?? iso(repository?.pushed_at),
+        // The push time, not the commit's own timestamp: a commit can be authored days before it
+        // is pushed, and an early `occurredAt` would make the ledger treat a new push as already
+        // covered by an earlier publish.
+        occurredAt: iso(repository?.pushed_at) ?? iso(payload.head_commit?.timestamp),
       })
     }
 

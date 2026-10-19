@@ -126,6 +126,7 @@ function service(env) {
     store: createKvStore(env.SYNC_KV),
     publish,
     account: config.account,
+    repository: config.repository,
     webhookSecret: env.GITHUB_WEBHOOK_SECRET,
     pollEnabled: config.pollEnabled,
     token: env.GITHUB_POLL_TOKEN,

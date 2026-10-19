@@ -134,6 +134,14 @@ describe("validating values", () => {
       expect(v(number({ label: "N", integer: true }), 2.6).value).toBe(3)
     })
 
+    it("snaps to the grid min + k*step, keeping min's decimals and handling exponent steps", () => {
+      const offset = range({ label: "R", min: 0.45, max: 1, step: 0.1 })
+      expect(v(offset, 0.52).value).toBe(0.55)
+      expect(v(offset, 0.45).value).toBe(0.45)
+      const tiny = range({ label: "R", min: 0, max: 0.000001, step: 1e-7 })
+      expect(v(tiny, 3.4e-7).value).toBe(3e-7)
+    })
+
     it("snaps a range to its step grid, without floating point residue", () => {
       const r = range({ label: "R", min: 0.4, max: 4, step: 0.1 })
       expect(v(r, 1.234).value).toBe(1.2)

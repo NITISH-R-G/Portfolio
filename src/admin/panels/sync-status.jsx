@@ -81,8 +81,8 @@ export function useSyncStatus(endpoint) {
       }
     }
 
-    load()
-    const interval = setInterval(load, POLL_MS)
+    void load()
+    const interval = setInterval(() => void load(), POLL_MS)
     return () => {
       cancelled = true
       controller?.abort()

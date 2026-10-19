@@ -62,6 +62,7 @@ export function shouldPersistPoll(before, after, outcome, now) {
  *   store: import('./store.js').SyncStore,
  *   publish: import('./ledger.js').Publish,
  *   account: string,
+ *   repository?: string,
  *   webhookSecret?: string,
  *   pollEnabled?: boolean,
  *   token?: string,
@@ -73,7 +74,7 @@ export function shouldPersistPoll(before, after, outcome, now) {
  * }} deps
  */
 export function createSyncService({
-  store, publish, account, webhookSecret, pollEnabled = true, token,
+  store, publish, account, repository, webhookSecret, pollEnabled = true, token,
   fetch: doFetch = fetch, now = Date.now, random = Math.random, workflowPath, ledgerOptions,
 }) {
   const ledger = createSyncLedger({ store, publish, now, random, options: ledgerOptions })
@@ -111,6 +112,7 @@ export function createSyncService({
         now: new Date(now()).toISOString(),
         account,
         workflowPath,
+        repository,
       })
 
       switch (outcome.type) {

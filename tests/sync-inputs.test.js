@@ -210,6 +210,28 @@ describe('GitHub webhook interpretation', () => {
     })
   })
 
+  test('a push is dated by when it was pushed, not by when its commit was authored', () => {
+    // A commit written on Monday and pushed on Wednesday happened on Wednesday. Using the commit
+    // time would let the ledger call the push "covered" by a publish made in between.
+    const out = parse('push', {
+      ref: 'refs/heads/main',
+      head_commit: { timestamp: '2026-10-12T09:00:00Z' },
+      repository: repo({ pushed_at: 1_792_411_200 }),
+    })
+    assert.equal(out.change.occurredAt, '2026-10-19T12:00:00.000Z')
+  })
+
+  test('only the configured repository can report on the deploys of this service', () => {
+    const run = (full_name) => ({
+      action: 'completed',
+      repository: repo({ full_name }),
+      workflow_run: { id: 1, path: '.github/workflows/deploy.yml', head_branch: 'main', event: 'repository_dispatch', conclusion: 'failure' },
+    })
+    assert.equal(parse('workflow_run', run('ada/engine'), { repository: 'ada/engine' }).type, 'workflow')
+    assert.equal(parse('workflow_run', run('ADA/Engine'), { repository: 'ada/engine' }).type, 'workflow', 'names are case-insensitive')
+    assert.deepEqual(parse('workflow_run', run('ada/other'), { repository: 'ada/engine' }), { type: 'ignored', reason: 'other-repository' })
+  })
+
   test('events from another account are ignored', () => {
     const out = parse('push', { ref: 'refs/heads/main', repository: repo({ owner: { login: 'someone-else' } }) })
     assert.deepEqual(out, { type: 'ignored', reason: 'other-account' })

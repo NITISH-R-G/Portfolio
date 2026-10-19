@@ -75,8 +75,15 @@ export function isSafeLink(value: string): boolean {
   }
 }
 
-/** Decimal places in a step, so snapping `0.1` does not produce `0.30000000000000004`. */
-const decimals = (step: number) => (String(step).split(".")[1] ?? "").length
+/**
+ * Decimal places needed to write a number exactly, including exponent form (`1e-7` is 7).
+ * Snapping rounds to the finer of `min` and `step`, since the grid is `min + k * step`.
+ */
+const decimals = (n: number) => {
+  const [mantissa, exponent] = String(n).toLowerCase().split("e")
+  const fraction = (mantissa.split(".")[1] ?? "").length
+  return Math.max(0, fraction - Number(exponent ?? 0))
+}
 
 /**
  * Validate one value.
@@ -129,7 +136,7 @@ export function validateValue(
       if (control.type === "range") {
         // Snap to the step grid so a hand-edited 1.234 becomes a value the slider can show.
         const snapped = Math.round((next - control.min) / control.step) * control.step + control.min
-        next = Number(snapped.toFixed(decimals(control.step)))
+        next = Number(snapped.toFixed(Math.min(100, Math.max(decimals(control.step), decimals(control.min)))))
       }
       const { min, max } = control
       if (min !== undefined && next < min) {

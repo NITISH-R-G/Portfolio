@@ -122,6 +122,19 @@ which events each permission unlocks; check there if you change this.
 
 Keep the App's other permissions as they were. `repository_dispatch` needs only Contents: write.
 
+**Which repositories the App is installed on decides what the webhook can see.** GitHub sends an
+App's webhooks only for repositories where it is installed. The admin README installs the App on
+the portfolio repository alone, so with that setup the service sees events from *that repository
+only* — pushes, stars and forks on your other repositories never arrive, and polling is then the
+only way their activity is noticed. To have the webhook cover the repositories your portfolio
+shows, change the installation to **All repositories**, or select each of them.
+
+The trade-off is real: a wider installation gives the App `Contents: write` on every repository
+it covers. What stays narrow is each dispatch — the token minted for one is limited to the single
+portfolio repository (`installationToken` requests `repositories: [repo]`). And the service only
+accepts `workflow_run` reports from `REPOSITORY`, so a `deploy.yml` in some other repository
+cannot be mistaken for yours.
+
 ### 6. Record the endpoint
 
 Set `sync.endpoint` (Admin → Sources, or `src/data/config.json`) to the Worker URL. That is what
