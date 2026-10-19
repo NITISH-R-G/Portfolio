@@ -34,6 +34,10 @@ export const SECTION_IDS = /** @type {const} */ ([
   // so the greeting plays in the first viewport and the summary is the first prose a crawler
   // meets after the name.
   'about',
+  // Components the owner placed from the builder (`components.instances`). Third, so a statement
+  // or highlight sits right under the introduction; it is hidden until there is something in
+  // it, so a portfolio that never uses the builder renders exactly as it did before.
+  'composed',
   'contact',
   'github',
   'skills',
@@ -297,6 +301,26 @@ export function defaultConfig() {
      * @type {string[]}
      */
     sectionOrder: [...SECTION_IDS],
+
+    /**
+     * Components placed on the page from the builder: a list of instances, each
+     * `{ id, component, version, props }`. This is user-authored *configuration*, never code --
+     * what a component is and what its props mean live in manifests beside the components.
+     * Empty by default, and the `composed` section stays hidden until it is not.
+     *
+     * Validated for shape and safety here (`resolveComponents`) and for meaning in the
+     * application, where the manifests are.
+     * @type {{instances: {id: string, component: string, version: number, props: Record<string, unknown>}[]}}
+     */
+    components: { instances: [] },
+
+    /**
+     * The optional sync service (`workers/sync`, docs/sync-service.md). Setting `endpoint`
+     * does not enable anything -- it tells the admin where to read the service's status from.
+     * Empty means none is deployed, which is the default and fully supported.
+     * @type {{endpoint: string}}
+     */
+    sync: { endpoint: '' },
 
     /**
      * Per-section presentation overrides, keyed by section id, e.g.

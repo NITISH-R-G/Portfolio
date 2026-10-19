@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Awards } from "@/features/portfolio/components/awards"
 import { Blocks } from "@/features/portfolio/components/blocks"
 import { Certifications } from "@/features/portfolio/components/certifications"
+import { Composed } from "@/features/portfolio/components/composed"
 import { Education } from "@/features/portfolio/components/education"
 import { Experiences } from "@/features/portfolio/components/experiences"
 import { GitHubContributions } from "@/features/portfolio/components/github-contributions"
@@ -55,6 +56,7 @@ export const metadata: Metadata = {
 const SECTIONS: Record<PageSectionId, () => React.ReactNode> = {
   profile: () => <ProfileHeader flipInterval={PROFILE_OPTIONS.flipInterval} />,
   hello: () => <Hello actions={<PageActions />} />,
+  composed: () => <Composed />,
   overview: () => (
     <>
       <Overview />

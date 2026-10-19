@@ -206,6 +206,8 @@ export function resolveConfig(userConfig) {
     config.sourceTheme, ['', ...SOURCE_THEME_NAMES], '', 'sourceTheme', issues,
   )
   resolveFooter(config, issues)
+  resolveComponents(config, issues)
+  resolveSync(config, issues)
   resolveNavigation(config, issues)
   resolveProfile(config, issues)
   config.effects = resolveEffects(config.effects, issues)
@@ -419,6 +421,155 @@ function resolveFooter(config, issues) {
   }
 
   config.footer = { enabled, showSocialLinks, showSourceCode, showDmca, items, wordmark }
+}
+
+/** Hard limits on composed components. A portfolio is a page, not a database. */
+export const COMPONENT_LIMITS = Object.freeze({
+  instances: 100,
+  idLength: 64,
+  propsBytes: 8 * 1024,
+  depth: 4,
+})
+
+const COMPONENT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/
+const COMPONENT_NAME = /^[a-z0-9][a-z0-9-]*$/
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+/**
+ * Whether a value is plain JSON: only what `JSON.parse` could have produced.
+ *
+ * This is the engine's guarantee that nothing executable can ride in on a component's props --
+ * no functions, no class instances, no symbols, no cycles -- and that a key like `__proto__`
+ * cannot reach whatever later merges these props into an object.
+ *
+ * @param {unknown} value
+ * @param {number} depth
+ * @returns {boolean}
+ */
+export function isPlainJson(value, depth = COMPONENT_LIMITS.depth) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (depth <= 0) return false
+  if (Array.isArray(value)) return value.every((item) => isPlainJson(item, depth - 1))
+  if (typeof value !== 'object') return false
+  const proto = Object.getPrototypeOf(value)
+  if (proto !== Object.prototype && proto !== null) return false
+  return Object.keys(value).every(
+    (key) => !UNSAFE_KEYS.has(key) && isPlainJson(/** @type {any} */ (value)[key], depth - 1),
+  )
+}
+
+/**
+ * Composed components: the instances an owner placed on the page.
+ *
+ * The engine checks *shape and safety* and nothing more. What each component's props mean --
+ * their types, ranges, defaults -- is defined by manifests that live with the components in the
+ * application, which the engine cannot import and should not know about. So this guarantees what
+ * any consumer can rely on before it meets a manifest: every instance has a stable string id,
+ * names a component, carries a schema version, and holds plain-JSON props of bounded size.
+ *
+ * An unusable instance is dropped with a warning rather than failing the build, and a duplicate
+ * id keeps the first -- ids are identities, and two instances sharing one would make "edit this
+ * one" ambiguous.
+ *
+ * @param {Record<string, any>} config
+ * @param {ConfigIssue[]} issues
+ */
+function resolveComponents(config, issues) {
+  const isObject = (v) => v && typeof v === 'object' && !Array.isArray(v)
+  const given = isObject(config.components) ? config.components : {}
+  if (config.components !== undefined && !isObject(config.components)) {
+    issues.push({ level: 'warning', path: 'components', message: 'Expected an object; using none.' })
+  }
+
+  const raw = given.instances
+  if (raw !== undefined && !Array.isArray(raw)) {
+    issues.push({ level: 'warning', path: 'components.instances', message: 'Expected an array; using none.' })
+  }
+
+  const warn = (path, message) => issues.push({ level: 'warning', path, message })
+  const instances = []
+  const ids = new Set()
+
+  for (const [index, item] of (Array.isArray(raw) ? raw : []).entries()) {
+    const path = `components.instances[${index}]`
+    if (instances.length >= COMPONENT_LIMITS.instances) {
+      warn('components.instances', `Only the first ${COMPONENT_LIMITS.instances} components are kept.`)
+      break
+    }
+    if (!isObject(item)) { warn(path, 'Expected an object; dropped.'); continue }
+
+    const { id, component, version } = item
+    if (typeof id !== 'string' || id.length > COMPONENT_LIMITS.idLength || !COMPONENT_ID.test(id)) {
+      warn(path, 'Needs a stable id of letters, digits, "-" and "_"; dropped.')
+      continue
+    }
+    if (ids.has(id)) { warn(path, `Duplicate id "${id}"; the first one is kept.`); continue }
+    if (typeof component !== 'string' || !COMPONENT_NAME.test(component)) {
+      warn(path, 'Needs a component name in lowercase letters, digits and "-"; dropped.')
+      continue
+    }
+    if (!Number.isInteger(version) || version < 1) {
+      warn(path, 'Needs an integer schema version of 1 or more; dropped.')
+      continue
+    }
+
+    const props = item.props === undefined ? {} : item.props
+    if (!isObject(props) || !isPlainJson(props)) {
+      warn(path, 'Props must be plain JSON data; dropped.')
+      continue
+    }
+    if (JSON.stringify(props).length > COMPONENT_LIMITS.propsBytes) {
+      warn(path, `Props are larger than ${COMPONENT_LIMITS.propsBytes} bytes; dropped.`)
+      continue
+    }
+
+    ids.add(id)
+    // Round-tripped so what is kept is a fresh, detached copy of exactly the validated data.
+    instances.push({ id, component, version, props: JSON.parse(JSON.stringify(props)) })
+  }
+
+  config.components = { instances }
+}
+
+/**
+ * The sync service's address.
+ *
+ * Only a place to read status from, so the bar is "cannot be used to point the admin somewhere
+ * surprising": https (or plain http on loopback, for local development), no embedded
+ * credentials, no query or fragment. Anything else is dropped with a warning.
+ *
+ * @param {Record<string, any>} config
+ * @param {ConfigIssue[]} issues
+ */
+function resolveSync(config, issues) {
+  const isObject = (v) => v && typeof v === 'object' && !Array.isArray(v)
+  const given = isObject(config.sync) ? config.sync : {}
+  let endpoint = ''
+
+  if (given.endpoint !== undefined && given.endpoint !== '') {
+    let parsed
+    try {
+      parsed = typeof given.endpoint === 'string' ? new URL(given.endpoint.trim()) : undefined
+    } catch {
+      parsed = undefined
+    }
+    const loopback = parsed && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
+    const usable = parsed
+      && (parsed.protocol === 'https:' || (parsed.protocol === 'http:' && loopback))
+      && !parsed.username && !parsed.password && !parsed.search && !parsed.hash
+    if (usable) {
+      endpoint = parsed.origin + parsed.pathname.replace(/\/+$/, '')
+    } else {
+      issues.push({
+        level: 'warning',
+        path: 'sync.endpoint',
+        message: 'Expected an https URL with no credentials, query or fragment; ignoring it.',
+      })
+    }
+  }
+
+  config.sync = { endpoint }
 }
 
 /**

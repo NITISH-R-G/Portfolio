@@ -36,6 +36,8 @@ import composed from '@/data/generated/portfolio.json'
  */
 import embeddable from '@/data/generated/embeddable.json'
 
+import type { ComponentInstance } from '@/features/builder/instances'
+
 import type { Award } from '../types/awards'
 import type { Certification } from '../types/certifications'
 import type { Education } from '../types/education'
@@ -311,6 +313,7 @@ export const PROFILE_OPTIONS = toProfileOptions(config)
 export type PageSectionId =
   | 'profile'
   | 'hello'
+  | 'composed'
   | 'overview'
   | 'github'
   | 'showcase'
@@ -326,6 +329,7 @@ export type PageSectionId =
 export const PAGE_SECTION_BY_ENGINE_ID: Record<string, PageSectionId> = {
   hero: 'profile',
   about: 'hello',
+  composed: 'composed',
   contact: 'overview',
   github: 'github',
   showcase: 'showcase',
@@ -388,6 +392,20 @@ export const PAGE_SECTIONS: PageSectionId[] = toPageSections(
 )
 
 export const TOC_ITEMS = toTocItems(PAGE_SECTIONS)
+
+/**
+ * The components the owner placed from the builder.
+ *
+ * Already shape-checked by the engine (`resolveComponents`): every entry has a stable id, a
+ * component name, a version and plain-JSON props. What the props *mean* is checked at render by
+ * the component's manifest, which is why this returns them as stored and does no more.
+ */
+export function toComposed(c: EngineConfig): ComponentInstance[] {
+  const instances = (c as { components?: { instances?: ComponentInstance[] } }).components?.instances
+  return Array.isArray(instances) ? instances : []
+}
+
+export const COMPOSED_INSTANCES = toComposed(config)
 
 /** `layout.navigation`: the right-margin section minimap (`'minimap'`, the default) or none. */
 export function toLayoutNavigation(c: EngineConfig): 'minimap' | 'none' {

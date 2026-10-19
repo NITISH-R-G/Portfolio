@@ -1,0 +1,48 @@
+# Cloudflare Worker for automatic synchronization.
+#
+# Deploy with:  npx wrangler deploy      (from this directory)
+#
+# Full setup, secrets and recovery: docs/sync-service.md
+#
+# One binding, deliberately: a KV namespace for delivery ids, the coalescing window and the
+# status record. No Durable Object, no queue, no database — see the note in docs/sync-service.md
+# on what that costs (KV is eventually consistent) and why it is acceptable here.
+
+name = "portfolio-sync"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Every minute. The tick publishes anything waiting out a cooldown, and polls GitHub's Events
+# API when it is due. An idle tick reads two keys and writes none, so this stays inside the free
+# tier: Workers' 100,000 requests/day and KV's 1,000 writes/day.
+[triggers]
+crons = ["* * * * *"]
+
+# Create the namespace once, then paste its id here:
+#     npx wrangler kv namespace create SYNC_KV
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "REPLACE_WITH_THE_ID_PRINTED_BY_THE_COMMAND_ABOVE"
+
+[vars]
+# Public, non-secret configuration. Edit these; they are committed.
+#
+# REPOSITORY        the one repository this service may ever dispatch to.
+# ACCOUNT           the GitHub login whose activity is polled. Defaults to the repository owner.
+# ADMIN_ORIGIN      the origin the admin page is served from, so it may read /sync/status.
+# POLL_ENABLED      "false" to rely on webhooks alone.
+# COOLDOWN_SECONDS  after a publish, how long later changes wait. A deploy takes about 3 minutes;
+#                   the default of 90 means a burst becomes one build now and one trailing build.
+REPOSITORY = "NITISH-R-G/Portfolio"
+ACCOUNT = "NITISH-R-G"
+ADMIN_ORIGIN = "https://nitish-r-g.github.io"
+POLL_ENABLED = "true"
+COOLDOWN_SECONDS = "90"
+
+# Secrets are NOT set here. `wrangler secret put` stores them encrypted, so they never appear
+# in this file, in git, or in any bundle:
+#
+#   npx wrangler secret put GITHUB_WEBHOOK_SECRET   # openssl rand -hex 32; the same value goes in the App's webhook settings
+#   npx wrangler secret put GITHUB_APP_ID
+#   npx wrangler secret put GITHUB_PRIVATE_KEY      # PKCS#8 PEM, the same key the admin Worker uses
+#   npx wrangler secret put GITHUB_POLL_TOKEN       # OPTIONAL: any token with no scopes, to lift the polling rate limit

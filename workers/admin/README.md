@@ -51,7 +51,10 @@ At **Settings → Developer settings → GitHub Apps → New GitHub App**:
 - **Homepage URL** — your portfolio URL.
 - **Callback URL** — `https://YOUR-WORKER.workers.dev/auth/callback`. You will not know this
   until step 4, so put a placeholder and come back.
-- **Webhook** — uncheck *Active*. This App receives no webhooks.
+- **Webhook** — uncheck *Active*. The admin Worker itself receives no webhooks. (If you later
+  deploy the optional [sync service](../../docs/sync-service.md) it reuses this same App and
+  turns the webhook on, pointing at *its* URL — that is a separate Worker, and nothing here
+  changes.)
 - **Repository permissions** → **Contents: Read and write**. Nothing else. Not Actions, not
   Administration, not Workflows.
 - **Where can this App be installed** — *Only on this account*.

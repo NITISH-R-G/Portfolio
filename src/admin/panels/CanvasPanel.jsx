@@ -35,6 +35,11 @@ import {
   engineSectionFor,
   moveInOrder,
 } from '../preview/canvas-regions'
+import {
+  ComponentTray,
+  ComponentsInspector,
+  addComponent,
+} from '../preview/components-inspector.jsx'
 import { EditorLayout, Section } from '../preview/editor-layout.jsx'
 import { PortfolioPreview } from '../preview/portfolio-preview'
 import { PreviewFrame } from '../preview/preview-frame'
@@ -51,6 +56,26 @@ export default function CanvasPanel({ builder, navigate }) {
   const { built } = builder
   const { name: themeName, item: theme, setTheme } = useSourceTheme(builder)
   const [selected, setSelected] = useState(null)
+  const [instanceId, setInstanceId] = useState(null)
+
+  // The components the owner placed. Read from the resolved config (shape-checked by the
+  // engine), written back whole through the one path below — so there is exactly one place the
+  // builder saves, and one place a liveness probe has to look.
+  const instances = built.config.components?.instances ?? []
+  const components = {
+    instances,
+    selectedId: instanceId,
+    select: setInstanceId,
+    write: (list) => builder.setConfig('components.instances', list),
+    add: (manifest) => {
+      const { list, instance } = addComponent(instances, manifest)
+      builder.setConfig('components.instances', list)
+      setInstanceId(instance.id)
+      // The section is hidden until it has content, so there is no region to click yet. Selecting
+      // it here keeps the inspector on the thing that was just added.
+      setSelected('composed')
+    },
+  }
 
   const regions = [...toPageSections(built.sections), ...(built.config.footer?.enabled === false ? [] : ['footer'])]
   // A selection can outlive its block — hiding the selected section removes it from the page.
@@ -71,11 +96,17 @@ export default function CanvasPanel({ builder, navigate }) {
             <RegionInspector
               builder={builder}
               region={selected}
+              components={components}
               onOpen={() => open(selected)}
               onClear={() => setSelected(null)}
             />
           ) : (
-            <PageInspector builder={builder} regions={regions} onSelect={setSelected} />
+            <PageInspector
+              builder={builder}
+              regions={regions}
+              components={components}
+              onSelect={setSelected}
+            />
           )
         }
         preview={
@@ -96,7 +127,7 @@ export default function CanvasPanel({ builder, navigate }) {
 }
 
 /** Nothing selected: the page's own settings, and the blocks as a list to select from. */
-function PageInspector({ builder, regions, onSelect }) {
+function PageInspector({ builder, regions, components, onSelect }) {
   const { built, setConfig } = builder
   return (
     <>
@@ -120,6 +151,8 @@ function PageInspector({ builder, regions, onSelect }) {
         </ul>
       </Section>
 
+      <ComponentTray onAdd={components.add} />
+
       <Section title="Section minimap">
         <SelectField
           label="Right-margin minimap"
@@ -136,7 +169,7 @@ function PageInspector({ builder, regions, onSelect }) {
   )
 }
 
-function RegionInspector({ builder, region, onOpen, onClear }) {
+function RegionInspector({ builder, region, components, onOpen, onClear }) {
   const { built, setConfig } = builder
   const engineId = engineSectionFor(region)
   const section = engineId ? built.sections?.find((entry) => entry.id === engineId) : null
@@ -186,12 +219,26 @@ function RegionInspector({ builder, region, onOpen, onClear }) {
 
       {region === 'profile' && <HeaderControls builder={builder} />}
       {region === 'footer' && <FooterControls builder={builder} />}
+      {region === 'composed' && (
+        <>
+          <ComponentsInspector
+            instances={components.instances}
+            selectedId={components.selectedId}
+            onSelect={components.select}
+            onChange={components.write}
+          />
+          <ComponentTray onAdd={components.add} />
+        </>
+      )}
 
       <div className="flex flex-col gap-2">
-        <Button size="sm" className="gap-2 self-start" onClick={onOpen}>
-          Edit {REGION_LABELS[region].toLowerCase()} content
-          <ArrowRightIcon />
-        </Button>
+        {/* Components are edited right here, so there is no separate "full editor" to open. */}
+        {region !== 'composed' && (
+          <Button size="sm" className="gap-2 self-start" onClick={onOpen}>
+            Edit {REGION_LABELS[region].toLowerCase()} content
+            <ArrowRightIcon />
+          </Button>
+        )}
         <Button variant="ghost" size="sm" className="self-start text-muted-foreground" onClick={onClear}>
           Clear selection
         </Button>

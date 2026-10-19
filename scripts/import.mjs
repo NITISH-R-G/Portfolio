@@ -21,6 +21,7 @@
 
 import { runConnectors } from '../src/connectors/run.js'
 import { createHttpCache } from '../src/connectors/cache.js'
+import { applyLastKnownGood } from '../src/core/sync/lastKnownGood.js'
 import { loadResolvedConfig } from './lib/loadConfig.mjs'
 import { PATHS, writeJson, readJson, readSources, loadEnv, relative, fs, path } from './lib/portfolio.mjs'
 import {
@@ -86,7 +87,7 @@ async function main() {
   // believe nothing had changed.
   const cache = createHttpCache(readJson(PATHS.httpCache) ?? {})
 
-  const { sources, status, unknown, requests, revalidated } = await runConnectors({
+  const run = await runConnectors({
     dataSources,
     only: only.length ? only : undefined,
     previous,
@@ -106,6 +107,19 @@ async function main() {
       for (const warning of entry.warnings ?? []) say(dim(wrapText(`· ${warning}`, 4)))
     },
   })
+
+  const { unknown, requests, revalidated } = run
+
+  // A source that failed keeps what it last delivered, instead of being deleted from the site
+  // by the "produced nothing" cleanup below. See `core/sync/lastKnownGood.js`.
+  const { sources, status, restored } = applyLastKnownGood({
+    sources: run.sources,
+    status: run.status,
+    previousProfiles,
+  })
+  for (const key of restored) {
+    warn(`${key} failed — keeping the data from its last successful import.`)
+  }
 
   for (const key of unknown) {
     say(`  ${bold(key.padEnd(16))} ${red('unknown')}`)

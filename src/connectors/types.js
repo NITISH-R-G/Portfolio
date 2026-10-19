@@ -66,6 +66,20 @@
  */
 
 /**
+ * One way a provider can signal change.
+ *
+ * @typedef {object} SyncMechanism
+ * @property {'webhook'|'events-poll'} kind
+ * @property {string} latency        What to expect, in words, including the provider's own floor.
+ * @property {string} [setup]        What the owner must do for it to exist at all.
+ * @property {number} [minIntervalSeconds]  For polling: the least the provider permits between asks.
+ * @property {string[]} [blindTo]    What this mechanism cannot see, so no one assumes it can.
+ *
+ * @typedef {object} SyncDeclaration
+ * @property {SyncMechanism[]} mechanisms
+ */
+
+/**
  * @typedef {object} Connector
  * @property {string} id                       Key under `dataSources` in portfolio.config.js.
  * @property {string} name                     Human label.
@@ -81,6 +95,10 @@
  * @property {string} [rateLimit]
  *   The platform's published limit, in one line. Declared only where it is actually known —
  *   an invented figure would be worse than none, since a user would plan around it.
+ * @property {SyncDeclaration} [sync]
+ *   How this provider can *tell us* it changed, beyond being asked on a schedule. Declared only
+ *   where a mechanism is documented and has been checked against the real provider — absent
+ *   means the schedule is the only way, which is the honest default for almost every connector.
  * @property {(cfg: Record<string, unknown>) => string|undefined} [identify]
  *   The account this config points at, for display. Absent/undefined ⇒ not configured.
  * @property {(cfg: Record<string, unknown>) => string|undefined} [profileUrl]
@@ -118,6 +136,9 @@
  * @property {number} [durationMs]
  * @property {Record<string, number>} [counts]  Records produced, per collection.
  * @property {string[]} [warnings]
+ * @property {boolean} [servingLastKnownGood]
+ *   The run failed, and the site is showing this source's previous data instead of dropping it.
+ *   Set by `core/sync/lastKnownGood.js`; the state stays an error so the failure stays visible.
  */
 
 /**
